@@ -135,38 +135,6 @@ function getSettingsInitData(userPasscode) {
 
     var currentLoginMode = getLoginMode();
 
-    // 5. 金銭・ランク設定 (管理者用)
-    var moneyPrices = [];
-    var moneyRanks = [];
-    if (isFullAdmin) {
-      // 単価マスタ取得
-      var priceSheet = ssMoney.getSheetByName(MONEY_CONFIG.SHEET_PRICE || "M_設定_単価");
-      if (priceSheet) {
-        var pData = priceSheet.getDataRange().getValues();
-        var headers = pData[0];
-        for (var p = 1; p < pData.length; p++) {
-          var actionName = pData[p][0];
-          var basePrice = Number(pData[p][1]) || 0;
-          var score = Number(pData[p][2]) || 0;
-          var rankAdd = {};
-          for (var col = 3; col < headers.length; col++) {
-            var rName = headers[col].replace("加算", "");
-            rankAdd[rName] = Number(pData[p][col]) || 0;
-          }
-          moneyPrices.push({ action: actionName, base: basePrice, score: score, rankAdd: rankAdd });
-        }
-      }
-
-      // ランクマスタ取得
-      var rankSheet = ssMoney.getSheetByName(MONEY_CONFIG.SHEET_RANK || "M_設定_ランク");
-      if (rankSheet) {
-        var rData = rankSheet.getDataRange().getValues();
-        for (var r = 1; r < rData.length; r++) {
-          moneyRanks.push({ name: rData[r][1], minScore: Number(rData[r][2]) || 0 });
-        }
-      }
-    }
-
     return {
       success: true,
       staff: staffList,
@@ -174,8 +142,6 @@ function getSettingsInitData(userPasscode) {
       orderMaster: orderList,
       notify: notifyConfig,
       loginMode: currentLoginMode,
-      moneyPrices: moneyPrices,
-      moneyRanks: moneyRanks,
       currentUser: userInfo
     };
 
@@ -495,5 +461,55 @@ function updateMoneySettings(data) {
 
   } catch (e) {
     return { success: false, message: "保存エラー: " + e.message };
+  }
+}
+
+/**
+ * 金銭・ランク設定の取得 (管理者専用)
+ */
+function getMoneySettingsData() {
+  try {
+    var userEmail = Session.getActiveUser().getEmail();
+    if (!forceCheckAdminByEmail(userEmail)) {
+      return { success: false, message: "管理者権限がありません。" };
+    }
+
+    var ssMoney = getMoneySS(); // 3_Money.gs
+    var moneyPrices = [];
+    var moneyRanks = [];
+
+    // 1. 単価マスタ取得
+    var priceSheet = ssMoney.getSheetByName(MONEY_CONFIG.SHEET_PRICE || "M_設定_単価");
+    if (priceSheet) {
+      var pData = priceSheet.getDataRange().getValues();
+      var headers = pData[0];
+      for (var p = 1; p < pData.length; p++) {
+        var actionName = pData[p][0];
+        if (!actionName) continue;
+        var basePrice = Number(pData[p][1]) || 0;
+        var score = Number(pData[p][2]) || 0;
+        var rankAdd = {};
+        for (var col = 3; col < headers.length; col++) {
+          var rName = headers[col].replace("加算", "");
+          rankAdd[rName] = Number(pData[p][col]) || 0;
+        }
+        moneyPrices.push({ action: actionName, base: basePrice, score: score, rankAdd: rankAdd });
+      }
+    }
+
+    // 2. ランクマスタ取得
+    var rankSheet = ssMoney.getSheetByName(MONEY_CONFIG.SHEET_RANK || "M_設定_ランク");
+    if (rankSheet) {
+      var rData = rankSheet.getDataRange().getValues();
+      for (var r = 1; r < rData.length; r++) {
+        var rankName = rData[r][1];
+        if (!rankName) continue;
+        moneyRanks.push({ name: rankName, minScore: Number(rData[r][2]) || 0 });
+      }
+    }
+
+    return { success: true, prices: moneyPrices, ranks: moneyRanks };
+  } catch (e) {
+    return { success: false, message: "データ取得エラー: " + e.message };
   }
 }
