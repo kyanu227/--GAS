@@ -420,7 +420,7 @@ function updateMoneySettings(data) {
         var writePrices = data.prices.map(function (p) {
           var row = [p.action, p.base, p.score];
           for (var col = 3; col < headers.length; col++) {
-            var rName = headers[col].replace("加算", "");
+            var rName = String(headers[col]).replace(/加算/g, "").replace(/\(円\)|（円）/g, "").trim();
             row.push(p.rankAdd[rName] !== undefined ? p.rankAdd[rName] : 0);
           }
           return row;
@@ -480,7 +480,7 @@ function getMoneySettingsData() {
         var score = Number(pData[p][2]) || 0;
         var rankAdd = {};
         for (var col = 3; col < headers.length; col++) {
-          var rName = headers[col].replace("加算", "");
+          var rName = String(headers[col]).replace(/加算/g, "").replace(/\(円\)|（円）/g, "").trim();
           rankAdd[rName] = Number(pData[p][col]) || 0;
         }
         moneyPrices.push({ action: actionName, base: basePrice, score: score, rankAdd: rankAdd });
