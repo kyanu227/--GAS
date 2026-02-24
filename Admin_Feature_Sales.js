@@ -6,6 +6,9 @@
  */
 function getDetailedSalesStats() {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var moneySs = null;
+    try { moneySs = SpreadsheetApp.openById("1WqhL0NbRL6jvYwJVrKnkSe7JlkNlZB91gH2ywN4fyAM"); } catch (e) { }
+
     var today = new Date();
     var currentYear = today.getFullYear();
     var currentMonth = today.getMonth() + 1; // 1-12
@@ -22,45 +25,66 @@ function getDetailedSalesStats() {
     var curSheet = ss.getSheetByName("履歴ログ" + currentYear);
     if (!curSheet) curSheet = ss.getSheetByName("履歴ログ");
     var curData = curSheet ? curSheet.getDataRange().getValues() : [];
-    var currentMonthStats = calculateMonthStats_(curData, currentYear, currentMonth, priceMap);
+
+    var curMoneySheet = moneySs ? (moneySs.getSheetByName("D_金銭ログ" + currentYear) || moneySs.getSheetByName("D_金銭ログ")) : null;
+    var curMoneyData = curMoneySheet ? curMoneySheet.getDataRange().getValues() : [];
+
+    var currentMonthStats = calculateMonthStats_(curData, curMoneyData, currentYear, currentMonth, priceMap);
 
     // 先月分を計算 (年またぎ対応)
     var prevSheetName = "履歴ログ" + prevYear;
     var prevSheet = ss.getSheetByName(prevSheetName);
-    // 現行シートと同じ年ならcurDataを再利用できるが厳密に判定
-    var prevData = curData;
-    if (prevYear !== currentYear) {
-        prevData = prevSheet ? prevSheet.getDataRange().getValues() : [];
-    }
-    var prevMonthStats = calculateMonthStats_(prevData, prevYear, prevMonth, priceMap);
+    var prevData = (prevYear === currentYear) ? curData : (prevSheet ? prevSheet.getDataRange().getValues() : []);
 
-    // 月間売上比較
+    var prevMoneySheet = moneySs ? (moneySs.getSheetByName("D_金銭ログ" + prevYear) || moneySs.getSheetByName("D_金銭ログ")) : null;
+    var prevMoneyData = (prevYear === currentYear) ? curMoneyData : (prevMoneySheet ? prevMoneySheet.getDataRange().getValues() : []);
+
+    var prevMonthStats = calculateMonthStats_(prevData, prevMoneyData, prevYear, prevMonth, priceMap);
+
+    // 月間売上・利益比較
     var curTotal = currentMonthStats.totalSales;
+    var curProfit = currentMonthStats.totalProfit;
     var prevTotal = prevMonthStats.totalSales;
-    var momRatio = 0; // Month-over-Month ratio
+
+    var momRatio = 0;
     if (prevTotal > 0) {
         momRatio = Math.round(((curTotal - prevTotal) / prevTotal) * 100);
     } else if (curTotal > 0) {
-        momRatio = 100; // 元が0なら+100%増加扱い
+        momRatio = 100;
     }
 
     // アクション別内訳 (グラフ用)
     var actionLabels = Object.keys(currentMonthStats.actionSales);
     var actionData = actionLabels.map(function (k) { return currentMonthStats.actionSales[k]; });
 
-    // 取引先別トップ5 (ランキング表用)
+    // 未使用・不備による返却率計算
+    var totalReturns = currentMonthStats.returnCountTotal;
+    var unusedOrDefectReturns = currentMonthStats.returnCountUnusedDefect;
+    var errorRatio = (totalReturns > 0) ? Math.round((unusedOrDefectReturns / totalReturns) * 100) : 0;
+
+    // 取引先別トップ5 (ランキング表用)・DamageCoefficient(クライアント側接触回数に基づく破損率)
     var destArr = [];
-    for (var d in currentMonthStats.destSales) {
-        destArr.push({ name: d, sales: currentMonthStats.destSales[d], count: currentMonthStats.destCount[d] });
+    for (var d in currentMonthStats.destSales) { // 売上があった取引先、または貸出があった取引先
+        var cTotal = currentMonthStats.destCount[d] || 0;
+        var cDamage = currentMonthStats.destDamageCount[d] || 0;
+        var dmgCoef = (cTotal > 0) ? Math.round((cDamage / cTotal) * 100) : 0;
+        destArr.push({
+            name: d,
+            sales: currentMonthStats.destSales[d],
+            count: cTotal,
+            damageCoef: dmgCoef
+        });
     }
     destArr.sort(function (a, b) { return b.sales - a.sales; });
     var topDestinations = destArr.slice(0, 5);
 
     return {
         success: true,
-        currentMonthTotal: curTotal,
+        currentMonthTotal: curTotal,       // これまでの売上総合計
+        currentMonthProfit: curProfit,     // 利益(売上-経費-報酬)
         prevMonthTotal: prevTotal,
         momRatio: momRatio,
+        errorRatio: errorRatio,            // 返却時の未使用/不備率
         actionBreakdown: {
             labels: actionLabels,
             data: actionData
@@ -71,15 +95,22 @@ function getDetailedSalesStats() {
 
 /**
  * 指定月(年月)の売上などの統計を抽出する内部関数
+ * 金銭ログ(D_金銭ログ)も併せて読み込み、経費や報酬を計算する。
  */
-function calculateMonthStats_(data, targetYear, targetMonth, priceMap) {
+function calculateMonthStats_(data, moneyData, targetYear, targetMonth, priceMap) {
     var result = {
         totalSales: 0,
+        totalProfit: 0,
+        expensesAndPayouts: 0,
         actionSales: {},
         destSales: {},
-        destCount: {}
+        destCount: {},
+        destDamageCount: {},
+        returnCountTotal: 0,
+        returnCountUnusedDefect: 0
     };
 
+    // 1. 履歴ログ側 (売上、返却統計、クライアント破損回数)
     for (var i = 1; i < data.length; i++) {
         var rawDate = data[i][ADMIN_CONFIG.COL_LOG_DATE]; // B列(1)
         if (isValidDate_(rawDate)) {
@@ -87,30 +118,73 @@ function calculateMonthStats_(data, targetYear, targetMonth, priceMap) {
             if (d.getFullYear() === targetYear && (d.getMonth() + 1) === targetMonth) {
 
                 var action = String(data[i][ADMIN_CONFIG.COL_LOG_ACTION] || "").trim(); // E列(4)
-                var price = priceMap[action] || 0;
-
-                var dest = String(data[i][5] || "").trim(); // 取引先(F列想定だが、実際は 場所 かも。ログの仕様に合わせてindex5, または8)
-                // Utils.jsの仕様では、場所はindex5(F列), 直前貸出先はindex8(I列)
+                var dest = String(data[i][5] || "").trim(); // F列(5)
                 if (!dest || dest === "倉庫" || dest === "自社") dest = "その他";
 
+                // ★返却・不備率のカウント
+                if (action.indexOf("返却") !== -1 || action === "未使用返却") {
+                    result.returnCountTotal++;
+                    if (action === "返却(未充填)" || action === "未使用返却") {
+                        result.returnCountUnusedDefect++;
+                    }
+                }
+
+                // ★クライアントベースの破損係数カウント
+                // 操作が破損報告、あるいはアクションに破損が含まれる場合
+                if (action.indexOf("破損") !== -1) {
+                    if (!result.destDamageCount[dest]) result.destDamageCount[dest] = 0;
+                    result.destDamageCount[dest]++;
+                }
+
+                // ★売上計算
+                var price = priceMap[action] || 0;
                 if (price > 0) {
-                    // 合計売上
-                    result.totalSales += price;
+                    // 「返却(未充填)」「未使用返却」は請求から除外するため、売上に計上しない
+                    if (action === "返却(未充填)" || action === "未使用返却") price = 0;
 
-                    // アクション別売上
-                    if (!result.actionSales[action]) result.actionSales[action] = 0;
-                    result.actionSales[action] += price;
+                    if (price > 0) {
+                        result.totalSales += price;
 
-                    // 取引先別売上
-                    if (!result.destSales[dest]) {
+                        if (!result.actionSales[action]) result.actionSales[action] = 0;
+                        result.actionSales[action] += price;
+
+                        if (!result.destSales[dest]) {
+                            result.destSales[dest] = 0;
+                            result.destCount[dest] = 0;
+                            result.destDamageCount[dest] = 0;
+                        }
+                        result.destSales[dest] += price;
+                        result.destCount[dest] += 1;
+                    }
+                } else if (action === "貸出") {
+                    // 貸出だけでも接触回数(分母)に入れる
+                    if (!result.destCount[dest]) {
                         result.destSales[dest] = 0;
                         result.destCount[dest] = 0;
+                        result.destDamageCount[dest] = 0;
                     }
-                    result.destSales[dest] += price;
                     result.destCount[dest] += 1;
                 }
             }
         }
     }
+
+    // 2. 金銭ログ側 (経費、スタッフ報酬)
+    // 列: [0]UUID, [1]日時, [2]担当者, [3]作業, [4]タンクID, [5]スコア(報酬), [6]立替金(経費)
+    for (var j = 1; j < moneyData.length; j++) {
+        var rawMDate = moneyData[j][1];
+        if (isValidDate_(rawMDate)) {
+            var md = new Date(rawMDate);
+            if (md.getFullYear() === targetYear && (md.getMonth() + 1) === targetMonth) {
+                var staffScore = Number(moneyData[j][5]) || 0;
+                var expense = Number(moneyData[j][6]) || 0;
+                result.expensesAndPayouts += (staffScore + expense);
+            }
+        }
+    }
+
+    // 利益 ＝ 売上 － 経費＆報酬
+    result.totalProfit = result.totalSales - result.expensesAndPayouts;
+
     return result;
 }

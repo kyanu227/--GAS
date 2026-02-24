@@ -1,12 +1,12 @@
 // ■■■ Feature_Operations.gs : 現場操作 (完全統合版) ■■■
 
 const OP_RULES = {
-  '貸出'   : { allowedPrev: [ '充填済み' ,  '保管中' ], nextStatus:  '貸出中'  },
-  '自社利用'   : { allowedPrev: [ '充填済み' ,  '保管中' ], nextStatus:  '自社利用中'  },
-  '返却'   : { allowedPrev: [ '貸出中' ,  '未返却' ,  '自社利用中' ], nextStatus:  '空'  },
-  '充填'   : { allowedPrev: [ '空' ], nextStatus:  '充填済み'  },
-  '破損報告'   : { allowedPrev: [], nextStatus:  '破損'  },
-  '修理済み'   : { allowedPrev: [ '破損' ,  '不良' ,  '故障' ], nextStatus:  '空'  }
+  '貸出': { allowedPrev: ['充填済み', '保管中'], nextStatus: '貸出中' },
+  '自社利用': { allowedPrev: ['充填済み', '保管中'], nextStatus: '自社利用中' },
+  '返却': { allowedPrev: ['貸出中', '未返却', '自社利用中'], nextStatus: '空' },
+  '充填': { allowedPrev: ['空'], nextStatus: '充填済み' },
+  '破損報告': { allowedPrev: [], nextStatus: '破損' },
+  '修理済み': { allowedPrev: ['破損', '不良', '故障'], nextStatus: '空' }
 };
 
 const SPECIAL_STATUSES = ["", "新規登録", "不明", "メンテナンス完了"];
@@ -20,7 +20,7 @@ function clearMasterCaches() {
 
 function getOperationsInitData() {
   var repairOpts = [];
-  try { repairOpts = getRepairOptions(); } catch(e) { console.error("修理OP取得失敗", e); }
+  try { repairOpts = getRepairOptions(); } catch (e) { console.error("修理OP取得失敗", e); }
 
   // 1. 貸出先リスト
   var activeDestList = [];
@@ -33,15 +33,15 @@ function getOperationsInitData() {
       var data = sheet.getDataRange().getValues();
       for (var i = 1; i < data.length; i++) {
         var name = data[i][0];
-        var status = (data[i].length > 3) ? data[i][3] : ""; 
+        var status = (data[i].length > 3) ? data[i][3] : "";
         if (name && status !== '停止' && String(name).indexOf('【停止】') !== 0) {
           activeDestList.push(name);
         }
       }
     }
-  } catch(e) {
+  } catch (e) {
     console.error("貸出先リスト取得エラー", e);
-    activeDestList = getListWithCache('貸出先リスト', 3600); 
+    activeDestList = getListWithCache('貸出先リスト', 3600);
   }
 
   // 2. タンクID Prefix
@@ -65,7 +65,7 @@ function getTankPrefixesWithCache() {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheetName = (typeof SHEET_NAMES !== 'undefined' && SHEET_NAMES.STATUS) ? SHEET_NAMES.STATUS : 'タンクステータス';
     var sheet = ss.getSheetByName(sheetName);
-    
+
     if (sheet) {
       var lastRow = sheet.getLastRow();
       if (lastRow > 1) {
@@ -98,7 +98,7 @@ function submitOperations(data) {
   try {
     var action = (data.action || "").trim();
     var items = data.items;
-    
+
     // クライアントからパスコードを受け取る
     var userPasscode = data.userPasscode || "";
 
@@ -110,17 +110,17 @@ function submitOperations(data) {
     var sheetName = (typeof SHEET_NAMES !== 'undefined' && SHEET_NAMES.STATUS) ? SHEET_NAMES.STATUS : 'タンクステータス';
     var sheet = ss.getSheetByName(sheetName);
     var lastRow = sheet.getLastRow();
-    
+
     // ★重要: I列(種別)を守るため、9列目まで読み込む
     var lastCol = sheet.getLastColumn();
     var fetchCols = (lastCol >= 9) ? 9 : (lastCol >= 8 ? 8 : 7);
-    
+
     var masterData = (lastRow > 0) ? sheet.getRange(1, 1, lastRow, fetchCols).getValues() : [];
 
     var idMap = {};
     for (var i = 1; i < masterData.length; i++) {
       var nId = normalizeId(masterData[i][0]);
-      if(nId) idMap[nId] = i;
+      if (nId) idMap[nId] = i;
     }
 
     var preLoadedData = {
@@ -142,13 +142,13 @@ function submitOperations(data) {
         totalCount: items.length
       };
     }
-    
+
     // 操作実行者の特定 (Google優先 -> パスコード)
     var staffInfo = getUserInfo(Session.getActiveUser().getEmail(), userPasscode);
     var identifiedStaffName = staffInfo.name;
 
     var prevStatusMap = {};
-    validItems.forEach(function(item) {
+    validItems.forEach(function (item) {
       var nId = normalizeId(item.id);
       var rIndex = idMap[nId];
       if (rIndex !== undefined) {
@@ -168,18 +168,18 @@ function submitOperations(data) {
 
     // writeToSheetに特定された担当者名を渡す
     var writeResult;
-    switch(action) {
+    switch (action) {
       case '貸出': writeResult = processLend(processData, preLoadedData, identifiedStaffName); break;
       case '自社利用': writeResult = processCompanyUse(processData, preLoadedData, identifiedStaffName); break;
       case '返却': writeResult = processReturn(processData, preLoadedData, identifiedStaffName); break;
       case '充填': writeResult = processFill(processData, preLoadedData, identifiedStaffName); break;
       case '破損報告': writeResult = processDamageReport(processData, preLoadedData, identifiedStaffName); break;
       case '修理済み': writeResult = processRepair(processData, preLoadedData, identifiedStaffName); break;
-      default: 
-        writeResult = { 
-          success: false, 
-          message: "システムエラー: 指示された操作 [" + action + "] が不明です", 
-          successIds:[], 
+      default:
+        writeResult = {
+          success: false,
+          message: "システムエラー: 指示された操作 [" + action + "] が不明です",
+          successIds: [],
           failedItems: items.map(i => ({ id: i.id, reason: "操作コマンド不一致" }))
         };
     }
@@ -189,9 +189,9 @@ function submitOperations(data) {
         var moneyLogs = [];
         var now = new Date();
         var successMap = {};
-        writeResult.successIds.forEach(function(sid){ successMap[sid] = true; });
+        writeResult.successIds.forEach(function (sid) { successMap[sid] = true; });
 
-        validItems.forEach(function(item) {
+        validItems.forEach(function (item) {
           if (successMap[item.id]) {
             var moneyLogAction = action;
             var oldStatus = prevStatusMap[item.id];
@@ -246,7 +246,7 @@ function validateOperations(items, action, preLoadedData) {
   var masterData = preLoadedData.data;
   var idMap = preLoadedData.idMap;
 
-  items.forEach(function(item) {
+  items.forEach(function (item) {
     var rawId = item.id;
     var nId = normalizeId(rawId);
     var rowIndex = idMap[nId];
@@ -271,13 +271,13 @@ function validateOperations(items, action, preLoadedData) {
 // ----------------------------------------------------
 
 function processLend(data, preLoadedData, staffName) {
-  if (!data.destination) return { success: false, message: "貸出先未選択", failedItems:[], successIds:[] };
+  if (!data.destination) return { success: false, message: "貸出先未選択", failedItems: [], successIds: [] };
   // 第7引数: 「貸出先」をI列(直前/取引先)に記録
   return writeToSheet(data.items, '貸出中', data.destination, '貸出', preLoadedData, staffName, data.destination);
 }
 
 function processCompanyUse(data, preLoadedData, staffName) {
-  data.items.forEach(item => { if(!item.note) item.note = '社内使用'; });
+  data.items.forEach(item => { if (!item.note) item.note = '社内使用'; });
   // 第7引数: 「自社」をI列に記録
   return writeToSheet(data.items, '自社利用中', '自社', '自社利用', preLoadedData, staffName, '自社');
 }
@@ -286,8 +286,8 @@ function processReturn(data, preLoadedData, staffName) {
   var newStatus = '空';
   var logAction = '返却';
   if (data.isDefect) {
-    newStatus = '不良';
-    logAction = '返却(不備)';
+    newStatus = '空'; // 以前は '不良' だったのを修正
+    logAction = '返却(未充填)'; // 以前は '返却(不備)' だったのを修正
   } else if (data.isUnused) {
     newStatus = '充填済み';
     logAction = '未使用返却';

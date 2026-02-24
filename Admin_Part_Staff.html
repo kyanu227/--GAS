@@ -12,7 +12,10 @@
             <tr>
                 <th style="width: 50px;">Rank</th>
                 <th>名前</th>
+                <th class="text-end">獲得報酬</th>
                 <th class="text-center">今月の作業数</th>
+                <th class="text-center">破損率</th>
+                <th class="text-center">エラー率</th>
                 <th>主なアクション</th>
                 <th>本日の状態</th>
             </tr>
@@ -45,7 +48,7 @@
                 tbody.innerHTML = '';
 
                 if (data.staffRankings.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">データがありません</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">データがありません</td></tr>';
                     return;
                 }
 
@@ -60,6 +63,10 @@
                         ? '<span class="text-success"><i class="bi bi-circle-fill" style="font-size:8px;"></i> 稼働中</span>'
                         : '<span class="text-muted">退勤</span>';
 
+                    var moneyHtml = '<span class="text-info fw-bold fs-6">¥' + (staff.earnedAmount || 0).toLocaleString() + '</span>';
+                    var damageHtml = staff.damageCoef > 0 ? '<span class="badge bg-danger">' + staff.damageCoef + '%</span>' : '<span class="text-muted">0%</span>';
+                    var errorHtml = staff.errorRatio > 0 ? '<span class="badge bg-warning text-dark">' + staff.errorRatio + '%</span>' : '<span class="text-muted">0%</span>';
+
                     // 主なアクションの文字列を生成 (上位3つくらいをカンマ区切り)
                     var actionsArr = [];
                     for (var k in staff.actionsBreakdown) {
@@ -71,7 +78,10 @@
                     tr.innerHTML = `
             <td class="text-center fw-bold">${rankHtml}</td>
             <td>${staff.name}</td>
+            <td class="text-end">${moneyHtml}</td>
             <td class="text-center fs-5 fw-bold text-white">${staff.totalActions}</td>
+            <td class="text-center">${damageHtml}</td>
+            <td class="text-center">${errorHtml}</td>
             <td class="small text-muted">${actionStr}</td>
             <td>${statusHtml}</td>
           `;
