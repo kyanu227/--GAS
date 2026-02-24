@@ -475,7 +475,8 @@ function getMoneySettingsData() {
       var pData = priceSheet.getDataRange().getValues();
       var headers = pData[0];
       for (var col = 3; col < headers.length; col++) {
-        rankHeaders.push(String(headers[col]).replace(/加算/g, "").replace(/\(円\)|（円）/g, "").trim());
+        var hName = String(headers[col]).replace(/加算/g, "").replace(/\(円\)|（円）/g, "").trim();
+        if (hName) rankHeaders.push(hName);
       }
       for (var p = 1; p < pData.length; p++) {
         var actionName = pData[p][0];
@@ -484,8 +485,10 @@ function getMoneySettingsData() {
         var score = Number(pData[p][2]) || 0;
         var rankAdd = {};
         for (var col = 3; col < headers.length; col++) {
-          var rName = rankHeaders[col - 3];
-          rankAdd[rName] = Number(pData[p][col]) || 0;
+          var rName = String(headers[col]).replace(/加算/g, "").replace(/\(円\)|（円）/g, "").trim();
+          if (rName) {
+            rankAdd[rName] = Number(pData[p][col]) || 0;
+          }
         }
         moneyPrices.push({ action: actionName, base: basePrice, score: score, rankAdd: rankAdd });
       }
