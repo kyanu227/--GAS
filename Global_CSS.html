@@ -1,0 +1,171 @@
+<style>
+  /* --- 基本設定 --- */
+  body { padding-top: 70px; padding-bottom: 80px; background-color: #f0f2f5; font-family: "Helvetica Neue", Arial, sans-serif; touch-action: manipulation; }
+  
+  /* 印刷設定 */
+  @media print { body { padding: 0; background: white; } .navbar-custom, .offcanvas, .bottom-nav, .submit-float, .btn-print-hide { display: none !important; } #container-billing { display: block !important; } .invoice-card { box-shadow: none; border: none; margin: 0; page-break-after: always; } }
+  @page { size: auto; margin: 0mm; }
+  
+  /* ナビゲーション */
+  .navbar-custom { background-color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); box-shadow: 0 1px 3px rgba(0,0,0,0.1); height: 60px; }
+  .hamburger-btn { border: none; background: none; font-size: 1.8rem; color: #333; padding: 5px; }
+  .header-counter { background-color: #f8f9fa; border: 1px solid #ddd; border-radius: 20px; padding: 5px 12px; display: flex; align-items: center; gap: 8px; font-weight: bold; color: #555; cursor: pointer; }
+  .header-badge { background-color: #dc3545; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; font-size: 0.85rem; }
+  .badge-admin-luxury { background-color: #000 !important; color: #ff3333 !important; border: 1px solid #ff3333; box-shadow: 0 0 5px rgba(255, 0, 0, 0.3); font-family: monospace; letter-spacing: 0.1em; }
+
+  /* サイドメニュー */
+  .offcanvas-header { background: #f8f9fa; border-bottom: 1px solid #ddd; }
+  .menu-item { padding: 16px 20px; border-bottom: 1px solid #f5f5f5; font-size: 1.05rem; color: #444; text-decoration: none; display: flex; align-items: center; transition: all 0.2s ease; cursor: pointer; }
+  .menu-item:active { background-color: #f0f0f0; }
+  .menu-item i { width: 35px; text-align: center; font-size: 1.3rem; margin-right: 10px; }
+  
+  /* 管理者メニュー（ラグジュアリー） */
+  .menu-admin-luxury { background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%); color: #ffcccc !important; border-bottom: 1px solid #330000; position: relative; transition: all 0.3s; }
+  .menu-admin-luxury i { color: #ff0000; text-shadow: 0 0 5px rgba(255,0,0,0.6); }
+  .menu-admin-luxury::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #ff0000; }
+  .admin-section-title { background-color: #000; color: #ff3333; padding: 15px; border-bottom: 2px solid #8b0000; font-family: monospace; letter-spacing: 0.1em; font-weight: bold; text-shadow: 0 0 3px rgba(255,0,0,0.5); }
+
+  /* 下部メニュー */
+  .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; height: 70px; background: white; border-top: 1px solid #ddd; display: flex; z-index: 1030; padding-bottom: env(safe-area-inset-bottom); }
+  .nav-btn { flex: 1; border: none; background: none; color: #999; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.75rem; padding-bottom: 5px; cursor: pointer; transition: 0.2s; }
+  .nav-btn i { font-size: 1.6rem; margin-bottom: 2px; }
+  .nav-btn.active-lend { color: #0d6efd; background: #f0f7ff; border-top: 3px solid #0d6efd; }
+  .nav-btn.active-return { color: #198754; background: #f0fff4; border-top: 3px solid #198754; }
+  .nav-btn.active-fill { color: #fd7e14; background: #fffbf0; border-top: 3px solid #fd7e14; }
+
+  /* フォーム共通 */
+  .form-card { background: transparent; padding: 0 10px; margin-top: 10px; border: none; }
+  .settings-area { background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+  .custom-select-wrapper { position: relative; }
+  .form-select-lg-custom { height: 60px; font-size: 1.2rem; font-weight: bold; border: 2px solid #ced4da; border-radius: 10px; padding-left: 15px; appearance: none; -webkit-appearance: none; background: white; }
+  .select-arrow-icon { position: absolute; top: 50%; right: 15px; transform: translateY(-50%); font-size: 1.5rem; color: #6c757d; pointer-events: none; }
+  
+  /* 操作用スタイル */
+  .input-row-card { background: white; border-radius: 10px; padding: 6px 10px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: space-between; gap: 10px; border-left: 5px solid #ccc; }
+  .prefix-label { font-size: 1.3rem; font-weight: 800; color: #444; width: 25px; text-align: center; flex-shrink: 0; }
+  .direct-num-input { flex-grow: 1; max-width: none; height: 48px; font-size: 1.5rem; text-align: center; font-weight: bold; border: 1px solid #ced4da; border-radius: 6px; background: #fcfcfc; letter-spacing: 2px; margin: 0 auto; }
+  .btn-direct-ok { height: 48px; width: 55px; font-weight: bold; border-radius: 6px; border: none; color: white; background: #6c757d; font-size: 0.9rem; display: flex; flex-direction: column; justify-content: center; align-items: center; line-height: 1; flex-shrink: 0; }
+  
+  .mode-lend .input-row-card { border-left-color: #0d6efd; } .mode-lend .btn-direct-ok { background: #0d6efd; }
+  .mode-return .input-row-card { border-left-color: #198754; } .mode-return .btn-direct-ok { background: #198754; }
+  .mode-fill .input-row-card { border-left-color: #ffc107; } .mode-fill .btn-direct-ok { background: #ffc107; color: #333; }
+  .mode-damage .input-row-card { border-left-color: #dc3545; }
+
+  /* 送信待ちリスト */
+  .queue-area { background: #e9ecef; border-radius: 12px; margin: 20px 0; border: 1px solid #ced4da; overflow: hidden; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05); }
+  .queue-header { background: #343a40; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 0.9rem; }
+  .queue-list-container { max-height: 350px; overflow-y: auto; padding: 10px; }
+  .queue-item { background: white; border-radius: 8px; padding: 12px 15px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); display: flex; justify-content: space-between; align-items: center; border-left: 6px solid #ccc; transition: all 0.2s ease; }
+  .queue-id { font-size: 1.6rem; font-weight: 900; font-family: "Courier New", monospace; color: #333; letter-spacing: 0.05em; }
+  .btn-queue-delete { width: 40px; height: 40px; border-radius: 50%; border: none; background-color: #fff0f0; color: #dc3545; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; transition: background 0.2s; }
+  
+  .submit-float { display: none; position: fixed; bottom: 85px; left: 15px; right: 15px; z-index: 900; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border-radius: 50px; padding: 14px; font-size: 1.2rem; font-weight: bold; }
+  
+  /* 管理・統計・ダッシュボード */
+  .luxury-header-title { text-align: center; font-size: 1.5rem; font-weight: bold; margin: 20px 0; color: #333; border-bottom: 3px solid #cc0000; display: inline-block; padding-bottom: 5px; }
+  .luxury-card { background: #fff; border: none; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); margin-bottom: 25px; overflow: hidden; border-top: 4px solid #cc0000; }
+  .luxury-card-header { background: #111; color: #ff4444; padding: 12px 20px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #330000; }
+  .luxury-card-body { padding: 20px; }
+  .luxury-stat-value { font-weight: bold; font-size: 1.1rem; color: #333; }
+
+  /* ▼▼▼ 追加機能：押しやすい選択パネル ▼▼▼ */
+  .selection-panel {
+    display: flex; gap: 10px;
+  }
+  .check-card-label {
+    flex: 1;
+    display: block;
+    background: #fff;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    padding: 15px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  /* チェックボックス自体は隠して、ラベル全体を押させる */
+  .check-card-input {
+    position: absolute; opacity: 0; cursor: pointer; height: 0; width: 0;
+  }
+  .check-card-title { font-weight: bold; font-size: 1.1rem; display: block; margin-bottom: 5px; }
+  .check-card-desc { font-size: 0.8rem; display: block; opacity: 0.7; }
+  
+  /* 選択時のスタイル */
+  .check-card-input:checked + .check-card-label {
+    border-color: currentColor;
+    background-color: #f8fff8;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+  }
+  /* 未使用（緑） */
+  .check-unused .check-card-label { color: #198754; }
+  .check-unused .check-card-input:checked + .check-card-label { background-color: #e6f9ed; border-width: 3px; }
+  
+  /* 破損（赤） */
+  .check-error .check-card-label { color: #dc3545; }
+  .check-error .check-card-input:checked + .check-card-label { background-color: #fff5f5; border-width: 3px; }
+
+  /* メンテナンス一覧のカードスタイル */
+  .maint-card {
+    background: white; border: 1px solid #eee; border-radius: 12px;
+    padding: 12px; margin-bottom: 10px; display: flex; align-items: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+  }
+  .maint-card:active { background-color: #f9f9f9; }
+  
+  /* 巨大チェックボックス */
+  .big-check {
+    width: 28px; height: 28px; margin-right: 15px; border-radius: 6px;
+    border: 2px solid #adb5bd; flex-shrink: 0;
+  }
+  .maint-info { flex-grow: 1; }
+  .maint-id { font-size: 1.3rem; font-weight: 900; font-family: monospace; color: #333; line-height: 1.2; }
+  .maint-note { color: #dc3545; font-weight: bold; font-size: 0.95rem; background: #fff5f5; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 4px; }
+  .maint-status-badge { font-size: 0.75rem; background: #6c757d; color: white; padding: 2px 6px; border-radius: 4px; vertical-align: middle; margin-left: 5px; }
+
+/* --- ダッシュボード用スタイル --- */
+.dash-header {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px;
+}
+.dash-title { font-size: 1.5rem; font-weight: 800; color: #343a40; margin: 0; }
+.dash-updated { font-size: 0.8rem; color: #888; font-family: monospace; }
+
+/* ステータスカード */
+.stat-card {
+  background: white; border-radius: 12px; padding: 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: none;
+  transition: transform 0.2s; height: 100%;
+  position: relative; overflow: hidden;
+}
+.stat-card:active { transform: scale(0.98); }
+.stat-card-title { font-size: 0.85rem; color: #6c757d; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.05em; }
+.stat-card-value { font-size: 2rem; font-weight: 800; line-height: 1; color: #333; }
+.stat-card-icon {
+  position: absolute; right: 10px; bottom: 10px;
+  font-size: 2.5rem; opacity: 0.15; transform: rotate(-10deg);
+}
+/* カードの色分け */
+.stat-blue { border-left: 5px solid #0d6efd; } .stat-blue .stat-card-value { color: #0d6efd; }
+.stat-red  { border-left: 5px solid #dc3545; } .stat-red  .stat-card-value { color: #dc3545; }
+.stat-gold { border-left: 5px solid #ffc107; } .stat-gold .stat-card-value { color: #d6a205; }
+
+/* グラフエリア */
+.chart-container-card {
+  background: white; border-radius: 12px; padding: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px;
+}
+
+/* リストアイテム */
+.dash-list-item {
+  background: white; border-bottom: 1px solid #f0f0f0; padding: 12px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.dash-list-item:last-child { border-bottom: none; }
+.dash-item-id { font-weight: bold; font-family: monospace; font-size: 1.1rem; color: #333; }
+.dash-item-meta { font-size: 0.8rem; color: #666; }
+.dash-badge-alert { background: #ffebee; color: #c62828; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; border: 1px solid #ffcdd2; }
+</style>

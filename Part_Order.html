@@ -1,0 +1,674 @@
+<div id="order-container" class="container-fluid mt-3" style="max-width: 800px; margin: 0 auto; padding-bottom: 120px;">
+  
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold text-secondary"><i class="bi bi-cart-plus-fill me-2"></i> 発注・購入管理 </h5>
+  </div>
+  
+  <div class="btn-group w-100 mb-3" role="group">
+    <input type="radio" class="btn-check" name="order-tab" id="tab-supplies" autocomplete="off" checked onchange="switchOrderTab('supplies')">
+    <label class="btn btn-outline-secondary" for="tab-supplies"> 資材発注 </label>
+
+    <input type="radio" class="btn-check" name="order-tab" id="tab-tanks" autocomplete="off" onchange="switchOrderTab('tanks')">
+    <label class="btn btn-outline-secondary" for="tab-tanks"> タンク購入 </label>
+
+    <input type="radio" class="btn-check" name="order-tab" id="tab-hist-sup" autocomplete="off" onchange="switchOrderTab('history_supplies')">
+    <label class="btn btn-outline-secondary" for="tab-hist-sup"> 資材履歴 </label>
+    
+    <input type="radio" class="btn-check" name="order-tab" id="tab-hist-tank" autocomplete="off" onchange="switchOrderTab('history_tanks')">
+    <label class="btn btn-outline-secondary" for="tab-hist-tank"> タンク履歴 </label>
+  </div>
+
+  <div id="view-supplies-order">
+    <div class="d-flex justify-content-end mb-2">
+      <button class="btn btn-sm btn-outline-secondary border-0" onclick="loadOrderItems()">
+        <i class="bi bi-arrow-clockwise"></i> 更新
+      </button>
+    </div>
+    <div id="supplies-list-area" class="row g-3">
+      <div class="text-center py-5 text-muted"> <div class="spinner-border text-primary"></div> </div>
+    </div>
+    <div id="footer-supplies" class="fixed-bottom p-3 d-flex justify-content-center" style="z-index: 1050; pointer-events: none; padding-bottom: 80px !important;">
+      <button id="btn-submit-supplies" class="btn btn-primary shadow-lg rounded-pill px-4 py-3 fw-bold"
+              style="pointer-events: auto; display: none; min-width: 200px; border: 2px solid #fff;" onclick="submitSuppliesData()">
+        <i class="bi bi-send-fill me-2"></i> 発注する ( <span id="supplies-total-count">0</span> 点)
+      </button>
+    </div>
+  </div>
+
+  <div id="view-tank-order" style="display:none;">
+    <div class="card shadow-sm border-0 p-3 mb-3">
+      <h6 class="fw-bold text-dark border-bottom pb-2 mb-3"><i class="bi bi-plus-circle"></i> 新規タンク登録</h6>
+      
+      <div class="row g-2 mb-3">
+        <div class="col-6">
+           <label class="form-label small text-muted fw-bold">1. タンク種別</label>
+           <select id="tank-type-select" class="form-select bg-light" onchange="previewTankInput()">
+             <option value="" disabled selected>読み込み中...</option>
+           </select>
+        </div>
+        <div class="col-6">
+           <label class="form-label small text-muted fw-bold">2. 次回耐圧日</label>
+           <input type="date" id="tank-insp-date" class="form-control" required>
+        </div>
+      </div>
+
+      <div class="row g-2 mb-3 align-items-end">
+        <div class="col-4">
+          <label class="form-label small text-muted fw-bold">記号 (A-Z)</label>
+          <input type="text" id="tank-prefix" class="form-control text-center text-uppercase fw-bold" placeholder="A" maxlength="1" oninput="previewTankInput()">
+        </div>
+        
+        <div class="col-4">
+          <label class="form-label small text-muted fw-bold">番号 (数字)</label>
+          <div class="input-group">
+            <input type="tel" id="tank-start-num" class="form-control text-center fw-bold" 
+                   placeholder="01" inputmode="numeric" pattern="[0-9]*" 
+                   oninput="validateTankNum(this); previewTankInput()">
+            <button class="btn btn-outline-secondary" type="button" onclick="clearTankNum()">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="col-4">
+          <button id="btn-add-list" class="btn btn-outline-primary w-100 fw-bold" onclick="addTankToList()" disabled>
+            <i class="bi bi-arrow-down"></i> 追加
+          </button>
+        </div>
+      </div>
+      
+      <div class="small text-end text-muted mb-2" style="min-height: 1.5em;">
+        IDプレビュー: <span id="input-preview-text" class="fw-bold text-dark">--</span>
+      </div>
+      <input type="text" id="tank-note" class="form-control form-control-sm" placeholder="備考 (任意)">
+    </div>
+
+    <div class="card shadow-sm border-0 p-3 mb-5" style="background-color: #fcfcfc;">
+      <h6 class="fw-bold text-secondary border-bottom pb-2 mb-2">
+        <i class="bi bi-list-check"></i> 購入予定リスト
+      </h6>
+      <div id="tank-cart-area" class="mb-3">
+        <div class="text-center text-muted small py-3">リストは空です</div>
+      </div>
+      <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+        <div class="fw-bold text-dark">合計金額</div>
+        <div class="fs-4 fw-bold text-primary">¥ <span id="cart-total-price">0</span></div>
+      </div>
+      
+      <div class="btn-group w-100 mt-3" role="group">
+        <input type="radio" class="btn-check" name="tank-reg-mode" id="mode-purchase" autocomplete="off" checked onchange="updateSubmitButtonState()">
+        <label class="btn btn-outline-success" for="mode-purchase">
+          <i class="bi bi-cart"></i> 通常購入(発注)
+        </label>
+        
+        <input type="radio" class="btn-check" name="tank-reg-mode" id="mode-register-only" autocomplete="off" onchange="updateSubmitButtonState()">
+        <label class="btn btn-outline-secondary" for="mode-register-only">
+          <i class="bi bi-box-seam"></i> 在庫登録のみ
+        </label>
+      </div>
+
+      <button id="btn-submit-cart" class="btn btn-success w-100 mt-2 py-3 fw-bold shadow-sm" onclick="submitCart()" disabled>
+        <i class="bi bi-cart-check-fill me-2"></i> 購入を確定する
+      </button>
+    </div>
+  </div>
+
+  <div id="view-order-history" style="display:none;">
+    <div class="d-flex justify-content-end align-items-center mb-2 px-1">
+      <div class="d-flex gap-2">
+        <button id="btn-batch-delete" class="btn btn-sm btn-outline-danger" style="display:none;" onclick="batchDelete()">
+          <i class="bi bi-trash"></i> 削除
+        </button>
+        <button id="btn-toggle-edit" class="btn btn-sm btn-outline-secondary" onclick="toggleEditMode()">
+          <i class="bi bi-pencil"></i> 編集
+        </button>
+        <button id="btn-batch-update" class="btn btn-sm btn-outline-primary" style="display:none;" onclick="loadOrderHistory()">
+          <i class="bi bi-arrow-clockwise"></i> 更新
+        </button>
+      </div>
+    </div>
+    
+    <div id="history-list-area" class="list-group list-group-flush pb-5"></div>
+
+    <div id="footer-edit-area" class="fixed-bottom p-3 d-flex justify-content-center bg-white border-top shadow-lg" style="z-index: 1060; display:none;">
+      <button class="btn btn-success shadow rounded-pill px-5 fw-bold" onclick="batchUpdate()">
+        <i class="bi bi-check-lg me-2"></i> 変更を保存
+      </button>
+      <button class="btn btn-secondary shadow rounded-pill px-3 ms-2" onclick="cancelEditMode()">
+        キャンセル
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// --- グローバル変数 ---
+var cacheSupplies = [];
+var cacheTanks = [];
+var isEditMode = false;
+var tankCart = [];
+var currentHistoryTab = 'supply';
+
+// 既存IDのキャッシュ用
+var cachedExistingIds = []; 
+
+// --- ヘルパー: パスコード取得 ---
+function getMyPasscode() {
+  if (typeof USER_PASSCODE !== 'undefined' && USER_PASSCODE) return USER_PASSCODE;
+  if (typeof GLOBAL_PASSCODE !== 'undefined' && GLOBAL_PASSCODE) return GLOBAL_PASSCODE;
+  var stored = localStorage.getItem('app_user_passcode');
+  return stored ? stored : "";
+}
+
+// --- 初期化 ---
+function initOrder() {
+  var d = new Date();
+  d.setFullYear(d.getFullYear() + 5); 
+  var yyyy = d.getFullYear();
+  var mm = ("0"+(d.getMonth()+1)).slice(-2);
+  var dd = ("0"+d.getDate()).slice(-2);
+  document.getElementById('tank-insp-date').value = yyyy+'-'+mm+'-'+dd;
+
+  loadOrderItems();
+  loadExistingIds();
+}
+
+function loadExistingIds() {
+  google.script.run.withSuccessHandler(function(ids) {
+    cachedExistingIds = ids || [];
+    console.log("既存IDロード完了: " + cachedExistingIds.length + "件");
+  }).getExistingTankIds();
+}
+
+function switchOrderTab(tab) {
+  document.getElementById('view-supplies-order').style.display = 'none';
+  document.getElementById('view-tank-order').style.display = 'none';
+  document.getElementById('view-order-history').style.display = 'none';
+  
+  if (tab === 'supplies') {
+    document.getElementById('view-supplies-order').style.display = 'block';
+  } else if (tab === 'tanks') {
+    document.getElementById('view-tank-order').style.display = 'block';
+    initTankSelect();
+  } else if (tab === 'history_supplies') {
+    document.getElementById('view-order-history').style.display = 'block';
+    currentHistoryTab = 'supply';
+    resetEditUI();
+    loadOrderHistory();
+  } else if (tab === 'history_tanks') {
+    document.getElementById('view-order-history').style.display = 'block';
+    currentHistoryTab = 'tank';
+    resetEditUI();
+    loadOrderHistory();
+  }
+}
+
+// --- 資材発注ロジック ---
+function loadOrderItems() {
+  var area = document.getElementById('supplies-list-area');
+  area.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border text-primary"></div></div>';
+  document.getElementById('btn-submit-supplies').style.display = 'none';
+
+  google.script.run.withSuccessHandler(function(data) {
+    cacheSupplies = data.supplies || [];
+    cacheTanks = data.tanks || [];
+    renderSuppliesList(cacheSupplies);
+    initTankSelect();
+  }).getOrderInitData();
+}
+
+function renderSuppliesList(items) {
+  var area = document.getElementById('supplies-list-area');
+  area.innerHTML = '';
+  if (!items || items.length === 0) {
+    area.innerHTML = '<div class="col-12 text-center text-muted py-5">資材項目がありません</div>';
+    return;
+  }
+  items.forEach(function(item, idx) {
+    area.insertAdjacentHTML('beforeend', `
+      <div class="col-12 col-md-6">
+        <div class="order-card d-flex flex-column" id="card-${idx}" style="background:white; border:1px solid #eee; border-radius:12px; padding:15px; box-shadow:0 2px 5px rgba(0,0,0,0.03);">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div style="flex:1; min-width:0;">
+              <div class="fw-bold text-dark text-truncate">${item.name}</div>
+              <div class="small text-muted">¥ ${(item.price||0).toLocaleString()}</div>
+            </div>
+            <div class="d-flex align-items-center bg-white rounded-pill p-1 border ms-2">
+              <button class="qty-btn" onclick="updateSupplyQty(${idx}, -1)" style="width:36px;height:36px;border-radius:50%;border:1px solid #ddd;background:white;">-</button>
+              <input type="number" id="qty-${idx}" class="qty-display" value="0" min="0" onfocus="this.select()" oninput="handleSupplyInput(${idx})" style="width:60px;text-align:center;font-size:1.3rem;font-weight:bold;border:none;outline:none;">
+              <button class="qty-btn text-primary border-primary" onclick="updateSupplyQty(${idx}, 1)" style="width:36px;height:36px;border-radius:50%;border:1px solid #ddd;background:white;">+</button>
+            </div>
+          </div>
+          <input type="text" class="form-control form-control-sm mt-auto" id="note-${idx}" placeholder="備考" style="background:#f9f9f9;">
+        </div>
+      </div>`);
+  });
+}
+function updateSupplyQty(idx, delta) {
+  var el = document.getElementById('qty-' + idx);
+  var v = Math.max(0, (parseInt(el.value)||0) + delta);
+  el.value = v; updateCardState(idx, v);
+}
+function handleSupplyInput(idx) {
+  var v = parseInt(document.getElementById('qty-' + idx).value);
+  updateCardState(idx, isNaN(v)?0:v);
+}
+function updateCardState(idx, count) {
+  var c = document.getElementById('card-' + idx);
+  if(count>0) { c.style.borderColor='#0d6efd'; c.style.backgroundColor='#f0f7ff'; }
+  else { c.style.borderColor='#eee'; c.style.backgroundColor='white'; }
+  calcSuppliesTotal();
+}
+function calcSuppliesTotal() {
+  var t = 0; document.querySelectorAll('.qty-display').forEach(e => t += (parseInt(e.value)||0));
+  var btn = document.getElementById('btn-submit-supplies');
+  document.getElementById('supplies-total-count').innerText = t;
+  btn.style.display = t>0 ? 'block' : 'none';
+}
+function submitSuppliesData() {
+  var data = [];
+  cacheSupplies.forEach((item, idx) => {
+    var q = parseInt(document.getElementById('qty-' + idx).value)||0;
+    if(q>0) data.push({name:item.name, price:item.price, count:q, note:document.getElementById('note-'+idx).value});
+  });
+  if(data.length===0 || !confirm(data.length+ "件 発注しますか？")) return;
+  var btn = document.getElementById('btn-submit-supplies');
+  btn.disabled = true; btn.innerHTML = '送信中...';
+  
+  google.script.run.withSuccessHandler(res => {
+    alert(res.message);
+    btn.disabled = false; btn.innerHTML = '<i class="bi bi-send-fill me-2"></i> 発注する';
+    if(res.success) loadOrderItems();
+  }).submitOrder({items:data, userPasscode: getMyPasscode()}); 
+}
+
+// --- タンク購入ロジック ---
+function initTankSelect() {
+  var sel = document.getElementById('tank-type-select');
+  sel.innerHTML = '<option value="" disabled selected>選択してください</option>';
+  if(cacheTanks.length === 0) return;
+  
+  cacheTanks.forEach((t, i) => {
+    var displayName = t.name; 
+    if(t.type) {
+        displayName = t.type + " " + t.name; 
+    }
+    sel.insertAdjacentHTML('beforeend', `<option value="${i}">${displayName} (¥${(t.price||0).toLocaleString()})</option>`);
+  });
+}
+
+// ★追加: 数値入力のみ許可するバリデーション(type="tel"用)
+function validateTankNum(el) {
+  el.value = el.value.replace(/[^0-9]/g, '');
+}
+// ★追加: 入力クリア関数
+function clearTankNum() {
+  document.getElementById('tank-start-num').value = '';
+  previewTankInput();
+}
+
+function previewTankInput() {
+  var prefix = document.getElementById('tank-prefix').value.trim().toUpperCase();
+  var startNum = parseInt(document.getElementById('tank-start-num').value);
+  var idx = document.getElementById('tank-type-select').value;
+  var btn = document.getElementById('btn-add-list');
+  var prevText = document.getElementById('input-preview-text');
+  
+  if (!prefix || prefix.length !== 1 || !/^[A-Z]$/.test(prefix) || isNaN(startNum) || idx === "") {
+    btn.disabled = true;
+    prevText.innerText = "--";
+    prevText.className = "fw-bold text-dark"; 
+    return;
+  }
+
+  var numStr = (startNum < 10) ? "0" + startNum : "" + startNum;
+  var id = prefix + numStr;
+  
+  // 重複チェック
+  var isDbDuplicate = cachedExistingIds.indexOf(id) !== -1;
+  var isCartDuplicate = tankCart.some(function(item) { return item.ids.indexOf(id) !== -1; });
+
+  if (isDbDuplicate) {
+    prevText.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-danger"></i> <span class="text-danger">登録済ID</span>';
+    btn.disabled = true;
+  } else if (isCartDuplicate) {
+    prevText.innerHTML = '<i class="bi bi-cart-x-fill text-warning"></i> <span class="text-warning">カート重複</span>';
+    btn.disabled = true;
+  } else {
+    prevText.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i> ' + id;
+    prevText.className = "fw-bold text-success";
+    btn.disabled = false;
+  }
+}
+
+function addTankToList() {
+  var idx = document.getElementById('tank-type-select').value;
+  var prefix = document.getElementById('tank-prefix').value.trim().toUpperCase();
+  var startNum = parseInt(document.getElementById('tank-start-num').value);
+  var dateStr = document.getElementById('tank-insp-date').value;
+  var note = document.getElementById('tank-note').value;
+  if (!dateStr) { alert("次回耐圧検査日を入力してください"); return; }
+  
+  var tankItem = cacheTanks[idx];
+  var typeName = tankItem.name;
+  if(tankItem.type) typeName = tankItem.type + " " + tankItem.name;
+
+  var numStr = (startNum < 10) ? "0" + startNum : "" + startNum;
+  var id = prefix + numStr;
+  
+  tankCart.push({ type: typeName, price: tankItem.price, ids: [id], nextDateStr: dateStr, note: note });
+  renderCart();
+  document.getElementById('tank-start-num').value = startNum + 1;
+  document.getElementById('tank-note').value = "";
+  previewTankInput();
+}
+
+function updateSubmitButtonState() {
+  var btn = document.getElementById('btn-submit-cart');
+  var isRegOnly = document.getElementById('mode-register-only').checked;
+  
+  if (isRegOnly) {
+    btn.innerHTML = '<i class="bi bi-box-seam me-2"></i> 在庫登録を実行する';
+    btn.classList.remove('btn-success');
+    btn.classList.add('btn-secondary');
+  } else {
+    btn.innerHTML = '<i class="bi bi-cart-check-fill me-2"></i> 購入を確定する';
+    btn.classList.remove('btn-secondary');
+    btn.classList.add('btn-success');
+  }
+}
+
+function renderCart() {
+  var area = document.getElementById('tank-cart-area');
+  var totalEl = document.getElementById('cart-total-price');
+  var btn = document.getElementById('btn-submit-cart');
+  area.innerHTML = "";
+  var total = 0;
+  
+  if (tankCart.length === 0) {
+    area.innerHTML = '<div class="text-center text-muted small py-3">リストは空です</div>';
+    btn.disabled = true; totalEl.innerText = "0"; return;
+  }
+  
+  tankCart.forEach((item, i) => {
+    var price = item.price; total += price;
+    var id = item.ids[0];
+    area.insertAdjacentHTML('beforeend', `
+      <div class="d-flex justify-content-between align-items-center bg-white border rounded p-2 mb-2">
+        <div style="flex:1; min-width:0;" class="me-2">
+          <div class="fw-bold text-dark d-flex align-items-center">
+            <span class="font-monospace fs-5 me-2 text-primary">${id}</span>
+            <span class="small text-muted">${item.type}</span>
+          </div>
+          <div class="text-muted" style="font-size:0.75rem;">耐圧: ${item.nextDateStr}</div>
+          ${item.note ? `<div class="small text-secondary"><i class="bi bi-info-circle-fill"></i> ${item.note}</div>` : ''}
+        </div>
+        <div class="text-end">
+          <div class="fw-bold small">¥${price.toLocaleString()}</div>
+          <button class="btn btn-xs btn-outline-danger border-0" onclick="removeCartItem(${i})">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      </div>`);
+  });
+  totalEl.innerText = total.toLocaleString();
+  btn.disabled = false;
+  
+  previewTankInput();
+  updateSubmitButtonState();
+}
+
+function removeCartItem(idx) {
+  tankCart.splice(idx, 1); 
+  renderCart();
+}
+
+function submitCart() {
+  if (tankCart.length === 0) return;
+  var totalCount = tankCart.length;
+  var isRegOnly = document.getElementById('mode-register-only').checked;
+  
+  var msg = "リストの " + totalCount + "本 のタンクを購入確定しますか？";
+  if (isRegOnly) {
+    msg = "リストの " + totalCount + "本 を【在庫登録のみ】行いますか？\n(発注・経費としては計上されません)";
+  }
+
+  if (!confirm(msg)) return;
+  
+  var btn = document.getElementById('btn-submit-cart');
+  btn.disabled = true; 
+  btn.innerText = "処理中...";
+  
+  google.script.run.withSuccessHandler(function(res){
+    alert(res.message);
+    btn.disabled = false; 
+    updateSubmitButtonState(); 
+    if(res.success) { 
+      tankCart = []; 
+      renderCart(); 
+      loadExistingIds();
+      document.getElementById('mode-purchase').checked = true;
+      updateSubmitButtonState();
+    }
+  }).submitTankOrder({
+    cartItems: tankCart, 
+    userPasscode: getMyPasscode(),
+    isRegisterOnly: isRegOnly
+  });
+}
+
+// --- 履歴リスト & 編集ロジック ---
+function loadOrderHistory() {
+  var area = document.getElementById('history-list-area');
+  area.innerHTML = '<div class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm"></div> 読み込み中...</div>';
+  resetEditUI();
+  google.script.run.withSuccessHandler(renderHistory).getOrderHistory(getMyPasscode());
+}
+
+function renderHistory(list) {
+  var area = document.getElementById('history-list-area');
+  area.innerHTML = '';
+  
+  var filtered = list.filter(function(item) {
+    if (currentHistoryTab === 'tank') return (item.itemType === 'tank');
+    else return (item.itemType !== 'tank');
+  });
+
+  if (!filtered || filtered.length === 0) {
+    area.innerHTML = '<div class="text-center py-5 text-muted">履歴はありません</div>';
+    return;
+  }
+  
+  filtered.forEach(function(item) {
+    var disabled = item.canDelete ? '' : 'disabled';
+    var bgClass = item.canDelete ? '' : 'bg-light';
+    
+    var quantityDisplay = "";
+    if (item.itemType === 'tank') {
+        quantityDisplay = `<span class="badge bg-success text-white">タンク</span>`;
+    } else {
+        quantityDisplay = `
+          <span class="history-qty-text fw-bold text-dark fs-6">x ${item.count}</span>
+          <input type="number" class="form-control form-control-sm history-qty-input border-primary shadow-sm" 
+                 value="${item.count}" data-uuid="${item.uuid}" data-org="${item.count}" min="1" 
+                 style="display:none; width:80px; text-align:center; font-weight:bold;" ${disabled}>`;
+    }
+
+    var html = `
+      <div class="history-item d-flex align-items-center ${bgClass}" id="row-${item.uuid}">
+        <div class="me-2">
+           <input type="checkbox" class="form-check-input history-check" value="${item.uuid}" onchange="updateBatchToolbar()" ${disabled}>
+        </div>
+        <div style="flex:1;">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <span class="badge bg-light text-secondary border me-1">${item.date}</span>
+              <span class="fw-bold text-dark">${item.name}</span>
+            </div>
+            ${ !item.canDelete ? '<span class="badge bg-secondary" style="font-size:0.6rem;">3日経過</span>' : '' }
+          </div>
+          <div class="small text-muted d-flex align-items-center mt-1">
+            <span class="me-3"><i class="bi bi-person-fill"></i> ${item.staff}</span>
+            ${quantityDisplay}
+            <span class="ms-2 history-qty-text">(¥${parseInt(item.total).toLocaleString()})</span>
+          </div>
+          ${item.note ? `<div class="small text-dark mt-2 p-2 bg-light rounded text-break font-monospace" style="font-size:0.85rem;">${item.note.replace(/\n/g, '<br>')}</div>` : ''}
+        </div>
+      </div>`;
+    area.insertAdjacentHTML('beforeend', html);
+  });
+  
+  if (currentHistoryTab === 'tank') {
+    document.getElementById('btn-toggle-edit').style.display = 'none';
+  } else {
+    document.getElementById('btn-toggle-edit').style.display = 'inline-block';
+  }
+}
+
+// ツールバー制御
+function updateBatchToolbar() {
+  if(isEditMode) return;
+  var count = document.querySelectorAll('.history-check:checked').length;
+  var delBtn = document.getElementById('btn-batch-delete');
+  var editBtn = document.getElementById('btn-toggle-edit');
+  var updBtn = document.getElementById('btn-batch-update');
+  
+  if(count > 0) {
+    delBtn.style.display = 'inline-block';
+    delBtn.innerHTML = `<i class="bi bi-trash"></i> 削除 (${count})`;
+    editBtn.style.display = 'none';
+    updBtn.style.display = 'none';
+  } else {
+    delBtn.style.display = 'none';
+    if (currentHistoryTab !== 'tank') editBtn.style.display = 'inline-block';
+    updBtn.style.display = 'inline-block';
+  }
+}
+
+function batchDelete() {
+  var uuids = [];
+  document.querySelectorAll('.history-check:checked').forEach(cb => uuids.push(cb.value));
+  if(uuids.length === 0) return;
+  
+  var msg = uuids.length + "件の履歴を削除しますか？";
+  if (currentHistoryTab === 'tank') msg += "\n※関連するタンクIDもステータス表から削除されます。";
+  if(!confirm(msg)) return;
+  
+  var area = document.getElementById('history-list-area');
+  area.style.opacity = '0.5';
+  
+  google.script.run.withSuccessHandler(function(res){
+    alert(res.message); loadOrderHistory();
+  }).batchDeleteOrderItems({ uuids: uuids, userPasscode: getMyPasscode(), type: currentHistoryTab });
+}
+
+// --- 編集モード制御 ---
+function toggleEditMode() {
+  if (currentHistoryTab === 'tank') return;
+  if (isEditMode) {
+    batchUpdate();
+    return;
+  }
+  isEditMode = true;
+  updateEditUI();
+}
+
+function cancelEditMode() {
+  if(!confirm("変更を破棄して編集を終了しますか？")) return;
+  isEditMode = false;
+  updateEditUI();
+}
+
+function updateEditUI() {
+  var container = document.getElementById('view-order-history');
+  var footer = document.getElementById('footer-edit-area');
+  var topBtn = document.getElementById('btn-toggle-edit');
+  var checkInputs = document.querySelectorAll('.history-check');
+
+  if (isEditMode) {
+    container.classList.add('edit-mode');
+    footer.style.display = 'flex';
+    checkInputs.forEach(el => el.disabled = true);
+    
+    topBtn.classList.add('btn-primary');
+    topBtn.classList.remove('btn-outline-secondary');
+    topBtn.innerHTML = '<i class="bi bi-save-fill"></i> 保存';
+  } else {
+    container.classList.remove('edit-mode');
+    footer.style.display = 'none';
+    checkInputs.forEach(el => el.disabled = false);
+    
+    topBtn.classList.remove('btn-primary');
+    topBtn.classList.add('btn-outline-secondary');
+    topBtn.innerHTML = '<i class="bi bi-pencil"></i> 編集';
+    
+    document.querySelectorAll('.history-qty-input').forEach(inp => {
+      inp.value = inp.getAttribute('data-org');
+    });
+  }
+  updateBatchToolbar();
+}
+
+// --- 一括保存 ---
+function batchUpdate() {
+  var updates = [];
+  
+  document.querySelectorAll('.history-qty-input:not(:disabled)').forEach(inp => {
+    if (inp.offsetParent === null) return;
+    var org = parseInt(inp.getAttribute('data-org'), 10);
+    var val = parseInt(inp.value, 10);
+    var uuid = inp.getAttribute('data-uuid');
+    if (!isNaN(val) && val > 0 && val !== org) {
+      updates.push({ uuid: uuid, count: val });
+    }
+  });
+  
+  if (updates.length === 0) {
+    alert("変更された項目がありません。\n数値を変更してから保存してください。");
+    return;
+  }
+  
+  if(!confirm(updates.length + "件の変更を保存しますか？")) return;
+  
+  var footerBtn = document.querySelector('#footer-edit-area .btn-success');
+  if(footerBtn) footerBtn.disabled = true;
+
+  google.script.run.withSuccessHandler(function(res){
+    if(footerBtn) footerBtn.disabled = false;
+    alert(res.message);
+    if(res.success) {
+      isEditMode = false; 
+      loadOrderHistory();
+    }
+  }).withFailureHandler(function(e){
+    if(footerBtn) footerBtn.disabled = false;
+    alert("保存エラー: " + e.message);
+  }).batchUpdateOrderItems({ updates: updates, userPasscode: getMyPasscode() });
+}
+
+function resetEditUI() {
+  isEditMode = false;
+  updateEditUI();
+}
+</script>
+
+<style>
+.order-card { background: white; border: 1px solid #eee; border-radius: 12px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.03); height: 100%; transition: 0.2s; }
+.order-card.active { border-color: #0d6efd; background-color: #f0f7ff; }
+.qty-btn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid #ddd; background: white; font-weight: bold; }
+.qty-display { width: 60px; text-align: center; font-size: 1.3rem; font-weight: bold; border: none; background: transparent; outline: none; }
+
+.history-item { background: #fff; border-bottom: 1px solid #eee; padding: 12px 10px; transition: 0.2s; }
+.history-item:hover { background: #fcfcfc; }
+.history-check { transform: scale(1.3); margin-right: 12px; cursor: pointer; }
+
+/* 編集モード時の表示制御 */
+.edit-mode .history-check, 
+.edit-mode .history-qty-text {
+  display: none !important;
+}
+.edit-mode .history-qty-input {
+  display: block !important;
+}
+</style>

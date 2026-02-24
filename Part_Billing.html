@@ -1,0 +1,619 @@
+<div class="d-print-none container-fluid mt-3" style="max-width: 900px;">
+ <div class="accordion mb-3 shadow-sm" id="accordionInvoiceConfig">
+   <div class="accordion-item border-0">
+     <h2 class="accordion-header" id="headingConfig">
+       <button class="accordion-button collapsed fw-bold text-secondary bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseConfig" aria-expanded="false" aria-controls="collapseConfig">
+         <i class="bi bi-pencil-square me-2"></i> 請求元・振込先情報の編集
+       </button>
+     </h2>
+     <div id="collapseConfig" class="accordion-collapse collapse" aria-labelledby="headingConfig" data-bs-parent="#accordionInvoiceConfig">
+       <div class="accordion-body bg-light">
+         <form id="invoice-config-form">
+           <div class="row g-2">
+             <div class="col-md-6 mb-2">
+               <label class="form-label small fw-bold">会社名</label>
+               <input type="text" class="form-control form-control-sm" name="company" id="cfg-company">
+             </div>
+             <div class="col-md-6 mb-2">
+               <label class="form-label small fw-bold">インボイス登録番号</label>
+               <input type="text" class="form-control form-control-sm" name="regNum" id="cfg-regNum">
+             </div>
+             <div class="col-md-12 mb-2">
+               <label class="form-label small fw-bold">住所</label>
+               <input type="text" class="form-control form-control-sm" name="address" id="cfg-address">
+             </div>
+             <div class="col-md-4 mb-2">
+               <label class="form-label small fw-bold">電話番号</label>
+               <input type="text" class="form-control form-control-sm" name="tel" id="cfg-tel">
+             </div>
+             <div class="col-md-4 mb-2">
+               <label class="form-label small fw-bold">消費税率(小数)</label>
+               <input type="number" step="0.01" class="form-control form-control-sm" name="taxRate" id="cfg-taxRate" placeholder="0.10">
+             </div>
+             <div class="col-md-4 mb-2">
+               <label class="form-label small fw-bold">請求日 (空欄=自動末日)</label>
+               <input type="text" class="form-control form-control-sm" name="billDate" id="cfg-billDate" placeholder="例: 2026/01/20">
+             </div>
+             <div class="col-md-12 mb-2">
+               <label class="form-label small fw-bold">挨拶文 (右上)</label>
+               <textarea class="form-control form-control-sm" name="greeting" id="cfg-greeting" rows="2"></textarea>
+             </div>
+             <div class="col-md-12 mb-2">
+               <label class="form-label small fw-bold">振込先情報</label>
+               <textarea class="form-control form-control-sm" name="bankInfo" id="cfg-bankInfo" rows="2"></textarea>
+             </div>
+             <div class="col-md-12 mb-2">
+               <label class="form-label small fw-bold">備考欄 (下部)</label>
+               <textarea class="form-control form-control-sm" name="note" id="cfg-note" rows="1"></textarea>
+             </div>
+           </div>
+           <div class="text-end mt-2">
+             <button type="button" class="btn btn-primary btn-sm fw-bold px-4" onclick="saveAndReflectConfig()">
+               <i class="bi bi-save"></i> 保存して反映
+             </button>
+           </div>
+         </form>
+       </div>
+     </div>
+   </div>
+ </div>
+</div>
+
+
+<div class="d-print-none p-3 bg-light border-bottom border-top">
+ <div class="container-fluid">
+   <div class="row align-items-center g-2" style="flex-wrap: wrap;">
+     <div class="col-auto">
+       <label class="fw-bold small text-muted"> 対象月 </label>
+     </div>
+    
+     <div class="col-auto flex-grow-1 flex-md-grow-0 position-relative">
+       <button class="btn btn-white border shadow-sm w-100 text-start d-flex justify-content-between align-items-center"
+               type="button" id="monthDropdownBtn" data-bs-toggle="dropdown"
+               data-bs-auto-close="outside" aria-expanded="false" style="min-width: 200px; background: white;">
+         <span id="month-display-text" class="fw-bold text-muted">読込中...</span>
+         <i class="bi bi-chevron-down small"></i>
+       </button>
+       <ul class="dropdown-menu p-2 shadow" aria-labelledby="monthDropdownBtn" id="month-list-container" style="width: 100%; max-height: 300px; overflow-y: auto;">
+         </ul>
+     </div>
+
+
+     <div class="col-auto">
+       <button class="btn btn-dark btn-sm px-3 shadow-sm" onclick="loadBillData()">
+         <i class="bi bi-arrow-clockwise"></i> 作成
+       </button>
+     </div>
+     <div class="col text-end ms-auto">
+       <button class="btn btn-outline-dark btn-sm shadow-sm" onclick="printAllInvoices()">
+         <i class="bi bi-printer-fill"></i> 全件一括印刷
+       </button>
+     </div>
+   </div>
+ </div>
+</div>
+
+
+<div id="billing-main-container" class="d-flex" style="height: calc(100vh - 130px); position: relative; overflow: hidden;">
+ <div class="invoice-sidebar d-print-none bg-white border-end" id="invoice-list-col">
+   <div class="p-3 border-bottom bg-light small fw-bold text-muted d-flex justify-content-between align-items-center">
+     <span> 請求先リスト </span>
+     <span id="bill-count-badge" class="badge bg-dark ms-1">0</span>
+   </div>
+   <div id="invoice-list-group" class="list-group list-group-flush" style="overflow-y: auto; height: calc(100% - 50px);">
+     <div class="p-4 text-center text-muted small"> 月を選択して「作成」を押してください </div>
+   </div>
+ </div>
+
+
+ <div class="invoice-main flex-grow-1 bg-light" id="invoice-preview-col" style="overflow-y: auto; position: relative;">
+   <div class="d-md-none p-2 bg-white border-bottom sticky-top" style="z-index: 100;">
+     <button class="btn btn-outline-secondary btn-sm w-100 fw-bold" onclick="backToList()">
+       <i class="bi bi-chevron-left"></i> リストに戻る
+     </button>
+   </div>
+
+
+   <div id="bill-preview-area" class="p-4 d-flex justify-content-center">
+     <div class="text-muted mt-5 d-none d-md-block"> 左のリストから選択してください </div>
+     <div class="text-muted mt-5 d-md-none"> リストから請求書を選択してください </div>
+   </div>
+ </div>
+</div>
+
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600&display=swap');
+
+
+/* --- レイアウト用 --- */
+.invoice-sidebar { width: 300px; flex-shrink: 0; height: 100%; z-index: 10; }
+.invoice-main { height: 100%; }
+
+
+/* --- ★リストグループのスタイル改善 (変更箇所) --- */
+#invoice-list-group .list-group-item {
+ border: none;
+ border-bottom: 1px solid #f0f0f0; /* 薄い区切り線 */
+ padding: 12px 15px;
+ transition: all 0.2s ease;
+ cursor: pointer;
+}
+
+
+#invoice-list-group .list-group-item:hover {
+ background-color: #f8f9fa;
+ padding-left: 18px; /* ホバー時に少し右へ動くアニメーション */
+}
+
+
+/* アクティブ（選択中）のデザイン */
+#invoice-list-group .list-group-item.active {
+ background-color: #212529; /* ダークグレー */
+ color: #fff;
+ border-left: 4px solid #0d6efd; /* アクセントカラー */
+}
+
+
+/* アクティブ時の内部テキスト色調整 */
+#invoice-list-group .list-group-item.active .text-secondary,
+#invoice-list-group .list-group-item.active .text-muted {
+ color: #adb5bd !important; /* 薄いグレーに変更 */
+}
+
+
+#invoice-list-group .list-group-item.active .badge {
+ background-color: #495057 !important;
+ color: #fff !important;
+ border-color: #495057 !important;
+}
+
+
+#invoice-list-group .list-group-item.active .amount-text {
+ color: #fff !important;
+}
+
+
+/* --- スマホ対応 --- */
+@media (max-width: 768px) {
+ .invoice-sidebar {
+   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+   background: white; transition: transform 0.3s ease;
+   z-index: 20;
+ }
+ .invoice-main { width: 100%; height: 100%; }
+ #billing-main-container.show-preview .invoice-sidebar { transform: translateX(-100%); }
+ #bill-preview-area { padding: 10px !important; }
+ .invoice-sheet { transform: scale(0.65); transform-origin: top left; margin-bottom: -30% !important; }
+ .invoice-main { overflow-x: auto; }
+}
+
+
+/* --- 帳票スタイル (PC/Print共通) --- */
+.invoice-sheet {
+ background: white;
+ width: 210mm;
+ min-height: 297mm;
+ padding: 0;
+ box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+ margin-bottom: 30px;
+ position: relative;
+ color: #000;
+ font-family: "Noto Serif JP", serif;
+ box-sizing: border-box;
+ overflow: hidden;
+}
+
+
+.sheet-top-line { height: 4px; background-color: #000; width: 100%; margin-bottom: 10mm; }
+.sheet-body { padding: 5mm 20mm 15mm 20mm; }
+.inv-title { text-align: center; font-size: 24pt; font-weight: 600; letter-spacing: 0.8em; margin-bottom: 10mm; }
+.inv-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10mm; }
+.inv-recipient { width: 55%; font-family: "Noto Sans JP", sans-serif; }
+.inv-dest-name { font-size: 16pt; font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 1mm; margin-bottom: 5px; display: inline-block; width: 100%; }
+.inv-greeting { font-size: 8.5pt; color: #444; line-height: 1.4; font-family: serif; white-space: pre-wrap; }
+.inv-sender { width: 40%; text-align: right; font-size: 8.5pt; line-height: 1.5; font-family: "Noto Sans JP", sans-serif; }
+.inv-company { font-size: 11pt; font-weight: 700; margin-bottom: 2px; }
+.seal-wrapper { display: flex; justify-content: flex-end; margin-top: 3px; }
+.seal-box { width: 18mm; height: 18mm; border: 1px solid #ccc; position: relative; display: flex; align-items: center; justify-content: center; color: #ddd; font-size: 8pt; }
+.seal-box::after { content: "印"; }
+
+
+.inv-total-container { border-bottom: 2px solid #000; padding: 2mm 0; margin: 5mm 0 8mm 0; display: flex; justify-content: space-between; align-items: flex-end; }
+.inv-total-label { font-size: 11pt; font-weight: 700; font-family: sans-serif; }
+.inv-total-amount { font-size: 18pt; font-weight: 700; font-family: sans-serif; letter-spacing: 1px; line-height: 1; }
+
+
+.inv-table { width: 100%; border-collapse: collapse; margin-bottom: 8mm; font-size: 9pt; font-family: "Noto Sans JP", sans-serif; }
+.inv-table th { background-color: #f2f2f2; color: #000; padding: 1.5mm 4px; text-align: center; font-weight: 600; border-top: 1px solid #000; border-bottom: 1px solid #000; }
+.inv-table td { border-bottom: 1px solid #e0e0e0; padding: 1.5mm 4px; color: #000; vertical-align: middle; }
+.col-date { width: 10%; text-align: center; }
+.col-item { width: 45%; }
+.col-qty { width: 10%; text-align: center; }
+.col-unit { width: 15%; text-align: right; }
+.col-amt { width: 20%; text-align: right; }
+
+
+.summary-table { margin-top: 0; width: 40%; margin-left: auto; border-collapse: collapse; font-family: sans-serif; }
+.summary-table td { padding: 1.5mm 5px; text-align: right; border-bottom: 1px solid #eee; font-size: 9pt; }
+.summary-label { width: 50%; color: #555; }
+.summary-total-row td { border-bottom: 2px solid #000; font-size: 11pt; font-weight: 700; padding-top: 3mm; color: #000; }
+
+
+.inv-notes-block { margin-top: 10mm; font-size: 9pt; line-height: 1.6; border-top: 1px solid #000; padding-top: 3mm; white-space: pre-wrap; }
+.note-header { font-weight: 700; margin-right: 10px; display: block; margin-bottom: 2px; }
+
+
+.print-btn-float {
+ position: absolute; bottom: 20px; right: 20px;
+ background: #333; color: white; border: none;
+ font-weight: bold; padding: 8px 20px; border-radius: 4px;
+ box-shadow: 0 4px 6px rgba(0,0,0,0.2); transition: all 0.2s;
+}
+.print-btn-float:hover { background: #000; }
+
+
+/* --- 印刷設定 --- */
+@media print {
+ @page { margin: 0; size: A4; }
+ body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 0; margin: 0; }
+ .d-print-none, .navbar-custom, .invoice-sidebar, .print-btn-float, .offcanvas, .d-md-none { display: none !important; }
+ .invoice-main { height: auto !important; overflow: visible !important; width: 100% !important; display: block !important; }
+ #bill-preview-area { display: block; padding: 0 !important; }
+ .invoice-sheet { width: 100%; height: 297mm; box-shadow: none; margin: 0; page-break-after: always; display: none; transform: none !important; }
+ body.print-all .invoice-sheet { display: block; }
+ body.print-single .invoice-sheet.active-sheet { display: block; }
+}
+</style>
+
+
+<script>
+var cachedData = null;
+
+
+// --- 初期化 ---
+function initBilling() {
+ loadBillingMonths();
+ // 設定を読み込んでフォームにセット
+ google.script.run.withSuccessHandler(fillConfigForm).getInvoiceSettings();
+}
+
+
+// 設定フォームへの値セット
+function fillConfigForm(settings) {
+ if(!settings) return;
+ document.getElementById('cfg-company').value = settings.COMPANY || "";
+ document.getElementById('cfg-address').value = settings.ADDRESS || "";
+ document.getElementById('cfg-tel').value = settings.TEL || "";
+ document.getElementById('cfg-regNum').value = settings.REG_NUM || "";
+ document.getElementById('cfg-taxRate').value = settings.TAX_RATE || 0.10;
+ document.getElementById('cfg-bankInfo').value = settings.BANK_INFO || "";
+ document.getElementById('cfg-greeting').value = settings.GREETING || "";
+ document.getElementById('cfg-note').value = settings.NOTE || "";
+ document.getElementById('cfg-billDate').value = settings.BILL_DATE || "";
+}
+
+
+// 設定保存 & 反映
+function saveAndReflectConfig() {
+ var btn = event.target;
+ var orgHtml = btn.innerHTML;
+ btn.disabled = true;
+ btn.innerHTML = "保存中...";
+
+
+ var formData = {
+   company: document.getElementById('cfg-company').value,
+   address: document.getElementById('cfg-address').value,
+   tel: document.getElementById('cfg-tel').value,
+   regNum: document.getElementById('cfg-regNum').value,
+   taxRate: document.getElementById('cfg-taxRate').value,
+   bankInfo: document.getElementById('cfg-bankInfo').value,
+   greeting: document.getElementById('cfg-greeting').value,
+   note: document.getElementById('cfg-note').value,
+   billDate: document.getElementById('cfg-billDate').value
+ };
+
+
+ google.script.run.withSuccessHandler(function(res){
+   alert(res.message);
+   btn.disabled = false;
+   btn.innerHTML = orgHtml;
+  
+   // 現在表示中のデータがあれば、ローカルで書き換えて再描画（即時反映）
+   if (cachedData && cachedData.issuer) {
+     cachedData.issuer.COMPANY = formData.company;
+     cachedData.issuer.ADDRESS = formData.address;
+     cachedData.issuer.TEL = formData.tel;
+     cachedData.issuer.REG_NUM = formData.regNum;
+     cachedData.issuer.TAX_RATE = Number(formData.taxRate);
+     cachedData.issuer.BANK_INFO = formData.bankInfo;
+     cachedData.issuer.GREETING = formData.greeting;
+     cachedData.issuer.NOTE = formData.note;
+     cachedData.issuer.BILL_DATE = formData.billDate;
+    
+     renderBillingUI(cachedData);
+    
+     // 選択状態の復元
+     var activeBtn = document.querySelector('.list-group-item.active');
+     if (activeBtn) activeBtn.click();
+   }
+ }).saveInvoiceSettings(formData);
+}
+
+
+// 月リスト読み込み (チェックボックス付きドロップダウン)
+function loadBillingMonths() {
+ var container = document.getElementById('month-list-container');
+ var btnText = document.getElementById('month-display-text');
+  btnText.innerText = "読み込み中...";
+  google.script.run.withSuccessHandler(function(months){
+   container.innerHTML = '';
+  
+   if (months.length === 0) {
+     btnText.innerText = "データなし";
+     container.innerHTML = '<li class="dropdown-item text-muted">データがありません</li>';
+     return;
+   }
+
+
+   // 最新月のみデフォルト選択
+   months.forEach(function(m, index){
+     var isChecked = (index === 0) ? "checked" : "";
+     var labelText = m.replace('-', '年') + '月';
+    
+     var li = document.createElement('li');
+     li.innerHTML = `
+       <div class="form-check ms-2 py-1">
+         <input class="form-check-input month-checkbox" type="checkbox" value="${m}" id="chk-${m}" ${isChecked} onchange="updateMonthLabel()">
+         <label class="form-check-label w-100" for="chk-${m}" style="cursor:pointer;">
+           ${labelText}
+         </label>
+       </div>
+     `;
+     container.appendChild(li);
+   });
+
+
+   updateMonthLabel();
+   loadBillData(); // 初期ロード
+
+
+ }).getBillingMonths();
+}
+
+
+function updateMonthLabel() {
+ var checkboxes = document.querySelectorAll('.month-checkbox:checked');
+ var btnText = document.getElementById('month-display-text');
+  if (checkboxes.length === 0) {
+   btnText.innerText = "月を選択してください";
+ } else if (checkboxes.length === 1) {
+   // 選択された要素のラベルテキストを取得
+   btnText.innerText = checkboxes[0].nextElementSibling.innerText;
+ } else {
+   btnText.innerText = checkboxes.length + "ヶ月分を選択中";
+ }
+}
+
+
+function loadBillData() {
+ // チェックされている月を収集
+ var checkboxes = document.querySelectorAll('.month-checkbox:checked');
+ var selectedMonths = [];
+ checkboxes.forEach(function(chk){
+   selectedMonths.push(chk.value);
+ });
+
+
+ if (selectedMonths.length === 0) {
+   alert("発行対象の月を選択してください。");
+   return;
+ }
+
+
+ backToList();
+ document.getElementById('invoice-list-group').innerHTML = '<div class="text-center p-3"><div class="spinner-border spinner-border-sm text-dark"></div></div>';
+
+
+ google.script.run.withSuccessHandler(function(data){
+   // フォーム同期
+   var formComp = document.getElementById('cfg-company').value;
+   if(formComp && data.issuer) {
+       data.issuer.COMPANY = formComp;
+       data.issuer.ADDRESS = document.getElementById('cfg-address').value;
+       data.issuer.TEL = document.getElementById('cfg-tel').value;
+       data.issuer.REG_NUM = document.getElementById('cfg-regNum').value;
+       data.issuer.BANK_INFO = document.getElementById('cfg-bankInfo').value;
+       data.issuer.GREETING = document.getElementById('cfg-greeting').value;
+       data.issuer.NOTE = document.getElementById('cfg-note').value;
+       data.issuer.BILL_DATE = document.getElementById('cfg-billDate').value;
+   } else {
+       fillConfigForm(data.issuer);
+   }
+  
+   cachedData = data;
+   renderBillingUI(data);
+ }).getBillingDetail(selectedMonths);
+}
+
+
+function renderBillingUI(data) {
+ var listGroup = document.getElementById('invoice-list-group');
+ var previewArea = document.getElementById('bill-preview-area');
+
+
+ listGroup.innerHTML = '';
+ previewArea.innerHTML = '';
+ document.getElementById('bill-count-badge').innerText = data.list.length;
+
+
+ if (data.list.length === 0) {
+   listGroup.innerHTML = '<div class="p-4 text-center text-muted small">表示するデータがありません</div>';
+   return;
+ }
+
+
+ var issuer = data.issuer || {};
+  // 請求日ロジック: 設定 or 最終月の末日
+ var billDateStr;
+ if (issuer.BILL_DATE && issuer.BILL_DATE !== "") {
+   billDateStr = issuer.BILL_DATE;
+ } else {
+   // 選択された月の中で最も未来の月を探す
+   var mArray = data.month.split(',').sort();
+   var lastMonth = mArray[mArray.length - 1];
+   if(lastMonth) {
+       var parts = lastMonth.split('-');
+       billDateStr = parts[0] + '/' + parts[1] + '/' + new Date(parts[0], parts[1], 0).getDate();
+   } else {
+       billDateStr = "";
+   }
+ }
+
+
+ data.list.forEach(function(item, index){
+   var uid = 'inv-' + item.id;
+
+
+   var listItem = document.createElement('button');
+   // ★ クラス名を変更
+   listItem.className = 'list-group-item list-group-item-action';
+   listItem.onclick = function() { selectInvoice(uid, listItem); };
+   
+   // ★ デザイン変更箇所
+   listItem.innerHTML = `
+     <div class="d-flex align-items-center mb-2">
+       <i class="bi bi-building text-secondary me-2 fs-5"></i>
+       <span class="fw-bold text-truncate" style="flex: 1;">${item.name}</span>
+     </div>
+     <div class="d-flex justify-content-between align-items-end">
+       <span class="badge bg-white text-secondary border rounded-pill fw-normal">
+         <i class="bi bi-list-ul me-1"></i>${item.details.length}
+       </span>
+       <span class="fw-bold fs-6 amount-text text-dark">¥${item.total.toLocaleString()}</span>
+     </div>
+   `;
+   listGroup.appendChild(listItem);
+
+
+   var sheetDiv = document.createElement('div');
+   sheetDiv.id = uid;
+   sheetDiv.className = 'invoice-sheet';
+   sheetDiv.style.display = 'none';
+
+
+   var detailsHtml = item.details.map(function(d){
+     return `<tr>
+       <td class="col-date">${d.date}</td>
+       <td class="col-item">${d.itemName}</td>
+       <td class="col-qty">${d.count}</td>
+       <td class="col-unit">¥${d.unitPrice.toLocaleString()}</td>
+       <td class="col-amt">¥${d.amount.toLocaleString()}</td>
+     </tr>`;
+   }).join('');
+
+
+   sheetDiv.innerHTML = `
+     <div class="sheet-top-line"></div>
+     <div class="sheet-body">
+       <h1 class="inv-title">御請求書</h1>
+       <div class="inv-header">
+         <div class="inv-recipient">
+           <div class="inv-dest-name">${item.name}</div>
+           <div class="inv-greeting">${(issuer.GREETING || "")}</div>
+         </div>
+         <div class="inv-sender">
+           <div>請求日: ${billDateStr}</div>
+           <div class="inv-company mt-2">${(issuer.COMPANY || "")}</div>
+           <div>登録番号: ${(issuer.REG_NUM || "")}</div>
+           <div>${(issuer.ADDRESS || "")}</div>
+           <div>TEL: ${(issuer.TEL || "")}</div>
+           <div class="seal-wrapper"><div class="seal-box"></div></div>
+         </div>
+       </div>
+       <div class="inv-total-container">
+         <span class="inv-total-label">御請求金額 (税込)</span>
+         <span class="inv-total-amount">¥${item.total.toLocaleString()}-</span>
+       </div>
+       <table class="inv-table">
+         <thead>
+           <tr>
+             <th class="col-date">日付</th>
+             <th class="col-item">品名・摘要</th>
+             <th class="col-qty">数量</th>
+             <th class="col-unit">単価</th>
+             <th class="col-amt">金額</th>
+           </tr>
+         </thead>
+         <tbody>${detailsHtml}</tbody>
+       </table>
+       <table class="summary-table">
+         <tr><td class="summary-label">小計 (税抜)</td><td>¥ ${item.amountNoTax.toLocaleString()}</td></tr>
+         <tr><td class="summary-label">消費税 (${(issuer.TAX_RATE * 100).toFixed(0)}%)</td><td>¥ ${item.tax.toLocaleString()}</td></tr>
+         <tr class="summary-total-row"><td class="summary-label">合計</td><td>¥ ${item.total.toLocaleString()}</td></tr>
+       </table>
+       <div class="inv-notes-block">
+         <div><span class="note-header">【お振込先】</span>${(issuer.BANK_INFO || "")}</div>
+         <div class="mt-2 text-secondary small">${(issuer.NOTE || "")}</div>
+       </div>
+     </div>
+     <button class="print-btn-float d-print-none" onclick="printOne('${uid}')">
+       <i class="bi bi-printer"></i> 印刷
+     </button>
+   `;
+   previewArea.appendChild(sheetDiv);
+
+
+   if (index === 0 && window.innerWidth > 768) {
+     selectInvoice(uid, listItem);
+   }
+ });
+}
+
+
+function selectInvoice(uid, btnElement) {
+ document.querySelectorAll('.list-group-item').forEach(function(el){ el.classList.remove('active'); });
+ if(btnElement) btnElement.classList.add('active');
+
+
+ document.querySelectorAll('.invoice-sheet').forEach(function(el){
+   el.style.display = 'none';
+   el.classList.remove('active-sheet');
+ });
+
+
+ var target = document.getElementById(uid);
+ if(target) {
+   target.style.display = 'block';
+   target.classList.add('active-sheet');
+ }
+
+
+ var container = document.getElementById('billing-main-container');
+ container.classList.add('show-preview');
+ document.getElementById('invoice-preview-col').scrollTop = 0;
+}
+
+
+function backToList() {
+ var container = document.getElementById('billing-main-container');
+ container.classList.remove('show-preview');
+}
+
+
+function printOne(uid) {
+ document.body.className = 'print-single';
+ window.print();
+ setTimeout(function(){ document.body.className = ''; }, 1000);
+}
+
+
+function printAllInvoices() {
+ if (!cachedData || cachedData.list.length === 0) return;
+ document.body.className = 'print-all';
+ window.print();
+ setTimeout(function(){ document.body.className = ''; }, 1000);
+}
+</script>

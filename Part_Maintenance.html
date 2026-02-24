@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<style>
+/* 画面下部の余白確保 (ボタン+ナビ分) */
+body { padding-bottom: 160px; background-color: #f8f9fa; }
+
+/* ■■■ リストカードのデザイン ■■■ */
+.maint-card {
+  position: relative;
+  background: white;
+  border-left: 5px solid #ccc;
+  border-radius: 8px;
+  padding: 12px 15px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+/* 選択された時のスタイル */
+.maint-card.active {
+  background-color: #fff;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  transform: translateY(-2px);
+}
+.maint-card.active.type-repair {
+  background-color: #f3e5f5;
+  border-left-color: #6610f2;
+}
+.maint-card.active.type-insp {
+  background-color: #e8eaf6;
+  border-left-color: #0d6efd;
+}
+
+.maint-body { display: flex; justify-content: space-between; align-items: center; }
+.maint-info { flex-grow: 1; }
+
+.maint-id {
+  font-size: 1.3rem;
+  font-weight: bold;
+  font-family: monospace;
+  color: #333;
+}
+
+.date-alert-box {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+.date-expired {
+  background-color: #fadbd8;
+  color: #c0392b;
+  border: 1px solid #e6b0aa;
+}
+.date-warning {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+}
+.date-normal {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  font-size: 0.8rem;
+}
+
+.custom-check {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 2px solid #ccc;
+  display: flex; align-items: center; justify-content: center;
+  color: white;
+  transition: all 0.2s;
+  background: #fff;
+}
+.maint-card.active .custom-check {
+  border-color: transparent;
+  transform: scale(1.1);
+}
+.maint-card.active.type-repair .custom-check { background-color: #6610f2; }
+.maint-card.active.type-insp .custom-check { background-color: #0d6efd; }
+
+.hidden-checkbox { display: none; }
+
+.submit-float {
+  position: fixed;
+  bottom: 90px;
+  left: 5%;
+  width: 90%;
+  z-index: 1000;
+  padding: 15px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border-radius: 50px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  transition: transform 0.1s;
+  color: white;
+  border: none;
+}
+.submit-float:active { transform: scale(0.98); }
+
+</style>
+</head>
+<body>
+
+<div class="container-fluid mt-3">
+  
+  <div id="desc-area" class="alert small mb-2" style="display:none; border-radius:8px;">
+    <span id="desc-text">読み込み中...</span>
+  </div>
+
+  <div class="d-flex justify-content-end mb-2">
+    <button id="btn-maint-refresh" class="btn btn-sm btn-outline-secondary border-0" onclick="loadMaintenanceList()">
+      <i class="bi bi-arrow-clockwise"></i> リスト更新
+    </button>
+  </div>
+
+  <div id="maint-list-container">
+    <div class="text-center text-muted mt-5">
+      <span class="spinner-border text-secondary" role="status"></span>
+      <p class="mt-2 small">データを読み込んでいます...</p>
+    </div>
+  </div>
+
+</div>
+
+<button id="btn-maint-submit" class="submit-float" style="display:none;" onclick="submitMaint()">
+  <i class="bi bi-check-circle-fill"></i> <span id="submit-label">実行する</span>
+</button>
+
+<script>
+var maintMode = '';
+var maintList = [];
+
+function initMaintenance(mode) {
+  maintMode = mode;
+  maintList = [];
+  
+  document.getElementById('maint-list-container').innerHTML = 
+    '<div class="text-center text-muted mt-5"><span class="spinner-border text-secondary"></span><p class="mt-2 small">読み込み中...</p></div>';
+  document.getElementById('btn-maint-submit').style.display = 'none';
+  
+  var descArea = document.getElementById('desc-area');
+  var descText = document.getElementById('desc-text');
+  var btn = document.getElementById('btn-maint-submit');
+  
+  descArea.style.display = 'block';
+
+  if (maintMode === '修理済み') {
+    descArea.className = 'alert alert-secondary small mb-2';
+    descText.innerHTML = '<i class="bi bi-tools me-1"></i>修理完了として記録するタンクを選択';
+    btn.style.backgroundColor = '#6610f2';
+  } else if (maintMode === '耐圧検査完了') {
+    descArea.className = 'alert alert-primary small mb-2';
+    descText.innerHTML = '<i class="bi bi-patch-check-fill me-1"></i>検査完了として記録するタンクを選択';
+    btn.style.backgroundColor = '#0d6efd';
+  }
+
+  loadMaintenanceList();
+}
+
+function loadMaintenanceList() {
+  var btnRefresh = document.getElementById('btn-maint-refresh');
+  btnRefresh.disabled = true;
+
+  google.script.run.withSuccessHandler(function(list) {
+    btnRefresh.disabled = false;
+    renderMaintList(list);
+  }).withFailureHandler(function(e){
+    btnRefresh.disabled = false;
+    document.getElementById('maint-list-container').innerHTML = '<div class="alert alert-danger">エラー: ' + e + '</div>';
+  }).getMaintenanceList(maintMode);
+}
+
+function renderMaintList(list) {
+  var container = document.getElementById('maint-list-container');
+  container.innerHTML = '';
+  maintList = list || [];
+
+  if (maintList.length === 0) {
+    container.innerHTML = '<div class="text-center text-muted mt-5"><i class="bi bi-check2-circle display-1"></i><p>対象はありません</p></div>';
+    document.getElementById('btn-maint-submit').style.display = 'none';
+    return;
+  }
+
+  maintList.forEach(function(item, idx) {
+    // ★★★ ID整形ロジック改良版 ★★★
+    // A-01 や A-OK に対応
+    var displayId = item.id;
+    // 1. ハイフン除去 & 大文字化 & トリム
+    var cleanId = String(item.id).replace(/-/g, '').trim().toUpperCase();
+    
+    // 2. 「英字1文字」+「数字 または OK」のパターンかチェック
+    //    (\d+|OK) -> 数字の列、または "OK" という文字列にマッチ
+    var match = cleanId.match(/^([A-Z])(\d+|OK)$/);
+    
+    if (match) {
+      var letter = match[1];
+      var tail   = match[2];
+      
+      // 末尾が数字だけなら2桁ゼロ埋め処理 (例: 1 -> 01)
+      if (/^\d+$/.test(tail)) {
+        var num = parseInt(tail, 10);
+        tail = (num < 10 ? '0' : '') + num;
+      }
+      
+      // 3. ハイフンで結合 (A-01, A-OK)
+      displayId = letter + '-' + tail;
+    }
+    // マッチしない場合(例: GUEST, TEST-1)は元のIDのまま表示されます
+
+    // --- ここから下は既存の表示処理 ---
+    var noteHtml = '';
+    var noteText = item.note || '';
+    
+    if (noteText) {
+      if (noteText.indexOf('期限切') !== -1) {
+        noteHtml = `<div class="date-alert-box date-expired"><i class="bi bi-exclamation-circle-fill"></i> ${noteText}</div>`;
+      } else if (noteText.indexOf('あと') !== -1) {
+        noteHtml = `<div class="date-alert-box date-warning"><i class="bi bi-clock-history"></i> ${noteText}</div>`;
+      } else {
+        noteHtml = `<div class="date-alert-box date-normal">${noteText}</div>`;
+      }
+    }
+
+    var html = `
+    <div class="maint-card" id="card-${idx}" onclick="toggleCard(${idx})">
+      <div class="maint-body">
+        <div class="maint-info">
+          <div class="maint-id">${displayId} <span class="badge bg-light text-dark border ms-1" style="font-weight:normal;">${item.status}</span></div>
+          ${noteHtml}
+        </div>
+        <div class="custom-check">
+          <i class="bi bi-check-lg"></i>
+        </div>
+        <input type="checkbox" class="hidden-checkbox" id="chk-${idx}" value="${idx}">
+      </div>
+    </div>`;
+    container.insertAdjacentHTML('beforeend', html);
+  });
+
+  updateButtonState();
+}
+
+function toggleCard(idx) {
+  var checkbox = document.getElementById('chk-' + idx);
+  var card = document.getElementById('card-' + idx);
+  
+  checkbox.checked = !checkbox.checked;
+  
+  if (checkbox.checked) {
+    card.classList.add('active');
+    if (maintMode === '修理済み') card.classList.add('type-repair');
+    else card.classList.add('type-insp');
+  } else {
+    card.classList.remove('active', 'type-repair', 'type-insp');
+  }
+
+  updateButtonState();
+}
+
+function updateButtonState() {
+  var count = document.querySelectorAll('.hidden-checkbox:checked').length;
+  var btn = document.getElementById('btn-maint-submit');
+  var label = document.getElementById('submit-label');
+  
+  if (count > 0) {
+    btn.style.display = 'block';
+    label.innerText = count + "件を 完了登録";
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+function submitMaint() {
+  var checkedIndices = [];
+  document.querySelectorAll('.hidden-checkbox:checked').forEach(c => {
+    checkedIndices.push(parseInt(c.value));
+  });
+
+  if (checkedIndices.length === 0) return;
+  if (!confirm(checkedIndices.length + "件の処理を実行しますか？")) return;
+
+  // ★重要: サーバーに送るデータは、整形前の「元のID (maintList[idx].id)」を使います。
+  // これにより、画面表示が変わってもデータの整合性は保たれます。
+  var targetIds = checkedIndices.map(function(idx) { return maintList[idx].id; });
+
+  var btn = document.getElementById('btn-maint-submit');
+  var label = document.getElementById('submit-label');
+  var orgText = label.innerText;
+  
+  btn.disabled = true;
+  label.innerText = "処理中...";
+
+  var userPasscode = "";
+  if (typeof window.GLOBAL_PASSCODE !== 'undefined' && window.GLOBAL_PASSCODE) {
+    userPasscode = window.GLOBAL_PASSCODE;
+  } else if (typeof GLOBAL_PASSCODE !== 'undefined' && GLOBAL_PASSCODE) {
+    userPasscode = GLOBAL_PASSCODE;
+  } else {
+    userPasscode = localStorage.getItem('user_passcode') || "";
+  }
+
+  var payload = {
+    mode: maintMode, 
+    items: targetIds,
+    userPasscode: userPasscode, 
+    cost: 0,   
+    detail: "" 
+  };
+
+  google.script.run.withSuccessHandler(function(res) {
+    btn.disabled = false; label.innerText = orgText;
+    
+    if (res.success) {
+      alert(res.message);
+      loadMaintenanceList();
+    } else {
+      var msg = "エラー: " + res.message;
+      if (res.failedItems && res.failedItems.length > 0) msg += "\n失敗: " + res.failedItems.map(i => i.id).join(", ");
+      alert(msg);
+      loadMaintenanceList();
+    }
+  }).withFailureHandler(function(e) {
+    btn.disabled = false; label.innerText = orgText;
+    alert("システムエラー: " + e);
+  }).submitMaintenance(payload);
+}
+</script>
+</body>
+</html>

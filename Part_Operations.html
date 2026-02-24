@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+<style>
+/* 画面下部の余白確保 */
+body { background-color: #f8f9fa; padding-bottom: 180px; }
+
+.selection-panel { display: flex; gap: 10px; }
+.check-card-input { display: none; }
+.check-card-label {
+ display: flex; flex-direction: column; align-items: center; justify-content: center;
+ padding: 10px 5px; border: 1px solid #ced4da; border-radius: 8px; background: #fff;
+ cursor: pointer; transition: all 0.2s ease; height: 100%; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.check-unused .check-card-input:checked + .check-card-label {
+ background-color: #e8f5e9; border-color: #198754; color: #198754; box-shadow: 0 0 0 1px #198754;
+}
+.check-defect .check-card-input:checked + .check-card-label {
+ background-color: #fff5f5; border-color: #dc3545; color: #dc3545; box-shadow: 0 0 0 1px #dc3545;
+}
+.repair-list-item {
+ position: relative; display: flex; align-items: center; padding: 10px 12px; margin-bottom: 6px;
+ background-color: #fff; border: 1px solid #dee2e6; border-radius: 6px; cursor: pointer; transition: background-color 0.2s;
+}
+.repair-list-item:active { background-color: #f1f3f5; }
+.repair-list-item.checked { background-color: #f2ebff; border-color: #6610f2; }
+.repair-check-input { width: 1.2em; height: 1.2em; margin-right: 10px; cursor: pointer; }
+.repair-name { font-weight: bold; font-size: 0.95rem; color: #333; flex-grow: 1; }
+.repair-price { font-size: 0.85rem; color: #6c757d; white-space: nowrap; }
+
+.queue-card {
+ background: white; border-left: 6px solid #6c757d; border-radius: 8px; padding: 10px;
+ margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.queue-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+.queue-id { font-size: 1.2rem; font-weight: bold; font-family: monospace; }
+.quick-note-btn { font-size: 0.7rem; padding: 3px 8px; margin-right: 4px; margin-top: 4px; border: 1px solid #dc3545; color: #dc3545; background: white; border-radius: 15px; }
+.quick-note-btn:active { background: #dc3545; color: white; }
+
+.submit-float {
+ position: fixed; bottom: calc(90px + env(safe-area-inset-bottom)); left: 5%; width: 90%; padding: 15px;
+ font-size: 1.2rem; font-weight: bold; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+ z-index: 1000; transition: transform 0.1s; border: none; color: white;
+}
+.submit-float:active { transform: scale(0.98); }
+
+.bottom-nav {
+ position: fixed; bottom: 0; left: 0; width: 100%; height: 70px;
+ background-color: #fff; border-top: 1px solid #dee2e6; display: flex;
+ justify-content: space-around; align-items: center; z-index: 2000;
+ padding-bottom: env(safe-area-inset-bottom); box-sizing: content-box;
+}
+.nav-item { text-align: center; color: #6c757d; font-size: 0.75rem; flex-grow: 1; cursor: pointer; padding: 5px 0; }
+.nav-item i { display: block; font-size: 1.5rem; margin-bottom: 2px; }
+.nav-item.active { font-weight: bold; }
+.nav-item.active[data-mode="貸出"] { color: #0d6efd; }
+.nav-item.active[data-mode="返却"] { color: #198754; }
+.nav-item.active[data-mode="充填"] { color: #ffc107; }
+.nav-item.active[data-mode="破損報告"] { color: #dc3545; }
+.nav-item.active[data-mode="修理済み"] { color: #6610f2; }
+</style>
+</head>
+<body>
+
+<div id="op-container" class="container-fluid mt-3">
+ <div class="d-flex justify-content-end mb-2">
+   <button id="btn-refresh" class="btn btn-sm btn-outline-secondary border-0" onclick="refreshMasterData()">
+     <i class="bi bi-arrow-clockwise"></i> リスト更新
+   </button>
+ </div>
+
+ <div class="card p-3 mb-3 border-0 shadow-sm" style="background:#fff;">
+   <div id="op-settings-lend" class="op-setting-panel" style="display:none;">
+     <label class="form-label fw-bold small text-primary mb-1">貸出先</label>
+     <div class="d-flex gap-2">
+       <select id="op-dest-select" class="form-select fw-bold flex-grow-1">
+         <option value="" disabled selected>読み込み中...</option>
+       </select>
+       <button id="btn-self-use" class="btn btn-outline-secondary" onclick="toggleSelfUse()" style="white-space: nowrap;">
+         <i class="bi bi-building"></i> 自社
+       </button>
+     </div>
+     <div id="self-use-badge" class="mt-2 text-end" style="display:none;">
+       <span class="badge bg-info text-dark"><i class="bi bi-check-circle-fill"></i> 自社利用として記録</span>
+     </div>
+   </div>
+
+   <div id="op-settings-return" class="op-setting-panel" style="display:none;">
+     <div class="selection-panel">
+       <div class="check-unused flex-fill">
+         <input type="checkbox" id="op-check-unused" class="check-card-input" onchange="toggleReturnCheck('unused')">
+         <label for="op-check-unused" class="check-card-label">
+           <i class="bi bi-fuel-pump-fill fs-3 mb-1"></i>
+           <span class="fw-bold small">未使用</span>
+           <span class="small text-muted" style="font-size:0.75rem;">満タン返却</span>
+         </label>
+       </div>
+       <div class="check-defect flex-fill">
+         <input type="checkbox" id="op-check-defect" class="check-card-input" onchange="toggleReturnCheck('defect')">
+         <label for="op-check-defect" class="check-card-label">
+           <i class="bi bi-exclamation-triangle-fill fs-3 mb-1"></i>
+           <span class="fw-bold small">不備あり</span>
+           <span class="small text-muted" style="font-size:0.75rem;">充填不足等</span>
+         </label>
+       </div>
+     </div>
+   </div>
+
+   <div id="op-settings-repair" class="op-setting-panel" style="display:none;">
+     <h6 class="fw-bold text-secondary mb-2 small"><i class="bi bi-tools"></i> 修理内容を選択</h6>
+     <div id="repair-options-container" class="d-grid gap-1">
+       <div class="text-muted small">リスト読み込み中...</div>
+     </div>
+     <div class="mt-2 text-end fw-bold text-dark border-top pt-1">
+       合計: <span id="repair-total-display" class="fs-5 text-primary font-monospace">0</span> 円
+     </div>
+   </div>
+
+   <div id="op-settings-fill" class="op-setting-panel" style="display:none;">
+     <div class="alert alert-warning py-2 text-center mb-0" style="background-color:#fff3cd; color:#664d03; border:1px solid #ffecb5; border-radius: 8px;">
+       <i class="bi bi-info-circle-fill fs-5 d-inline-block me-1"></i>
+       <span class="fw-bold small">充填完了として記録</span>
+     </div>
+   </div>
+
+   <div id="op-settings-damage" class="op-setting-panel" style="display:none;">
+     <div class="alert alert-danger py-2 text-center mb-0" style="background-color:#f8d7da; color:#842029; border:1px solid #f5c2c7; border-radius: 8px;">
+       <i class="bi bi-exclamation-triangle-fill fs-5 d-inline-block me-1"></i>
+       <span class="fw-bold small">破損・不備として記録</span>
+     </div>
+   </div>
+ </div>
+
+ <div id="op-inputs"></div>
+
+ <div id="op-queue-box" class="mt-4" style="display:none;">
+   <div class="d-flex justify-content-between align-items-end mb-2">
+     <span class="fw-bold text-dark small"><i class="bi bi-list-check"></i> 送信リスト (<span id="op-queue-count">0</span>)</span>
+     <button class="btn btn-sm btn-outline-secondary py-0" style="font-size:0.8rem;" onclick="clearOpQueue()">全消去</button>
+   </div>
+   <div id="op-queue-list" class="d-grid gap-2"></div>
+ </div>
+</div>
+
+<button id="op-submit-btn" class="submit-float" style="display:none;" onclick="submitOp()">
+ <i class="bi bi-send-fill"></i> <span id="op-submit-label">送信</span>
+</button>
+
+<div class="bottom-nav">
+ <div class="nav-item active" onclick="switchMode('貸出')" data-mode="貸出"><i class="bi bi-box-arrow-right"></i> 貸出</div>
+ <div class="nav-item" onclick="switchMode('返却')" data-mode="返却"><i class="bi bi-box-arrow-in-left"></i> 返却</div>
+ <div class="nav-item" onclick="switchMode('充填')" data-mode="充填"><i class="bi bi-droplet-half"></i> 充填</div>
+ <div class="nav-item" onclick="switchMode('修理済み')" data-mode="修理済み"><i class="bi bi-tools"></i> 修理</div>
+ <div class="nav-item" onclick="switchMode('破損報告')" data-mode="破損報告"><i class="bi bi-exclamation-octagon"></i> 破損</div>
+</div>
+
+<script>
+var opQueue = [];
+var opMode = '';
+var isSelfUseMode = false;
+var repairOptionsCache = [];
+var opPrefixes = []; 
+
+window.onload = function() {
+ google.script.url.getLocation(function(location) {
+   var action = (location.parameter && location.parameter.action) ? location.parameter.action : "貸出";
+   initOperations(action);
+   loadAllMasterData();
+ });
+};
+
+function loadAllMasterData() {
+ google.script.run.withSuccessHandler(function(data) {
+   var sel = document.getElementById('op-dest-select');
+   if(sel) {
+     sel.innerHTML = '';
+     var def = document.createElement('option');
+     def.text = "👇 貸出先を選択"; def.value = ""; def.selected = true; def.disabled = true;
+     sel.appendChild(def);
+     if(data.destList && data.destList.length > 0) {
+       data.destList.forEach(function(d) { sel.appendChild(new Option(d, d)); });
+     } else { sel.appendChild(new Option("※リストなし", "")); }
+   }
+
+   if(data.repairOptions && data.repairOptions.length > 0) {
+     repairOptionsCache = data.repairOptions;
+     if (opMode === '修理済み') renderRepairCheckboxes();
+   } else {
+     var roContainer = document.getElementById('repair-options-container');
+     if(roContainer) roContainer.innerHTML = '<div class="text-muted p-2 small">※修理項目なし</div>';
+   }
+
+   if (data.prefixes && data.prefixes.length > 0) {
+     opPrefixes = data.prefixes;
+     var btn = document.getElementById('op-submit-btn');
+     var currentColor = btn ? btn.style.backgroundColor : '#6c757d';
+     renderOpInputs(currentColor || '#6c757d');
+   }
+ }).getOperationsInitData();
+}
+
+function initOperations(mode) {
+ opMode = mode;
+ opQueue = [];
+ renderOpQueue();
+ var panels = document.getElementsByClassName('op-setting-panel');
+ for(var i=0; i<panels.length; i++) panels[i].style.display = 'none';
+ isSelfUseMode = false;
+ updateSelfUseUI();
+
+ var color = '#6c757d';
+ var btnText = '送信';
+
+ if(mode === '貸出') {
+   document.getElementById('op-settings-lend').style.display = 'block';
+   color = '#0d6efd'; btnText = '貸出実行';
+ } else if(mode === '返却') {
+   document.getElementById('op-settings-return').style.display = 'block';
+   color = '#198754'; btnText = '返却実行';
+ } else if(mode === '充填') {
+   document.getElementById('op-settings-fill').style.display = 'block';
+   color = '#ffc107'; btnText = '充填完了';
+ } else if(mode === '破損報告') {
+   document.getElementById('op-settings-damage').style.display = 'block';
+   color = '#dc3545'; btnText = '報告送信';
+ } else if(mode === '修理済み') {
+   document.getElementById('op-settings-repair').style.display = 'block';
+   color = '#6610f2'; btnText = '修理完了';
+   if(repairOptionsCache.length > 0) renderRepairCheckboxes();
+ }
+
+ var btn = document.getElementById('op-submit-btn');
+ if(btn) {
+   btn.style.backgroundColor = color;
+   document.getElementById('op-submit-label').innerText = btnText;
+ }
+ document.querySelectorAll('.nav-item').forEach(el => {
+   el.classList.remove('active');
+   if(el.dataset.mode === mode) el.classList.add('active');
+ });
+ renderOpInputs(color);
+}
+
+function refreshMasterData() {
+ if(!confirm("最新のリストを取得しますか？")) return;
+ var btn = document.getElementById('btn-refresh');
+ var orgHtml = btn.innerHTML;
+ btn.disabled = true;
+ btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 更新中';
+ google.script.run.withSuccessHandler(function(res) {
+   loadAllMasterData(); btn.disabled = false; btn.innerHTML = orgHtml;
+ }).withFailureHandler(function(e) {
+   alert("更新エラー: " + e.message); btn.disabled = false; btn.innerHTML = orgHtml;
+ }).clearMasterCaches();
+}
+
+function toggleSelfUse() { isSelfUseMode = !isSelfUseMode; updateSelfUseUI(); renderOpQueue(); }
+function updateSelfUseUI() {
+ var sel = document.getElementById('op-dest-select');
+ var btn = document.getElementById('btn-self-use');
+ var badge = document.getElementById('self-use-badge');
+ if(sel && btn && badge) {
+   if(isSelfUseMode) {
+     sel.disabled = true; btn.className = 'btn btn-info text-dark fw-bold'; badge.style.display = 'block';
+     document.getElementById('op-submit-label').innerText = '利用開始';
+   } else {
+     sel.disabled = false; btn.className = 'btn btn-outline-secondary'; badge.style.display = 'none';
+     document.getElementById('op-submit-label').innerText = '貸出実行';
+   }
+ }
+}
+function toggleReturnCheck(type) {
+ var unused = document.getElementById('op-check-unused');
+ var defect = document.getElementById('op-check-defect');
+ if (type === 'unused' && unused.checked) defect.checked = false;
+ else if (type === 'defect' && defect.checked) unused.checked = false;
+}
+function renderRepairCheckboxes() {
+ var container = document.getElementById('repair-options-container');
+ if(!container) return;
+ container.innerHTML = '';
+ repairOptionsCache.forEach(function(opt, idx) {
+   var html = `<label class="repair-list-item" id="rep-item-${idx}">
+     <input class="form-check-input repair-check-input" type="checkbox" value="${opt.price}" id="rep-opt-${idx}" data-name="${opt.name}" onchange="toggleRepairItem(${idx})">
+     <span class="repair-name">${opt.name}</span><span class="repair-price">${opt.price} 円</span></label>`;
+   container.insertAdjacentHTML('beforeend', html);
+ });
+ calcRepairTotal();
+}
+function toggleRepairItem(idx) {
+ var chk = document.getElementById('rep-opt-' + idx);
+ var item = document.getElementById('rep-item-' + idx);
+ if(chk && item) {
+   if(chk.checked) item.classList.add('checked'); else item.classList.remove('checked');
+   calcRepairTotal();
+ }
+}
+function calcRepairTotal() {
+ var total = 0;
+ var checks = document.querySelectorAll('#repair-options-container input[type="checkbox"]:checked');
+ checks.forEach(function(c) { total += parseInt(c.value) || 0; });
+ var disp = document.getElementById('repair-total-display');
+ if(disp) disp.innerText = total.toLocaleString();
+}
+
+function renderOpInputs(color) {
+ var div = document.getElementById('op-inputs');
+ if(!div) return;
+ div.innerHTML = '';
+ div.style.display = 'block';
+ if (opPrefixes.length === 0) {
+   div.innerHTML = '<div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm"></span> タンクIDリスト読み込み中...</div>';
+   return;
+ }
+ opPrefixes.forEach(p => {
+   div.innerHTML += `<div class="input-row-card d-flex gap-2 mb-2 align-items-center p-2 bg-white rounded shadow-sm" style="border-left: 5px solid ${color};">
+     <span class="fs-4 fw-bold" style="width:30px; text-align:center;">${p}</span>
+     <input type="tel" class="form-control fw-bold text-center fs-5" maxlength="2" placeholder="--" oninput="checkOpInput('${p}', this)">
+     <button class="btn text-white fw-bold" style="background:${color};" onclick="addOpQueue('${p}-OK')">OK</button></div>`;
+ });
+}
+
+function checkOpInput(prefix, el) {
+ var val = el.value.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+ el.value = val;
+ if(val.length >= 2) { addOpQueue(prefix + '-' + val); el.value = ''; }
+}
+
+function addOpQueue(id) {
+ if(!opQueue.some(item => item.id === id)) { opQueue.push({ id: id, note: '' }); renderOpQueue(); }
+}
+function updateItemNote(index, text) { opQueue[index].note = text; }
+function appendQuickNote(index, text) {
+ var current = opQueue[index].note;
+ if(current) text = current + ", " + text;
+ opQueue[index].note = text;
+ document.getElementById('note-input-' + index).value = text;
+}
+
+function renderOpQueue() {
+ var list = document.getElementById('op-queue-list');
+ if(!list) return;
+ list.innerHTML = '';
+ document.getElementById('op-queue-count').innerText = opQueue.length;
+ var box = document.getElementById('op-queue-box');
+ var btn = document.getElementById('op-submit-btn');
+ var color = btn ? btn.style.backgroundColor : '#6c757d';
+
+ if(opQueue.length > 0) {
+   box.style.display = 'block';
+   btn.style.display = 'block';
+   opQueue.slice().reverse().forEach((item, revIndex) => {
+     var index = opQueue.length - 1 - revIndex;
+     var quickBtns = (opMode === '破損報告') ? `<div class="mt-1"><button class="btn quick-note-btn" onclick="appendQuickNote(${index}, 'バルブ固・歪み')">バルブ固・歪み</button>...</div>` : '';
+     if(opMode === '破損報告') {
+       quickBtns = `<div class="mt-1">
+         <button class="btn quick-note-btn" onclick="appendQuickNote(${index}, 'バルブ固・歪み')">バルブ固・歪み</button>
+         <button class="btn quick-note-btn" onclick="appendQuickNote(${index}, 'エア漏れ')">エア漏れ</button>
+         <button class="btn quick-note-btn" onclick="appendQuickNote(${index}, 'Oリング')">Oリング</button>
+       </div>`;
+     }
+     var ph = (opMode === '貸出') ? '担当者名(任意)' : (opMode === '破損報告' ? '破損内容' : '備考(任意)');
+     list.innerHTML += `<div class="queue-card" style="border-left-color: ${color};">
+       <div class="queue-card-header"><span class="queue-id">${item.id}</span>
+         <button class="btn btn-link text-secondary p-0" onclick="removeOpQueue(${index})"><i class="bi bi-trash3-fill"></i></button></div>
+       <div><input type="text" id="note-input-${index}" class="form-control form-control-sm" placeholder="${ph}" value="${item.note}" oninput="updateItemNote(${index}, this.value)">${quickBtns}</div></div>`;
+   });
+ } else {
+   box.style.display = 'none';
+   btn.style.display = 'none';
+ }
+}
+
+function removeOpQueue(index) { opQueue.splice(index, 1); renderOpQueue(); }
+function clearOpQueue() { opQueue = []; renderOpQueue(); }
+
+// ★★★ 修正: ユーザーパスコード送信対応 ★★★
+function submitOp() {
+ if (opMode === '貸出' && !isSelfUseMode) {
+   var dest = document.getElementById('op-dest-select').value;
+   if (!dest || dest === "") { alert("⚠️ 貸出先が選択されていません。"); return; }
+ }
+ var confirmMsg = opQueue.length + '件 送信しますか？';
+ if(opMode === '貸出' && isSelfUseMode) confirmMsg += '\n（自社利用として記録されます）';
+ else if (opMode === '貸出') confirmMsg += '\n貸出先: ' + document.getElementById('op-dest-select').value;
+
+ var repairCost = 0; var repairDetail = [];
+ if (opMode === '修理済み') {
+   var checks = document.querySelectorAll('#repair-options-container input[type="checkbox"]:checked');
+   checks.forEach(function(c) {
+     repairCost += parseInt(c.value) || 0;
+     repairDetail.push(c.getAttribute('data-name'));
+   });
+   confirmMsg += '\n修理費用: ' + repairCost.toLocaleString() + '円';
+ }
+ if(!confirm(confirmMsg)) return;
+
+ var btn = document.getElementById('op-submit-btn');
+ var orgText = document.getElementById('op-submit-label').innerText;
+ btn.disabled = true; document.getElementById('op-submit-label').innerText = "送信中...";
+
+ var finalDest = document.getElementById('op-dest-select') ? document.getElementById('op-dest-select').value : "";
+ var finalAction = opMode;
+ if (opMode === '貸出' && isSelfUseMode) { finalDest = "自社利用"; finalAction = "自社利用"; }
+
+ var payload = {
+   action: finalAction, 
+   items: opQueue, 
+   destination: finalDest,
+   isUnused: document.getElementById('op-check-unused') ? document.getElementById('op-check-unused').checked : false,
+   isDefect: document.getElementById('op-check-defect') ? document.getElementById('op-check-defect').checked : false,
+   repairCost: repairCost, 
+   repairDetail: repairDetail.join(", "),
+   // ★追加: 保持しているパスコードを送信
+   userPasscode: (typeof GLOBAL_PASSCODE !== 'undefined') ? GLOBAL_PASSCODE : "" 
+ };
+
+ google.script.run.withSuccessHandler(res => {
+   btn.disabled = false; document.getElementById('op-submit-label').innerText = orgText;
+   clearOpQueue();
+   if(isSelfUseMode) toggleSelfUse();
+   if(opMode === '貸出') document.getElementById('op-dest-select').value = "";
+   if(document.getElementById('op-check-unused')) document.getElementById('op-check-unused').checked = false;
+   if(document.getElementById('op-check-defect')) document.getElementById('op-check-defect').checked = false;
+   if (opMode === '修理済み') {
+     document.querySelectorAll('#repair-options-container input').forEach(c => { c.checked = false; });
+     document.querySelectorAll('.repair-list-item').forEach(el => el.classList.remove('checked'));
+     calcRepairTotal();
+   }
+  
+   var msg = "【送信結果】\n総数: " + (res.totalCount || 0) + " 本\n----------------\n";
+   if (res.successIds && res.successIds.length > 0) msg += "✅ 成功 (" + res.successIds.length + "本):\n" + res.successIds.join(", ") + "\n\n";
+   else msg += "✅ 成功: なし\n\n";
+   if (res.failedItems && res.failedItems.length > 0) {
+     msg += "❌ 失敗 (" + res.failedItems.length + "本):\n";
+     res.failedItems.forEach(item => msg += "・" + item.id + " : " + item.reason + "\n");
+   }
+   alert(msg);
+
+ }).withFailureHandler(function(e) {
+   btn.disabled = false; document.getElementById('op-submit-label').innerText = orgText;
+   alert("システムエラー: " + e);
+ }).submitOperations(payload);
+}
+</script>
+</body>
+</html>

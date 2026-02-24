@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title><?= appTitle ?></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // サーバーからの初期値受け取り
+    var SERVER_STAFF_NAME = "<?= staffName ?>";
+    var SERVER_USER_ROLE  = "<?= userRole ?>";
+    var SERVER_LOGIN_MODE = "<?= loginMode ?>";
+    var SERVER_USER_EMAIL = "<?= (typeof userEmail !== 'undefined') ? userEmail : '' ?>";
+    var SERVER_FOUND_PASSCODE = "<?= (typeof foundPasscode !== 'undefined') ? foundPasscode : '' ?>";
+    
+    // ▼▼▼ 追加: ターゲットページの受け取り ▼▼▼
+    var SERVER_TARGET_PAGE = "<?= (typeof targetPage !== 'undefined') ? targetPage : '' ?>";
+
+    // クライアント管理変数
+    var GLOBAL_STAFF_NAME = SERVER_STAFF_NAME;
+    var GLOBAL_USER_ROLE  = SERVER_USER_ROLE;
+    var GLOBAL_LOGIN_MODE = SERVER_LOGIN_MODE;
+    var GLOBAL_USER_EMAIL = SERVER_USER_EMAIL;
+    var GLOBAL_PASSCODE   = SERVER_FOUND_PASSCODE; 
+
+    if (GLOBAL_STAFF_NAME === "undefined") {
+      GLOBAL_STAFF_NAME = "ゲスト";
+    }
+  </script>
+  <?!= include('Global_CSS'); ?>
+  
+  <style>
+    /* 既存スタイル */
+    .navbar-custom { background-color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); box-shadow: 0 1px 3px rgba(0,0,0,0.1); height: 60px; }
+    .badge-admin-luxury { background-color: #000 !important; color: #ff3333 !important; border: 1px solid #ff3333; cursor: pointer; }
+    .offcanvas { z-index: 1050 !important; }
+    .bottom-nav { z-index: 1020 !important; }
+    .user-info-card { background-color: #f8f9fa; border-bottom: 1px solid #dee2e6; }
+    .user-icon-circle { width: 40px; height: 40px; background-color: #0d6efd; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+    /* ▼▼▼ 追加: 全画面ローディング & エラー画面用スタイル ▼▼▼ */
+    #initial-loader {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background-color: #ffffff;
+      z-index: 99999; /* 最前面 */
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      transition: opacity 0.5s ease;
+    }
+    #permission-denied-view {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background-color: #f8f9fa;
+      z-index: 99990; /* ローディングより下、アプリより上 */
+      display: none;
+      flex-direction: column; justify-content: center; align-items: center; text-align: center;
+    }
+    /* アプリ内ローディング */
+    #loading-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(255,255,255,0.8); z-index: 20000;
+      display: flex; justify-content: center; align-items: center; flex-direction: column;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="initial-loader">
+    <div class="spinner-border text-primary" role="status" style="width: 4rem; height: 4rem;"></div>
+    <div class="mt-4 fw-bold text-secondary fs-5">認証情報を確認中...</div>
+  </div>
+
+  <div id="permission-denied-view">
+    <div class="text-danger mb-3"><i class="bi bi-exclamation-triangle-fill" style="font-size: 4rem;"></i></div>
+    <h2 class="fw-bold text-dark">アクセス権限がありません</h2>
+    <p class="text-muted mt-2">このページを表示する権限（管理者権限など）が不足しています。</p>
+    <a href="<?= scriptUrl ?>" class="btn btn-outline-secondary mt-4">通常画面へ戻る</a>
+  </div>
+
+  <div class="modal fade" id="loginModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true" style="z-index: 11000;">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0 bg-white"> 
+        <div class="modal-header border-0 bg-white"> 
+          <h5 class="modal-title fw-bold text-dark"><i class="bi bi-shield-lock-fill me-2"></i>ログイン</h5> 
+        </div>
+        <div class="modal-body p-4 text-center">
+          <p class="text-muted small mb-3">担当者パスコードを入力してください</p>
+          <input type="tel" id="login-passcode" class="form-control form-control-lg text-center fw-bold fs-2 mb-3" 
+                 maxlength="4" placeholder="----" style="font-family:monospace;" inputmode="numeric"
+                 oninput="checkPasscodeInput(this)">
+          <div id="login-error" class="text-danger small fw-bold mb-2" style="display:none;"></div>
+          <button class="btn btn-primary w-100 fw-bold py-2" onclick="doLogin()">認証する</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="loading-overlay" style="display:none;">
+    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+    <div class="mt-3 fw-bold text-secondary">処理中...</div>
+  </div>
+
+  <nav class="navbar navbar-custom fixed-top px-3">
+    <div class="container-fluid position-relative d-flex align-items-center h-100">
+      <div class="d-flex align-items-center">
+        <button class="hamburger-btn me-3" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasMenu">
+          <i class="bi bi-list"></i>
+        </button>
+        <div class="d-flex align-items-center">
+          <span class="fw-bold text-secondary me-2" style="font-size: 0.9rem;" id="header-staff-name">
+            <?= staffName ?> さん
+          </span>
+          <a href="<?= scriptUrl ?>?page=admin" id="header-admin-badge" class="badge badge-admin-luxury text-decoration-none align-items-center justify-content-center" style="font-size: 0.9rem; padding: 3px 6px; display: none;">
+             管理者画面 
+          </a>
+        </div>
+      </div>
+      <div class="position-absolute top-50 start-50 translate-middle">
+        <div class="fw-bold text-dark" style="font-size: 1.1rem; letter-spacing: 0.05em;" id="header-title">
+          <?= appTitle ?>
+        </div>
+      </div>
+      <div class="ms-auto"></div>
+    </div>
+  </nav>
+
+  <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasMenu">
+    <div class="offcanvas-header"><h5 class="offcanvas-title fw-bold"> メニュー </h5><button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas"></button></div>
+    <div class="offcanvas-body p-0">
+      
+      <div class="p-3 user-info-card text-dark">
+        <div class="d-flex align-items-center mb-3">
+          <div class="user-icon-circle me-3">
+            <i class="bi bi-person-fill fs-5"></i>
+          </div>
+          <div style="min-width: 0;"> 
+            <div class="fw-bold text-truncate" id="menu-user-name" style="font-size: 1rem;">ゲスト</div>
+            <div class="small text-muted text-truncate" id="menu-user-email" style="font-size: 0.75rem;"></div>
+          </div>
+        </div>
+        </div>
+      
+      <div class="p-3 bg-light border-bottom mb-2"><small class="text-muted"> 基本操作 </small></div>
+      <a class="menu-item" onclick= "switchMode('貸出')" ><i class="bi bi-box-arrow-up text-primary"></i> <span><?= menuNames.LEND ?></span></a>
+      <a class="menu-item" onclick= "switchMode('返却')" ><i class="bi bi-box-arrow-in-down text-success"></i> <span><?= menuNames.RETURN ?></span></a>
+      <a class="menu-item" onclick= "switchMode('充填')" ><i class="bi bi-fuel-pump-fill text-warning"></i> <span><?= menuNames.FILL ?></span></a>
+
+      <div class="p-3 bg-light border-bottom mb-2 mt-2"><small class="text-muted"> メンテナンス・報告 </small></div>
+      <a class="menu-item" onclick= "switchMode('破損報告')" ><i class="bi bi-tools text-danger"></i> <span><?= menuNames.DAMAGE ?></span></a>
+      <a class="menu-item" onclick= "switchMode('修理済み')" ><i class="bi bi-bandaid text-secondary"></i> <span><?= menuNames.REPAIR ?></span></a>
+      <a class="menu-item" onclick= "switchMode('耐圧検査完了')" ><i class="bi bi-patch-check-fill" style="color:#6f42c1;"></i> <span><?= menuNames.INSP ?></span></a>
+      <a class="menu-item" onclick= "switchMode('資材発注')" ><i class="bi bi-cart-plus-fill text-info"></i> <span><?= menuNames.ORDER ?></span></a>
+
+      <div class="p-3 bg-light border-bottom mb-2 mt-2"><small class="text-muted"> 管理・確認 </small></div>
+      <a id="menu-settings" class="menu-item" onclick= "switchMode('設定')" style="display:none;"><i class="bi bi-gear-fill text-secondary"></i> <span>設定</span></a>
+      <a class="menu-item" onclick= "switchMode('管理')" ><i class="bi bi-speedometer2"></i> <span><?= menuNames.ADMIN ?></span></a>
+      <a class="menu-item" onclick= "switchMode('請求書')" ><i class="bi bi-receipt text-success"></i> <span><?= menuNames.BILL ?></span></a>
+      <a class="menu-item" onclick= "switchMode('マイページ')" ><i class="bi bi-person-vcard text-warning"></i> <span><?= menuNames.MYPAGE ?></span></a>
+    </div>
+  </div>
+
+  <div id="global-message" class="alert shadow-sm" style="display:none; position: fixed; top: 70px; left: 5%; width: 90%; z-index: 2000;"></div>
+
+  <div id="view-operations" style="display:none;"><?!= include('Part_Operations'); ?></div>
+  <div id="view-maintenance" style="display:none;"><?!= include('Part_Maintenance'); ?></div>
+  <div id="view-dashboard" style="display:none;"><?!= include('Part_Dashboard'); ?></div>
+  <div id="view-mypage" style="display:none;"><?!= include('Part_MyPage'); ?></div>
+  <div id="view-billing" style="display:none;"><?!= include('Part_Billing'); ?></div>
+  <div id="view-order" style="display:none;"><?!= include('Part_Order'); ?></div>
+  <div id="view-settings" style="display:none;"><?!= include('Part_Settings'); ?></div>
+
+  <div class="bottom-nav">
+    <button class="nav-btn" id="nav-btn-lend" onclick= "switchMode('貸出')" >
+      <i class="bi bi-box-arrow-up"></i>  貸出
+    </button>
+    <button class="nav-btn" id="nav-btn-return" onclick= "switchMode('返却')" >
+      <i class="bi bi-box-arrow-in-down"></i>  返却
+    </button>
+    <button class="nav-btn" id="nav-btn-fill" onclick= "switchMode('充填')" >
+      <i class="bi bi-fuel-pump-fill"></i>  充填
+    </button>
+  </div>
+
+  <script>
+    var currentView = '';
+    var offcanvas;
+    var loginModal;
+
+    // ■ 管理権限の判定関数
+    function isUserAdmin() {
+      var currentRole = GLOBAL_USER_ROLE;
+      if (!currentRole || currentRole === 'undefined') {
+        currentRole = "<?= userRole ?>";
+      }
+      var role = String(currentRole || "");
+      return (role.indexOf('管理者') !== -1 || role.indexOf('準管理者') !== -1 || role.toLowerCase().indexOf('admin') !== -1);
+    }
+    
+    function getCurrentUserPasscode() {
+      if (typeof GLOBAL_PASSCODE !== 'undefined' && GLOBAL_PASSCODE) {
+        return GLOBAL_PASSCODE;
+      }
+      if (typeof USER_PASSCODE !== 'undefined' && USER_PASSCODE) {
+        return USER_PASSCODE;
+      }
+      var stored = localStorage.getItem('app_user_passcode');
+      if (stored) return stored;
+      return "";
+    }
+
+    // ■ 画面ロード時
+    window.addEventListener('load', function() {
+      offcanvas = new bootstrap.Offcanvas(document.getElementById('offcanvasMenu'));
+      loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+
+      var loginModalEl = document.getElementById('loginModal');
+      loginModalEl.addEventListener('shown.bs.modal', function () {
+        document.getElementById('login-passcode').focus();
+      });
+
+      // ★ここから認証チェック開始
+      checkAccessFlow();
+    });
+
+    function checkPasscodeInput(el) {
+      if (el.value.length >= 4) { 
+        el.blur(); 
+        doLogin();
+      }
+    }
+
+    // ■■■ 認証フローと画面表示制御 ■■■
+    function checkAccessFlow() {
+      var isGoogleAuth = (GLOBAL_STAFF_NAME !== 'ゲスト' && GLOBAL_STAFF_NAME !== 'undefined');
+      var hasPasscode = !!GLOBAL_PASSCODE;
+
+      if (isGoogleAuth) {
+        // すでに名前が分かっているならOK
+        resolveFinalView();
+      } else if (hasPasscode) {
+        // パスコードはあるが名前がまだ「ゲスト」の場合、サーバーに問い合わせて正式ログインする
+        document.getElementById('login-passcode').value = GLOBAL_PASSCODE;
+        doLogin();
+      } else {
+        // 何も情報がない -> ローディングを消してログインモーダルを表示
+        hideInitialLoader();
+        loginModal.show();
+      }
+    }
+
+    // ■ 最終的な画面表示の決定
+    function resolveFinalView() {
+      var isAdmin = isUserAdmin();
+      var targetIsAdmin = (SERVER_TARGET_PAGE === 'admin');
+
+      // 1. 管理者ページに行きたいが、管理者ではない場合
+      if (targetIsAdmin && !isAdmin) {
+        hideInitialLoader();
+        document.getElementById('permission-denied-view').style.display = 'flex';
+        return;
+      }
+
+      // 2. ★重要: 管理者ページ希望 かつ 管理者権限あり の場合
+      // 現場用画面ではなく、独立した「admin.html」を読み込んで表示する
+      if (targetIsAdmin && isAdmin) {
+        loadActualAdminPage();
+        return;
+      }
+
+      // 3. 権限OK -> 通常の現場アプリ画面を表示
+      hideInitialLoader();
+      initAppView('貸出');
+    }
+
+    // ★追加: admin.html の中身を取得して画面を書き換える関数
+    function loadActualAdminPage() {
+      // ローディング表示維持（または再表示）
+      var loader = document.getElementById('initial-loader');
+      if(loader) { loader.style.display = 'flex'; loader.style.opacity = '1'; }
+      
+      // パスコードを使って管理画面HTMLを取得
+      var pass = GLOBAL_PASSCODE; 
+      
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res.success) {
+            // ★画面を admin.html の内容で完全に上書きする
+            document.open();
+            document.write(res.html);
+            document.close();
+          } else {
+            alert(res.message);
+            hideInitialLoader();
+            // エラー画面へ
+            document.getElementById('permission-denied-view').style.display = 'flex';
+          }
+        })
+        .withFailureHandler(function(e) {
+          alert("管理画面の読み込みに失敗しました: " + e.message);
+          hideInitialLoader();
+        })
+        .getAdminHtml(pass);
+    }
+
+    function hideInitialLoader() {
+      var loader = document.getElementById('initial-loader');
+      if(loader) {
+        loader.style.opacity = '0';
+        setTimeout(() => { loader.style.display = 'none'; }, 500);
+      }
+    }
+
+    // アプリ画面の初期化
+    function initAppView(startMode) {
+      var adminBadge = document.getElementById('header-admin-badge');
+      var settingMenu = document.getElementById('menu-settings');
+
+      if(isUserAdmin()) {
+        if(adminBadge) adminBadge.style.display = 'flex';
+        if(settingMenu) settingMenu.style.display = 'block';
+      } else {
+        if(adminBadge) adminBadge.style.setProperty('display', 'none', 'important');
+        if(settingMenu) settingMenu.style.display = 'none';
+      }
+
+      var nameEl = document.getElementById('header-staff-name');
+      var displayName = (GLOBAL_STAFF_NAME && GLOBAL_STAFF_NAME !== 'undefined') ? GLOBAL_STAFF_NAME : "<?= staffName ?>";
+      if(nameEl) nameEl.innerText = displayName + " さん";
+
+      var menuNameEl = document.getElementById('menu-user-name');
+      if(menuNameEl) menuNameEl.innerText = displayName;
+
+      var emailText = (GLOBAL_USER_EMAIL && GLOBAL_USER_EMAIL !== 'undefined') ? GLOBAL_USER_EMAIL : "";
+      var menuEmailEl = document.getElementById('menu-user-email');
+      if(menuEmailEl) menuEmailEl.innerText = emailText;
+
+      switchMode(startMode || '貸出');
+    }
+
+    function doLogin() {
+      var pass = document.getElementById('login-passcode').value;
+      var errEl = document.getElementById('login-error');
+      errEl.style.display = 'none';
+      
+      if(!pass) return;
+      
+      // 初回ロード以外の手動ログイン時はローディングオーバーレイを出す
+      var isInitial = (document.getElementById('initial-loader').style.display !== 'none');
+      if(!isInitial) showLoading(true);
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if(!isInitial) showLoading(false);
+          
+          if (res.success) {
+            GLOBAL_STAFF_NAME = res.user.name;
+            GLOBAL_USER_ROLE = res.user.role;
+            GLOBAL_PASSCODE = pass; 
+            
+            loginModal.hide();
+            
+            if(!isInitial) showMessage(GLOBAL_STAFF_NAME + "さん、ログインしました", true);
+
+            // ★再判定して画面決定
+            resolveFinalView();
+
+          } else {
+            // 失敗時
+            if(isInitial) hideInitialLoader(); 
+            
+            errEl.innerText = res.message;
+            errEl.style.display = 'block';
+            document.getElementById('login-passcode').value = '';
+            loginModal.show();
+          }
+        })
+        .withFailureHandler(function(e) {
+          if(!isInitial) showLoading(false);
+          if(isInitial) hideInitialLoader();
+          errEl.innerText = "通信エラー: " + e.message;
+          errEl.style.display = 'block';
+          loginModal.show();
+        })
+        .verifyPasscode(pass);
+    }
+
+    function showLoading(show) {
+      document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
+    }
+
+    function switchMode(mode) {
+      if(mode === '設定' && !isUserAdmin()) {
+        showMessage('権限がありません。', false);
+        return;
+      }
+      
+      // ダッシュボード(管理)機能は現場用画面にもあるが、
+      // ユーザーが意図した独立管理者ページとは異なるため、権限チェックは行います
+      if(mode === '管理' && !isUserAdmin()) {
+         showMessage('管理者権限が必要です。', false);
+         mode = '貸出';
+      }
+
+      offcanvas.hide();
+      document.getElementById('header-title').innerText = mode;
+
+      ['view-operations','view-maintenance','view-dashboard','view-mypage','view-billing','view-order','view-settings'].forEach(id => {
+        var el = document.getElementById(id);
+        if(el) el.style.display = 'none';
+      });
+
+      document.querySelectorAll('.nav-btn').forEach(b => b.className = 'nav-btn');
+
+      if([ '貸出' , '返却' , '充填' , '破損報告' ].includes(mode)) {
+        document.getElementById('view-operations').style.display = 'block';
+        if(mode === '貸出') document.getElementById('nav-btn-lend').classList.add('active-lend');
+        if(mode === '返却') document.getElementById('nav-btn-return').classList.add('active-return');
+        if(mode === '充填') document.getElementById('nav-btn-fill').classList.add('active-fill');
+        if(typeof initOperations === 'function') initOperations(mode);
+      }
+      else if([ '修理済み' , '耐圧検査完了' ].includes(mode)) {
+        document.getElementById('view-maintenance').style.display = 'block';
+        if(typeof initMaintenance === 'function') initMaintenance(mode);
+      }
+      else if(mode === '管理') {
+        document.getElementById('view-dashboard').style.display = 'block';
+        if(typeof loadDashboard === 'function') loadDashboard();
+      }
+      else if(mode === 'マイページ') {
+        document.getElementById('view-mypage').style.display = 'block';
+        if(typeof loadMyPageData === 'function') loadMyPageData(GLOBAL_PASSCODE);
+      }
+      else if(mode === '請求書') {
+        document.getElementById('view-billing').style.display = 'block';
+        if(typeof initBilling === 'function') initBilling();
+      }
+      else if(mode === '資材発注') {
+        document.getElementById('view-order').style.display = 'block';
+        if(typeof initOrder === 'function') initOrder();
+      }
+      else if(mode === '設定') {
+        document.getElementById('view-settings').style.display = 'block';
+        if(typeof initSettings === 'function') initSettings();
+      }
+    }
+
+    function showMessage(msg, isSuccess) {
+      var el = document.getElementById('global-message');
+      el.innerText = msg;
+      el.className = isSuccess ? 'alert alert-success shadow-sm' : 'alert alert-danger shadow-sm';
+      el.style.display = 'block';
+      setTimeout(() => { el.style.display = 'none'; }, 3000);
+    }
+  </script>
+</body>
+</html>

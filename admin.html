@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin Console</title>
+  
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <?!= include('Global_CSS'); ?>
+
+  <style>
+    /* ■ 黒×赤 デザインテーマ */
+    :root {
+      --bg-dark: #121212;       /* 全体背景 */
+      --bg-panel: #1e1e1e;      /* カード背景 */
+      --text-main: #e0e0e0;     /* メイン文字 */
+      --text-muted: #a0a0a0;    /* サブ文字 */
+      --accent-red: #d32f2f;    /* アクセント赤 */
+      --accent-hover: #b71c1c;  /* ホバー時の赤 */
+      --border-color: #333333;  /* 境界線 */
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* ローディングオーバーレイ */
+    #admin-loader {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background-color: var(--bg-dark);
+      z-index: 9999;
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      transition: opacity 0.5s ease;
+    }
+
+    /* サイドバー */
+    .sidebar {
+      background-color: #000000;
+      min-height: 100vh;
+      border-right: 1px solid var(--border-color);
+      transition: all 0.3s;
+    }
+    .sidebar .brand {
+      color: var(--accent-red);
+      font-weight: bold;
+      font-size: 1.2rem;
+      padding: 20px;
+      letter-spacing: 0.1em;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .nav-link {
+      color: var(--text-muted);
+      padding: 15px 20px;
+      border-left: 4px solid transparent;
+      transition: 0.2s;
+    }
+    .nav-link:hover {
+      color: #fff;
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+    .nav-link.active {
+      color: #fff;
+      background-color: rgba(211, 47, 47, 0.1);
+      border-left-color: var(--accent-red);
+    }
+    .nav-link i { margin-right: 10px; width: 20px; text-align: center; }
+
+    /* メインコンテンツ */
+    .content-area { padding: 30px; }
+    
+    /* カードデザイン */
+    .admin-card {
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      position: relative;
+    }
+    .card-title { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .card-value { font-size: 2rem; font-weight: bold; color: #fff; margin: 10px 0; }
+    .card-icon { float: right; font-size: 2rem; opacity: 0.2; }
+
+    /* テーブル */
+    .table-dark-custom {
+      color: var(--text-main);
+      background-color: var(--bg-panel);
+    }
+    .table-dark-custom th { border-bottom: 2px solid var(--accent-red); color: #fff; }
+    .table-dark-custom td { border-bottom: 1px solid var(--border-color); }
+
+    /* モバイル対応 */
+    @media (max-width: 768px) {
+      .sidebar { position: fixed; z-index: 1000; height: 100%; width: 250px; left: -250px; }
+      .sidebar.show { left: 0; }
+      .content-area { padding: 15px; }
+    }
+    
+    /* ユーティリティ */
+    .text-red { color: var(--accent-red) !important; }
+    .bg-red { background-color: var(--accent-red) !important; }
+    .btn-red { background-color: var(--accent-red); color: white; border: none; }
+    .btn-red:hover { background-color: var(--accent-hover); color: white; }
+    .section-title { border-left: 4px solid var(--accent-red); padding-left: 15px; margin-bottom: 25px; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <div id="admin-loader">
+    <div class="spinner-border text-danger" role="status" style="width: 3rem; height: 3rem;"></div>
+    <div class="mt-3 text-muted">Dashboard Loading...</div>
+  </div>
+
+  <div class="d-flex">
+    
+    <nav class="sidebar d-flex flex-column flex-shrink-0" id="sidebarMenu">
+      <div class="brand">
+        <i class="bi bi-shield-lock-fill me-2"></i>ADMIN
+      </div>
+      
+      <div class="nav flex-column mb-auto">
+        <a class="nav-link active" onclick="switchAdminView('dashboard', this)">
+          <i class="bi bi-speedometer2"></i>ダッシュボード
+        </a>
+        
+        <div class="small text-muted mt-3 ms-3 mb-1" style="font-size:0.7rem;">ANALYTICS</div>
+        <a class="nav-link" onclick="switchAdminView('sales', this)">
+          <i class="bi bi-graph-up-arrow"></i>売上統計
+        </a>
+        <a class="nav-link" onclick="switchAdminView('staff', this)">
+          <i class="bi bi-people"></i>スタッフ実績
+        </a>
+
+        <div class="small text-muted mt-3 ms-3 mb-1" style="font-size:0.7rem;">SYSTEM & MASTER</div>
+        <a class="nav-link" onclick="switchAdminView('inventory', this)">
+          <i class="bi bi-box-seam"></i>資材・発注
+        </a>
+        <a class="nav-link" onclick="switchAdminView('settings', this)">
+          <i class="bi bi-sliders"></i>システム設定
+        </a>
+      </div>
+
+      <div class="mt-auto border-top border-secondary p-3">
+        <div class="small text-muted mb-2">Login: <?= staffName ?></div>
+        <a href="<?= scriptUrl ?>" class="btn btn-outline-light w-100 btn-sm">
+          <i class="bi bi-box-arrow-left me-2"></i>現場アプリへ
+        </a>
+      </div>
+    </nav>
+
+    <main class="flex-grow-1" style="max-height: 100vh; overflow-y: auto;">
+      
+      <div class="d-md-none p-3 bg-black d-flex align-items-center justify-content-between sticky-top border-bottom border-secondary">
+        <span class="fw-bold text-danger">ADMIN CONSOLE</span>
+        <button class="btn btn-sm btn-outline-light" onclick="document.getElementById('sidebarMenu').classList.toggle('show')">
+          <i class="bi bi-list"></i>
+        </button>
+      </div>
+
+      <div class="content-area">
+
+        <div id="view-dashboard" class="admin-view fade-in">
+          <h4 class="section-title">DASHBOARD</h4>
+          
+          <div class="row">
+            <div class="col-md-3 col-6">
+              <div class="admin-card">
+                <div class="card-title text-red">本日の売上</div>
+                <div class="card-icon"><i class="bi bi-currency-yen"></i></div>
+                <div class="card-value" id="val-sales">--</div>
+                <small id="val-sales-ratio-box" class="text-muted">
+                  <span id="val-sales-ratio">--%</span>
+                </small>
+              </div>
+            </div>
+            <div class="col-md-3 col-6">
+              <div class="admin-card" style="border-color: var(--accent-red);">
+                <div class="card-title text-red">耐圧検査期限切れ</div>
+                <div class="card-icon"><i class="bi bi-exclamation-triangle"></i></div>
+                <div class="card-value text-danger"><span id="val-alert">0</span> <span class="fs-6">件</span></div>
+                <small class="text-muted" id="val-warning-text">期限間近: 0件</small>
+              </div>
+            </div>
+            <div class="col-md-3 col-6">
+              <div class="admin-card">
+                <div class="card-title">発注待ち資材</div>
+                <div class="card-icon"><i class="bi bi-cart"></i></div>
+                <div class="card-value"><span id="val-order">0</span> <span class="fs-6">件</span></div>
+                <small class="text-muted">承認待ちステータス</small>
+              </div>
+            </div>
+            <div class="col-md-3 col-6">
+              <div class="admin-card">
+                <div class="card-title">稼働中スタッフ</div>
+                <div class="card-icon"><i class="bi bi-person-check"></i></div>
+                <div class="card-value"><span id="val-staff">0</span> <span class="fs-6">名</span></div>
+                <small class="text-muted">本日アクティブ</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="row mt-4">
+            <div class="col-md-8">
+              <div class="admin-card">
+                <h6 class="mb-4">直近7日間の売上推移</h6>
+                <canvas id="chart-mini-sales" height="150"></canvas>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="admin-card">
+                <h6 class="mb-3 text-red">重要なお知らせ</h6>
+                <ul class="list-unstyled small text-muted" id="notification-list">
+                  <li class="text-center py-3">読み込み中...</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="view-sales" class="admin-view fade-in" style="display:none;">
+          <h4 class="section-title">SALES ANALYTICS</h4>
+          <div class="alert alert-dark border-secondary text-muted">
+            <i class="bi bi-info-circle me-2"></i>詳細な期間指定や商品別内訳を表示します
+          </div>
+          <div class="admin-card">
+             <canvas id="chart-sales-main" height="100"></canvas>
+          </div>
+        </div>
+
+        <div id="view-staff" class="admin-view fade-in" style="display:none;">
+          <h4 class="section-title">STAFF MANAGEMENT</h4>
+          <div class="d-flex justify-content-end mb-3">
+             <button class="btn btn-red btn-sm"><i class="bi bi-person-plus"></i> 新規スタッフ追加</button>
+          </div>
+          <div class="admin-card p-0 overflow-hidden">
+            <table class="table table-dark-custom mb-0">
+              <thead>
+                <tr>
+                  <th>名前</th>
+                  <th>権限</th>
+                  <th>今月の作業数</th>
+                  <th>状態</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>山田 太郎</td>
+                  <td><span class="badge bg-danger">管理者</span></td>
+                  <td>145</td>
+                  <td class="text-success">稼働中</td>
+                  <td><button class="btn btn-sm btn-outline-secondary">編集</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="view-inventory" class="admin-view fade-in" style="display:none;">
+          <h4 class="section-title">INVENTORY & ORDER</h4>
+          <div class="row">
+             <div class="col-md-6">
+               <div class="admin-card">
+                 <h6>在庫アラート</h6>
+                 <ul class="list-group list-group-flush bg-transparent">
+                   <li class="list-group-item bg-transparent text-muted d-flex justify-content-between">
+                     <span>パッキン (20mm)</span>
+                     <span class="text-danger fw-bold">残り 5個</span>
+                   </li>
+                 </ul>
+               </div>
+             </div>
+          </div>
+        </div>
+
+        <div id="view-settings" class="admin-view fade-in" style="display:none;">
+          <h4 class="section-title">SYSTEM SETTINGS</h4>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="admin-card">
+                <h6 class="text-red mb-3">単価設定</h6>
+                <div class="mb-3">
+                  <label class="form-label text-muted small">基本料金 (¥)</label>
+                  <input type="number" class="form-control bg-dark text-white border-secondary" value="5000">
+                </div>
+                <button class="btn btn-outline-light btn-sm">保存</button>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="admin-card">
+                <h6 class="text-red mb-3">通知設定</h6>
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" checked>
+                  <label class="form-check-label text-muted">LINE通知を有効にする</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // ■ グローバル変数
+    var dashboardChart = null;
+
+    // ■ 画面ロード時
+    window.onload = function() {
+      // サーバーからデータを取得開始
+      fetchDataAndRender();
+    };
+
+    // ■ サーバーデータ取得 & 描画
+    function fetchDataAndRender() {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          renderDashboard(data);
+          hideLoader();
+        })
+        .withFailureHandler(function(e) {
+          alert("データ取得に失敗しました: " + e.message);
+          hideLoader();
+        })
+        .getAdminDashboardData();
+    }
+
+    function renderDashboard(data) {
+      // 1. カード数値の更新
+      document.getElementById('val-sales').innerText = '¥' + data.sales.toLocaleString();
+      
+      // 前日比の計算と表示
+      var ratioEl = document.getElementById('val-sales-ratio');
+      var ratioBox = document.getElementById('val-sales-ratio-box');
+      if (data.salesRatio > 0) {
+        ratioEl.innerHTML = '<i class="bi bi-arrow-up"></i> 前日比 +' + data.salesRatio + '%';
+        ratioBox.className = 'text-success small';
+      } else if (data.salesRatio < 0) {
+        ratioEl.innerHTML = '<i class="bi bi-arrow-down"></i> 前日比 ' + data.salesRatio + '%';
+        ratioBox.className = 'text-danger small';
+      } else {
+        ratioEl.innerHTML = '前日比 ±0%';
+        ratioBox.className = 'text-muted small';
+      }
+
+      document.getElementById('val-alert').innerText = data.alertCount;
+      document.getElementById('val-warning-text').innerText = "期限間近: " + data.warningCount + "件";
+      document.getElementById('val-order').innerText = data.orderCount;
+      document.getElementById('val-staff').innerText = data.activeStaff;
+
+      // 2. お知らせリスト更新
+      var listEl = document.getElementById('notification-list');
+      listEl.innerHTML = '';
+      if (!data.notifications || data.notifications.length === 0) {
+        listEl.innerHTML = '<li class="text-muted small">現在お知らせはありません</li>';
+      } else {
+        data.notifications.forEach(function(item) {
+          var badgeClass = (item.type === 'Warn') ? 'bg-danger' : 'bg-secondary';
+          var li = document.createElement('li');
+          li.className = 'mb-2 border-bottom border-secondary pb-2';
+          li.innerHTML = '<span class="badge ' + badgeClass + ' me-2">' + item.type + '</span>' + item.msg;
+          listEl.appendChild(li);
+        });
+      }
+
+      // 3. チャート更新
+      renderMiniChart(data.chartLabels, data.chartData);
+    }
+
+    // ■ チャート描画関数
+    function renderMiniChart(labels, data) {
+      const ctx = document.getElementById('chart-mini-sales');
+      if(!ctx) return;
+
+      // 既存チャートがあれば破棄
+      if(dashboardChart) dashboardChart.destroy();
+
+      dashboardChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: '売上',
+            data: data,
+            borderColor: '#d32f2f',
+            backgroundColor: 'rgba(211, 47, 47, 0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+            pointBackgroundColor: '#d32f2f'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { 
+            legend: { display: false },
+            tooltip: { 
+              mode: 'index', intersect: false,
+              backgroundColor: 'rgba(0,0,0,0.8)',
+              titleColor: '#e0e0e0',
+              bodyColor: '#e0e0e0'
+            }
+          },
+          scales: {
+            x: { 
+              grid: { display: false, color: '#333' }, 
+              ticks: { color: '#888', font: {size: 10} } 
+            },
+            y: { 
+              grid: { color: '#333', borderDash: [2, 4] }, 
+              ticks: { color: '#888', font: {size: 10}, callback: function(v){return '¥'+v/1000+'k';} },
+              beginAtZero: true
+            }
+          },
+          interaction: {
+            mode: 'nearest',
+            axis: 'x',
+            intersect: false
+          }
+        }
+      });
+    }
+
+    function hideLoader() {
+      var loader = document.getElementById('admin-loader');
+      if(loader) {
+        loader.style.opacity = '0';
+        setTimeout(() => { loader.style.display = 'none'; }, 500);
+      }
+    }
+
+    // ■ 画面切り替えロジック
+    function switchAdminView(viewId, navElement) {
+      // 1. ビューの切り替え
+      document.querySelectorAll('.admin-view').forEach(el => el.style.display = 'none');
+      var target = document.getElementById('view-' + viewId);
+      if(target) target.style.display = 'block';
+
+      // 2. ナビゲーションのアクティブ化
+      if(navElement) {
+        document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+        navElement.classList.add('active');
+      }
+
+      // 3. スマホの場合サイドバーを閉じる
+      if(window.innerWidth < 768) {
+        document.getElementById('sidebarMenu').classList.remove('show');
+      }
+    }
+  </script>
+</body>
+</html>

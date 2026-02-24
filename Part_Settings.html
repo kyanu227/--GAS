@@ -1,0 +1,418 @@
+<div class="container-fluid mt-3 mb-5" style="max-width: 900px;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold text-secondary"><i class="bi bi-gear-fill me-2"></i> 設定変更 </h5>
+    <div class="d-flex align-items-center">
+      <span id="current-role-badge" class="badge bg-secondary me-2">読込中...</span>
+      <button class="btn btn-sm btn-outline-secondary" onclick="initSettings()">
+        <i class="bi bi-arrow-clockwise"></i> 再読込
+      </button>
+    </div>
+  </div>
+
+  <ul class="nav nav-tabs mb-3" id="settingsTab" role="tablist">
+    <li class="nav-item" role="presentation"><button class="nav-link active fw-bold" id="tab-staff-btn" data-bs-toggle="tab" data-bs-target="#tab-staff" type="button" role="tab"><i class="bi bi-people me-1"></i> 担当者</button></li>
+    <li class="nav-item" role="presentation"><button class="nav-link fw-bold" id="tab-dest-btn" data-bs-toggle="tab" data-bs-target="#tab-dest" type="button" role="tab"><i class="bi bi-building me-1"></i> 貸出先</button></li>
+    <li class="nav-item" role="presentation"><button class="nav-link fw-bold" id="tab-order-btn" data-bs-toggle="tab" data-bs-target="#tab-order" type="button" role="tab"><i class="bi bi-box-seam me-1"></i> 発注品目</button></li>
+    <li class="nav-item" role="presentation"><button class="nav-link fw-bold text-danger" id="tab-notify-btn" data-bs-toggle="tab" data-bs-target="#tab-notify" type="button" role="tab"><i class="bi bi-bell-fill me-1"></i> 通知・システム</button></li>
+    <li class="nav-item" role="presentation" id="tab-login-li" style="display:none;"><button class="nav-link fw-bold text-dark" id="tab-login-btn" data-bs-toggle="tab" data-bs-target="#tab-login" type="button" role="tab"><i class="bi bi-shield-lock-fill me-1"></i> ログイン設定</button></li>
+  </ul>
+
+  <div class="tab-content bg-white p-3 border border-top-0 rounded-bottom shadow-sm" id="settingsTabContent">
+    
+    <div class="tab-pane fade show active" id="tab-staff" role="tabpanel">
+      <div class="d-flex justify-content-between mb-2">
+        <small class="text-muted align-self-end">※「停止」にするとログイン不可になります。</small>
+        <button class="btn btn-sm btn-success fw-bold" onclick="addStaffRow()"><i class="bi bi-plus-lg"></i> 追加 </button>
+      </div>
+      <div class="table-responsive mb-3">
+        <table class="table table-bordered table-hover align-middle" id="table-staff">
+          <thead class="bg-light text-center small text-muted"><tr><th>名前</th><th style="min-width:200px;">Email</th><th class="col-passcode" style="display:none;">パスコード</th><th>権限</th><th>ランク</th><th>状態</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <button class="btn btn-primary w-100 fw-bold" onclick="saveStaff()"><i class="bi bi-save"></i> 担当者リストを保存 </button>
+    </div>
+
+    <div class="tab-pane fade" id="tab-dest" role="tabpanel">
+      <div class="d-flex justify-content-between mb-2">
+         <small class="text-muted align-self-end">※「停止」にすると選択肢から消えます。</small>
+        <button class="btn btn-sm btn-success fw-bold" onclick="addDestRow()"><i class="bi bi-plus-lg"></i> 追加 </button>
+      </div>
+      <div class="table-responsive mb-3">
+        <table class="table table-bordered table-hover align-middle" id="table-dest">
+          <thead class="bg-light text-center small text-muted"><tr><th>表示名</th><th>正式名称</th><th>10L単価</th><th>12L単価</th><th>状態</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <button class="btn btn-primary w-100 fw-bold" onclick="saveDest()"><i class="bi bi-save"></i> 貸出先リストを保存 </button>
+    </div>
+
+    <div class="tab-pane fade" id="tab-order" role="tabpanel">
+      <div class="alert alert-light border small text-muted mb-3">
+        <strong><i class="bi bi-info-circle"></i> ヒント</strong><br>タンク: A列=種類, B列=容量。<br>備品: A列=表示順, B列=品名。
+      </div>
+      <div class="table-responsive mb-3">
+        <table class="table table-bordered table-hover align-middle" id="table-order">
+          <thead class="bg-light text-center small text-muted"><tr><th>種類 / 順</th><th>容量 / 品名</th><th>単価</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="d-flex justify-content-between mb-4">
+        <div>
+          <button class="btn btn-sm btn-outline-primary fw-bold me-2" onclick="addOrderRow('tank')"><i class="bi bi-plus-lg"></i> タンク追加</button>
+          <button class="btn btn-sm btn-outline-success fw-bold" onclick="addOrderRow('supply')"><i class="bi bi-plus-lg"></i> 備品追加</button>
+        </div>
+      </div>
+      <button class="btn btn-primary w-100 fw-bold" onclick="saveOrder()"><i class="bi bi-save"></i> 発注マスタを保存 </button>
+    </div>
+
+    <div class="tab-pane fade" id="tab-notify" role="tabpanel">
+      
+      <div id="admin-line-settings-area" style="display:none;" class="mb-4 pb-3 border-bottom">
+        <h6 class="fw-bold text-success"><i class="bi bi-line me-2"></i>LINE通知設定 (Messaging API)</h6>
+        <div class="small text-muted mb-2">
+          LINEグループごとに「どの通知を受け取るか」を選択してください。<br>
+          ※複数の項目にチェックを入れることができます。
+        </div>
+        
+        <div id="line-config-container"></div>
+        
+        <button class="btn btn-sm btn-outline-success" onclick="addLineConfigRow()"><i class="bi bi-plus-lg"></i> 送信先を追加 </button>
+      </div>
+
+      <div class="mb-4 pb-3 border-bottom">
+        <h6 class="fw-bold text-primary"><i class="bi bi-envelope me-2"></i>通知先メールアドレス</h6>
+        <div class="mb-2" id="email-list-container"></div>
+        <button class="btn btn-sm btn-outline-secondary" onclick="addEmailRow('')"><i class="bi bi-plus"></i> 追加 </button>
+      </div>
+
+      <div class="mb-3">
+        <h6 class="fw-bold text-secondary"><i class="bi bi-clock-history me-2"></i>期限・有効期間設定</h6>
+        <div class="row g-3 align-items-center mb-2">
+          <div class="col-auto"><label class="col-form-label small">アラート表示開始:</label></div>
+          <div class="col-auto">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text">期限の</span>
+              <input type="number" id="conf-alert-months" class="form-control text-center fw-bold" value="6" style="width:60px;">
+              <span class="input-group-text">ヶ月前から</span>
+            </div>
+          </div>
+        </div>
+        <div class="row g-3 align-items-center">
+          <div class="col-auto"><label class="col-form-label small">耐圧検査有効期間:</label></div>
+          <div class="col-auto">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text">完了登録から</span>
+              <input type="number" id="conf-validity-years" class="form-control text-center fw-bold" value="3" style="width:60px;">
+              <span class="input-group-text">年後まで</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <button class="btn btn-danger w-100 fw-bold" onclick="saveNotify()"><i class="bi bi-cloud-upload"></i> システム設定を保存 </button>
+    </div>
+
+    <div class="tab-pane fade" id="tab-login" role="tabpanel">
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-dark text-white fw-bold"><i class="bi bi-shield-lock me-2"></i>ログイン認証モード設定</div>
+        <div class="card-body">
+          <div class="d-grid gap-2 mb-3">
+            <div class="btn-group" role="group">
+              <input type="radio" class="btn-check" name="loginMode" id="modeGoogle" value="GOOGLE" autocomplete="off">
+              <label class="btn btn-outline-primary fw-bold py-3" for="modeGoogle"><i class="bi bi-google me-1"></i> Googleアカウント優先</label>
+              <input type="radio" class="btn-check" name="loginMode" id="modePasscode" value="PASSCODE" autocomplete="off">
+              <label class="btn btn-outline-danger fw-bold py-3" for="modePasscode"><i class="bi bi-key-fill me-1"></i> パスコード必須</label>
+            </div>
+          </div>
+          <div class="text-end"><button class="btn btn-dark" onclick="saveLoginSettings()"><i class="bi bi-save me-1"></i> 設定を保存</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div style="height:100px;"></div>
+</div>
+
+<script>
+// --- グローバル変数 ---
+var GLOBAL_USER_ROLE = "";
+var USER_PASSCODE = "";
+
+// --- ヘルパー ---
+function getCurrentUserPasscode() {
+  if (USER_PASSCODE) return USER_PASSCODE;
+  var stored = localStorage.getItem('app_user_passcode');
+  if (stored) { USER_PASSCODE = stored; return stored; }
+  return "";
+}
+
+// --- 初期化 ---
+function initSettings() {
+  document.querySelector('#table-staff tbody').innerHTML = '<tr><td colspan="6" class="text-center py-4"><span class="spinner-border text-primary"></span></td></tr>';
+  var pass = getCurrentUserPasscode();
+  google.script.run
+    .withSuccessHandler(renderSettings)
+    .withFailureHandler(function(error) { alert("初期データ読み込みエラー:\n" + error.message); })
+    .getSettingsInitData(pass);
+}
+
+function renderSettings(data) {
+  if(data && data.success === false) { alert("エラー:\n" + data.message); return; }
+  if(data.currentUser) { GLOBAL_USER_ROLE = data.currentUser.role; updateRoleBadge(data.currentUser); }
+  updateStaffTableHeader();
+  if(data.staff) renderStaffTable(data.staff);
+  if(data.dest) renderDestTable(data.dest);
+  if(data.orderMaster) renderOrderTable(data.orderMaster); 
+  if(data.notify) renderNotifySettings(data.notify); 
+  var isFullAdmin = checkIsFullAdmin();
+  if(isFullAdmin) {
+    document.getElementById('tab-login-li').style.display = 'block';
+    if(data.loginMode) {
+      if(data.loginMode === 'PASSCODE') document.getElementById('modePasscode').checked = true;
+      else document.getElementById('modeGoogle').checked = true;
+    }
+  }
+}
+
+function updateRoleBadge(user) {
+  var container = document.querySelector('.d-flex.align-items-center.mb-3 .d-flex');
+  var oldBadge = document.getElementById('current-role-badge');
+  if(oldBadge) oldBadge.remove();
+  var badge = document.createElement('span');
+  badge.id = 'current-role-badge';
+  badge.className = "badge me-2";
+  var roleText = user.role || "一般";
+  var methodText = (user.authMethod === 'PASSCODE') ? '🔑' : '📧';
+  badge.innerText = methodText + " " + user.name + " (" + roleText + ")";
+  if(roleText.indexOf("管理者") !== -1 && roleText.indexOf("準") === -1) badge.classList.add("bg-danger");
+  else if(roleText.indexOf("準管理者") !== -1) badge.classList.add("bg-warning", "text-dark");
+  else badge.classList.add("bg-secondary");
+  if(container) container.insertBefore(badge, container.firstChild);
+}
+
+function checkIsFullAdmin() {
+  var role = GLOBAL_USER_ROLE || "";
+  return (role.indexOf('管理者') !== -1 && role.indexOf('準') === -1) || role.toLowerCase().indexOf('admin') !== -1;
+}
+function checkIsSemiAdmin() { return (GLOBAL_USER_ROLE || "").indexOf('準管理者') !== -1; }
+
+// --- Staff Table Functions ---
+function updateStaffTableHeader() {
+  var displayStyle = (checkIsFullAdmin() || checkIsSemiAdmin()) ? 'table-cell' : 'none';
+  document.querySelectorAll('.col-passcode').forEach(th => th.style.display = displayStyle);
+}
+function renderStaffTable(list) {
+  var tbody = document.querySelector('#table-staff tbody'); tbody.innerHTML = '';
+  list.forEach(function(item) { tbody.appendChild(createStaffRow(item)); });
+}
+function createStaffRow(item) {
+  var tr = document.createElement('tr');
+  var isFull = checkIsFullAdmin();
+  var isSemi = checkIsSemiAdmin();
+  var isStopped = (item.status === '停止');
+  if(isStopped) tr.classList.add('table-secondary', 'text-muted');
+  
+  var btnHtml = isStopped
+    ? '<button class="btn btn-sm btn-outline-primary p-1" onclick="toggleRowStatus(this, \'稼働\')"><i class="bi bi-arrow-counterclockwise"></i></button>'
+    : '<button class="btn btn-sm btn-link text-danger p-0" onclick="toggleRowStatus(this, \'停止\')"><i class="bi bi-x-circle-fill fs-5"></i></button>';
+
+  var passVal = item.passcode || '';
+  var passInputHtml = '';
+  var targetIsAdmin = (item.role && item.role.indexOf('管理者') !== -1 && item.role.indexOf('準') === -1);
+
+  if (isFull) {
+    passInputHtml = `<div class="input-group input-group-sm"><input type="text" class="form-control val-passcode text-center font-monospace" value="${passVal}" placeholder="Pass" maxlength="6" ${isStopped?'disabled':''}><button class="btn btn-outline-primary" type="button" tabindex="-1" onclick="toggleVisibility(this, 'val-passcode')"><i class="bi bi-eye"></i></button></div>`;
+  } else if (isSemi) {
+    if (targetIsAdmin) passInputHtml = `<input type="text" class="form-control form-control-sm text-center text-muted" placeholder="閲覧不可" disabled>`;
+    else passInputHtml = `<div class="input-group input-group-sm"><input type="password" class="form-control val-passcode text-center font-monospace" value="${passVal}" placeholder="Pass" maxlength="6" ${isStopped?'disabled':''}><button class="btn btn-outline-secondary" type="button" tabindex="-1" onclick="toggleVisibility(this, 'val-passcode')"><i class="bi bi-eye-slash"></i></button></div>`;
+  } else {
+    passInputHtml = `<input type="hidden" class="val-passcode" value="${passVal}">`;
+  }
+
+  var adminStyle = isFull ? '' : 'visibility: hidden;';
+  var passDisplay = (isFull || isSemi) ? 'table-cell' : 'none';
+
+  tr.innerHTML = `
+    <td><input type="text" class="form-control form-control-sm val-name fw-bold" value="${item.name || ''}" ${isStopped?'disabled':''}></td>
+    <td><input type="email" class="form-control form-control-sm val-email font-monospace" value="${item.email || ''}" ${isStopped?'disabled':''}></td>
+    <td class="col-passcode" style="display:${passDisplay};">${passInputHtml}</td>
+    <td><div style="${adminStyle}"><select class="form-select form-select-sm val-role" ${isStopped?'disabled':''}><option value="一般" ${item.role==='一般'?'selected':''}>一般</option><option value="準管理者" ${item.role==='準管理者'?'selected':''}>準管理者</option><option value="管理者" ${item.role==='管理者'?'selected':''}>管理者</option></select></div></td>
+    <td><div style="${adminStyle}"><select class="form-select form-select-sm val-rank" ${isStopped?'disabled':''}><option value="レギュラー" ${item.rank==='レギュラー'?'selected':''}>レギュラー</option><option value="ブロンズ" ${item.rank==='ブロンズ'?'selected':''}>ブロンズ</option><option value="シルバー" ${item.rank==='シルバー'?'selected':''}>シルバー</option><option value="ゴールド" ${item.rank==='ゴールド'?'selected':''}>ゴールド</option><option value="プラチナ" ${item.rank==='プラチナ'?'selected':''}>プラチナ</option></select></div></td>
+    <td class="text-center align-middle"><input type="hidden" class="val-status" value="${item.status || '稼働'}">${btnHtml}</td>
+  `;
+  return tr;
+}
+function toggleVisibility(btn, targetClass) {
+  var input = btn.closest('tr').querySelector('.' + targetClass);
+  var icon = btn.querySelector('i');
+  if (input.type === 'password') { input.type = 'text'; icon.className = 'bi bi-eye'; btn.classList.replace('btn-outline-secondary', 'btn-outline-primary'); }
+  else { input.type = 'password'; icon.className = 'bi bi-eye-slash'; btn.classList.replace('btn-outline-primary', 'btn-outline-secondary'); }
+}
+function addStaffRow() { document.querySelector('#table-staff tbody').appendChild(createStaffRow({name:'', email:'', passcode:'', role:'一般', rank:'レギュラー', status:'稼働'})); }
+function saveStaff() {
+  var list = [];
+  document.querySelectorAll('#table-staff tbody tr').forEach(function(tr) {
+    var name = tr.querySelector('.val-name').value.trim();
+    if(name) list.push({name:name, email:tr.querySelector('.val-email').value.trim(), passcode:tr.querySelector('.val-passcode')?tr.querySelector('.val-passcode').value.trim():"", role:tr.querySelector('.val-role').value, rank:tr.querySelector('.val-rank').value, status:tr.querySelector('.val-status').value});
+  });
+  if(confirm("更新しますか？")) google.script.run.withSuccessHandler(function(res){ alert(res.message); initSettings(); }).updateStaffMaster({list:list, userPasscode:getCurrentUserPasscode()});
+}
+function toggleRowStatus(btn, newStatus) {
+  var tr = btn.closest('tr');
+  var inputs = tr.querySelectorAll('input:not([type=hidden]), select, button:not([onclick*="toggleRowStatus"])');
+  tr.querySelector('.val-status').value = newStatus;
+  var isStopped = (newStatus === '停止');
+  if(isStopped) { tr.classList.add('table-secondary', 'text-muted'); inputs.forEach(el => el.disabled=true); btn.className="btn btn-sm btn-outline-primary p-1"; btn.innerHTML='<i class="bi bi-arrow-counterclockwise"></i>'; btn.setAttribute('onclick', "toggleRowStatus(this, '稼働')"); }
+  else { tr.classList.remove('table-secondary', 'text-muted'); inputs.forEach(el => { if(!checkIsFullAdmin() && (el.classList.contains('val-role')||el.classList.contains('val-rank'))) return; el.disabled=false; }); btn.className="btn btn-sm btn-link text-danger p-0"; btn.innerHTML='<i class="bi bi-x-circle-fill fs-5"></i>'; btn.setAttribute('onclick', "toggleRowStatus(this, '停止')"); }
+}
+
+// --- Dest & Order Functions ---
+function renderDestTable(list) { var tbody = document.querySelector('#table-dest tbody'); tbody.innerHTML = ''; list.forEach(item => tbody.appendChild(createDestRow(item))); }
+function createDestRow(item) {
+  var tr = document.createElement('tr');
+  var isStopped = (item.status === '停止');
+  if(isStopped) tr.classList.add('table-secondary', 'text-muted');
+  tr.innerHTML = `<td><input type="text" class="form-control form-control-sm val-name fw-bold" value="${item.name||''}" ${isStopped?'disabled':''}></td><td><input type="text" class="form-control form-control-sm val-formal" value="${item.formalName||''}" ${isStopped?'disabled':''}></td><td><input type="number" class="form-control form-control-sm val-price10 text-end" value="${item.price10||0}" ${isStopped?'disabled':''}></td><td><input type="number" class="form-control form-control-sm val-price12 text-end" value="${item.price12||0}" ${isStopped?'disabled':''}></td><td class="text-center align-middle"><input type="hidden" class="val-status" value="${item.status||'稼働'}">${isStopped?'<button class="btn btn-sm btn-outline-primary p-1" onclick="toggleRowStatus(this,\'稼働\')"><i class="bi bi-arrow-counterclockwise"></i></button>':'<button class="btn btn-sm btn-link text-danger p-0" onclick="toggleRowStatus(this,\'停止\')"><i class="bi bi-x-circle-fill fs-5"></i></button>'}</td>`;
+  return tr;
+}
+function addDestRow() { document.querySelector('#table-dest tbody').appendChild(createDestRow({name:'', formalName:'', price10:0, price12:0, status:'稼働'})); }
+function saveDest() { var list=[]; document.querySelectorAll('#table-dest tbody tr').forEach(tr => { if(tr.querySelector('.val-name').value.trim()) list.push({name:tr.querySelector('.val-name').value.trim(), formalName:tr.querySelector('.val-formal').value.trim(), price10:tr.querySelector('.val-price10').value, price12:tr.querySelector('.val-price12').value, status:tr.querySelector('.val-status').value}); }); if(confirm("更新しますか？")) google.script.run.withSuccessHandler(res => alert(res.message)).updateDestMaster({list:list}); }
+
+function renderOrderTable(list) {
+  var tbody = document.querySelector('#table-order tbody'); tbody.innerHTML = '';
+  var tanks = list.filter(i => isNaN(i.colA));
+  var supplies = list.filter(i => !isNaN(i.colA));
+  supplies.sort((a,b) => Number(a.colA)-Number(b.colA));
+  if(tanks.length>0) { tbody.insertAdjacentHTML('beforeend', '<tr class="table-info"><td colspan="4" class="small fw-bold text-primary">タンク</td></tr>'); tanks.forEach(i => tbody.appendChild(createOrderRow(i,'tank'))); }
+  tbody.insertAdjacentHTML('beforeend', '<tr class="table-secondary"><td colspan="4" class="small fw-bold text-dark">備品</td></tr>');
+  if(supplies.length===0 && tanks.length===0) addOrderRow('supply'); else supplies.forEach(i => tbody.appendChild(createOrderRow(i,'supply')));
+}
+function createOrderRow(item, type) {
+  var tr = document.createElement('tr'); tr.setAttribute('data-type', type);
+  tr.innerHTML = `<td><input type="text" class="form-control form-control-sm val-cola text-center" value="${item.colA||''}"></td><td><input type="text" class="form-control form-control-sm val-colb fw-bold" value="${item.colB||''}"></td><td><input type="number" class="form-control form-control-sm val-price text-end" value="${item.price||0}"></td><td class="text-center"><button class="btn btn-sm btn-link text-danger p-0" onclick="this.closest('tr').remove()"><i class="bi bi-x-circle-fill fs-5"></i></button></td>`;
+  return tr;
+}
+function addOrderRow(type) { var tbody=document.querySelector('#table-order tbody'); var r=createOrderRow({colA:'',colB:'',price:0},type); if(type==='tank'){ var h=tbody.querySelector('.table-info'); if(h) h.after(r); else tbody.prepend(r); } else tbody.appendChild(r); }
+function saveOrder() { var list=[]; document.querySelectorAll('#table-order tbody tr').forEach(tr => { if(!tr.classList.contains('table-info') && !tr.classList.contains('table-secondary') && tr.querySelector('.val-colb').value.trim()) list.push({colA:tr.querySelector('.val-cola').value.trim(), colB:tr.querySelector('.val-colb').value.trim(), price:tr.querySelector('.val-price').value}); }); if(confirm("更新しますか？")) google.script.run.withSuccessHandler(res => alert(res.message)).updateOrderMaster({list:list}); }
+
+// --- Notify (Multiple Checkboxes Support) ---
+function renderNotifySettings(conf) {
+  if(!conf) return;
+  document.getElementById('conf-alert-months').value = conf.alertMonths;
+  document.getElementById('conf-validity-years').value = conf.validityYears;
+  
+  var lineContainer = document.getElementById('line-config-container');
+  lineContainer.innerHTML = '';
+  
+  if (checkIsFullAdmin()) {
+    document.getElementById('admin-line-settings-area').style.display = 'block';
+    if (conf.lineConfigs && Array.isArray(conf.lineConfigs) && conf.lineConfigs.length > 0) {
+      conf.lineConfigs.forEach(item => addLineConfigRow(item));
+    } else {
+      // 旧互換(string target)があれば配列に直して表示
+      if (conf.lineToken) {
+        var t = conf.target || 'ALL'; 
+        // 以前のtargetが文字列だった場合も、UI上は配列として扱う
+        var targets = (t === 'ALL') ? ['INSPECTION', 'DAILY', 'SALES', 'STAFF'] : [t];
+        addLineConfigRow({ name: 'Default', token: conf.lineToken, groupId: conf.lineGroupId, targets: targets });
+      } else {
+        addLineConfigRow();
+      }
+    }
+  } else {
+    document.getElementById('admin-line-settings-area').style.display = 'none';
+  }
+  
+  var eContainer = document.getElementById('email-list-container');
+  eContainer.innerHTML = '';
+  if(conf.emails) conf.emails.forEach(e => addEmailRow(e));
+}
+
+// ★修正: チェックボックス方式のLINE行追加
+function addLineConfigRow(data) {
+  var item = data || { name: '', token: '', groupId: '', targets: [] };
+  // targetsが未定義または文字列なら配列化
+  var currentTargets = Array.isArray(item.targets) ? item.targets : (item.target ? [item.target] : []);
+  if(item.target === 'ALL') currentTargets = ['INSPECTION', 'DAILY', 'SALES', 'STAFF'];
+
+  var div = document.createElement('div');
+  div.className = "card p-3 mb-3 bg-light border";
+  
+  // チェック状態の判定
+  const isChecked = (val) => currentTargets.includes(val) ? 'checked' : '';
+
+  div.innerHTML = `
+    <div class="d-flex justify-content-between mb-2 align-items-center">
+      <input type="text" class="form-control form-control-sm val-line-name fw-bold" placeholder="名称 (例: 整備班)" value="${item.name || ''}" style="max-width:200px;">
+      <button class="btn btn-sm btn-outline-danger" onclick="this.closest('.card').remove()"><i class="bi bi-trash"></i> 削除</button>
+    </div>
+    <div class="mb-2">
+      <textarea class="form-control form-control-sm font-monospace val-line-token" rows="2" placeholder="チャネルアクセストークン (必須)">${item.token || ''}</textarea>
+    </div>
+    <div class="input-group input-group-sm mb-2">
+      <span class="input-group-text">GroupID</span>
+      <input type="text" class="form-control font-monospace val-line-group" placeholder="C... (任意)" value="${item.groupId || ''}">
+    </div>
+    <div class="border-top pt-2">
+      <div class="small fw-bold text-muted mb-1">通知対象を選択:</div>
+      <div class="d-flex flex-wrap gap-3">
+        <div class="form-check">
+          <input class="form-check-input val-check-target" type="checkbox" value="INSPECTION" id="chk-insp-${Date.now()}" ${isChecked('INSPECTION')}>
+          <label class="form-check-label small" for="chk-insp-${Date.now()}">耐圧検査</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input val-check-target" type="checkbox" value="DAILY" id="chk-daily-${Date.now()}" ${isChecked('DAILY')}>
+          <label class="form-check-label small" for="chk-daily-${Date.now()}">日報</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input val-check-target" type="checkbox" value="SALES" id="chk-sales-${Date.now()}" ${isChecked('SALES')}>
+          <label class="form-check-label small" for="chk-sales-${Date.now()}">売上</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input val-check-target" type="checkbox" value="STAFF" id="chk-staff-${Date.now()}" ${isChecked('STAFF')}>
+          <label class="form-check-label small" for="chk-staff-${Date.now()}">スタッフ</label>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('line-config-container').appendChild(div);
+}
+
+function addEmailRow(val) { var d=document.createElement('div'); d.className='input-group mb-2'; d.innerHTML=`<input type="email" class="form-control val-email" value="${val}" placeholder="user@example.com"><button class="btn btn-outline-danger" onclick="this.parentElement.remove()"><i class="bi bi-x"></i></button>`; document.getElementById('email-list-container').appendChild(d); }
+
+function saveNotify() {
+  var alertMonths = parseInt(document.getElementById('conf-alert-months').value) || 6;
+  var validityYears = parseInt(document.getElementById('conf-validity-years').value) || 3;
+  var emails = [];
+  document.querySelectorAll('#email-list-container .val-email').forEach(el => { if(el.value.trim()) emails.push(el.value.trim()); });
+  
+  var lineConfigs = [];
+  if (checkIsFullAdmin()) {
+    document.querySelectorAll('#line-config-container .card').forEach(card => {
+      var name = card.querySelector('.val-line-name').value.trim();
+      var token = card.querySelector('.val-line-token').value.trim();
+      var groupId = card.querySelector('.val-line-group').value.trim();
+      
+      // チェックボックスの値を配列として収集
+      var targets = [];
+      card.querySelectorAll('.val-check-target:checked').forEach(chk => {
+        targets.push(chk.value);
+      });
+      
+      if (token) {
+        lineConfigs.push({ name: name, token: token, groupId: groupId, targets: targets });
+      }
+    });
+  }
+  
+  if(confirm("更新しますか？")) google.script.run.withSuccessHandler(res => alert(res.message)).updateNotifySettings({ alertMonths:alertMonths, validityYears:validityYears, emails:emails, lineConfigs:lineConfigs });
+}
+
+// --- Login ---
+function saveLoginSettings() {
+  var sel = document.querySelector('input[name="loginMode"]:checked');
+  if(!sel) return;
+  if(confirm("ログインモードを変更しますか？")) google.script.run.withSuccessHandler(res => { if(res.success){ alert(res.message); if(typeof GLOBAL_LOGIN_MODE!=='undefined') GLOBAL_LOGIN_MODE=sel.value; } else alert("エラー: "+res.message); }).saveLoginSettings({ mode:sel.value, userPasscode:getCurrentUserPasscode() });
+}
+</script>
