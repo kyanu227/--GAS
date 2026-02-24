@@ -1,0 +1,10 @@
+{
+    "name": "tank-management",
+    "version": "1.0.0",
+    "description": "タンク管理GASプロジェクト",
+    "scripts": {
+        "deploy": "clasp push && git add . && git commit -m \"Auto-deploy from local\" && git push"
+    },
+    "author": "",
+    "license": "ISC"
+}
