@@ -15,7 +15,7 @@ function getDetailedSalesStats() {
     var prevMonth = prevMonthDate.getMonth() + 1;
 
     // 単価情報取得
-    var priceMap = getPriceMasterMap_();
+    var priceMap = getPriceMap_();
     if (Object.keys(priceMap).length === 0) priceMap = { "貸出": 5000, "自社利用": 0, "充填": 2000 };
 
     // 今月分を計算
