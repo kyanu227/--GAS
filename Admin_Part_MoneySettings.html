@@ -1,0 +1,153 @@
+<div class="container-fluid mt-3 mb-5" style="max-width: 900px;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold text-success"><i class="bi bi-currency-yen me-2"></i> 金銭・ランク設定 </h5>
+        <div class="d-flex align-items-center">
+            <button class="btn btn-sm btn-outline-secondary" onclick="initMoneySettings()">
+                <i class="bi bi-arrow-clockwise"></i> 再読込
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white p-4 border rounded shadow-sm text-dark">
+        <!-- 単価設定 -->
+        <div class="mb-4 pb-3 border-bottom">
+            <div class="d-flex justify-content-between mb-2">
+                <h6 class="fw-bold text-success"><i class="bi bi-tag-fill me-2"></i>作業単価マスタ</h6>
+                <button class="btn btn-sm btn-outline-success fw-bold" onclick="addMoneyPriceRow()"><i
+                        class="bi bi-plus-lg"></i> 追加</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle small" id="table-money-price">
+                    <thead class="bg-light text-center text-muted">
+                        <tr>
+                            <th style="min-width:100px;">アクション</th>
+                            <th style="min-width:60px;">基本経費</th>
+                            <th style="min-width:60px;">獲得スコア</th>
+                            <th>ﾚｷﾞｭﾗｰ</th>
+                            <th>ﾌﾞﾛﾝｽﾞ</th>
+                            <th>ｼﾙﾊﾞｰ</th>
+                            <th>ｺﾞｰﾙﾄﾞ</th>
+                            <th>ﾌﾟﾗﾁﾅ</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ランク条件設定 -->
+        <div class="mb-4 pb-3 border-bottom">
+            <h6 class="fw-bold text-primary"><i class="bi bi-trophy-fill me-2"></i>ランク昇格条件 (必要スコア)</h6>
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm align-middle mb-2 w-auto" id="table-money-rank">
+                    <thead class="bg-light text-center text-muted small">
+                        <tr>
+                            <th>ランク名</th>
+                            <th>必要スコア(以上)</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <small class="text-muted">※スコアが高い順に判定されます。レギュラーの「0」は変更しないでください。</small>
+        </div>
+
+        <button class="btn btn-success w-100 fw-bold py-3 fs-5" onclick="saveMoneySettings()"><i class="bi bi-save"></i>
+            金銭・ランク設定を保存する </button>
+    </div>
+</div>
+
+<script>
+    function initMoneySettings() {
+        var tbodyPrice = document.querySelector('#table-money-price tbody');
+        if (tbodyPrice) tbodyPrice.innerHTML = '<tr><td colspan="9" class="text-center py-4"><span class="spinner-border text-success"></span></td></tr>';
+
+        google.script.run
+            .withSuccessHandler(function (data) {
+                if (data && data.success === false) { alert("エラー:\n" + data.message); return; }
+                if (data.moneyPrices && data.moneyRanks) renderMoneySettings(data.moneyPrices, data.moneyRanks);
+            })
+            .withFailureHandler(function (error) { alert("初期データ読み込みエラー:\n" + error.message); })
+            .getSettingsInitData(""); // Settings機能の読込を再利用
+    }
+
+    function renderMoneySettings(prices, ranks) {
+        var tbodyPrice = document.querySelector('#table-money-price tbody');
+        var tbodyRank = document.querySelector('#table-money-rank tbody');
+        if (!tbodyPrice || !tbodyRank) return;
+
+        tbodyPrice.innerHTML = '';
+        tbodyRank.innerHTML = '';
+
+        if (prices) prices.forEach(p => tbodyPrice.appendChild(createMoneyPriceRow(p)));
+        if (prices && prices.length === 0) addMoneyPriceRow();
+
+        if (ranks) {
+            ranks.forEach(r => {
+                var tr = document.createElement('tr');
+                tr.innerHTML = `
+        <td class="text-center fw-bold bg-light"><input type="hidden" class="val-rank-name" value="${r.name}">${r.name}</td>
+        <td><input type="number" class="form-control form-control-sm text-end val-rank-score" value="${r.minScore}" ${r.name === 'レギュラー' ? 'readonly' : ''}></td>
+      `;
+                tbodyRank.appendChild(tr);
+            });
+        }
+    }
+
+    function createMoneyPriceRow(item) {
+        var tr = document.createElement('tr');
+        tr.innerHTML = `
+    <td><input type="text" class="form-control form-control-sm val-action fw-bold" value="${item.action || ''}"></td>
+    <td><input type="number" class="form-control form-control-sm text-end val-base" value="${item.base || 0}"></td>
+    <td><input type="number" class="form-control form-control-sm text-end val-score fw-bold text-success" value="${item.score || 0}"></td>
+    <td><input type="number" class="form-control form-control-sm text-end val-reg" value="${item.rankAdd['レギュラー'] || 0}"></td>
+    <td><input type="number" class="form-control form-control-sm text-end val-bro" value="${item.rankAdd['ブロンズ'] || 0}"></td>
+    <td><input type="number" class="form-control form-control-sm text-end val-sil" value="${item.rankAdd['シルバー'] || 0}"></td>
+    <td><input type="number" class="form-control form-control-sm text-end val-gol" value="${item.rankAdd['ゴールド'] || 0}"></td>
+    <td><input type="number" class="form-control form-control-sm text-end val-pla" value="${item.rankAdd['プラチナ'] || 0}"></td>
+    <td class="text-center"><button class="btn btn-sm btn-link text-danger p-0" onclick="this.closest('tr').remove()"><i class="bi bi-x-circle-fill fs-5"></i></button></td>
+  `;
+        return tr;
+    }
+
+    function addMoneyPriceRow() {
+        document.querySelector('#table-money-price tbody').appendChild(createMoneyPriceRow({ action: '', base: 0, score: 0, rankAdd: { 'レギュラー': 0, 'ブロンズ': 0, 'シルバー': 0, 'ゴールド': 0, 'プラチナ': 0 } }));
+    }
+
+    function saveMoneySettings() {
+        var prices = [];
+        document.querySelectorAll('#table-money-price tbody tr').forEach(tr => {
+            var act = tr.querySelector('.val-action').value.trim();
+            if (act) {
+                prices.push({
+                    action: act,
+                    base: Number(tr.querySelector('.val-base').value),
+                    score: Number(tr.querySelector('.val-score').value),
+                    rankAdd: {
+                        'レギュラー': Number(tr.querySelector('.val-reg').value),
+                        'ブロンズ': Number(tr.querySelector('.val-bro').value),
+                        'シルバー': Number(tr.querySelector('.val-sil').value),
+                        'ゴールド': Number(tr.querySelector('.val-gol').value),
+                        'プラチナ': Number(tr.querySelector('.val-pla').value)
+                    }
+                });
+            }
+        });
+
+        var ranks = [];
+        document.querySelectorAll('#table-money-rank tbody tr').forEach(tr => {
+            ranks.push({
+                name: tr.querySelector('.val-rank-name').value,
+                minScore: Number(tr.querySelector('.val-rank-score').value)
+            });
+        });
+
+        if (confirm("金銭設定とランク条件を更新しますか？\n（この設定は即座にシステムに反映されます）")) {
+            google.script.run
+                .withSuccessHandler(res => alert(res.message))
+                .withFailureHandler(err => alert("保存エラー: " + err.message))
+                .updateMoneySettings({ prices: prices, ranks: ranks });
+        }
+    }
+</script>

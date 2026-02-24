@@ -221,6 +221,10 @@
         <a class="nav-link" onclick="switchAdminView('staff', this)">
           <i class="bi bi-people"></i>スタッフ実績
         </a>
+        <div class="small text-muted mt-3 ms-3 mb-1" style="font-size:0.7rem;">SYSTEM</div>
+        <a class="nav-link" onclick="switchAdminView('money', this)">
+          <i class="bi bi-currency-yen"></i>金銭・ランク設定
+        </a>
       </div>
 
       <div class="mt-auto border-top border-secondary p-3">
@@ -312,6 +316,10 @@
           <?!= include('Admin_Part_Staff'); ?>
         </div>
 
+        <div id="view-money" class="admin-view fade-in" style="display:none;">
+          <?!= include('Admin_Part_MoneySettings'); ?>
+        </div>
+
       </div>
     </main>
   </div>
@@ -323,8 +331,8 @@
 
     // ■ 画面ロード時
     window.onload = function () {
-      // サーバーからデータを取得開始
-      fetchDataAndRender();
+      // Initial load: always show dashboard and fetch its data
+      switchAdminView('dashboard', document.querySelector('.nav-link.active'));
     };
 
     // ■ サーバーデータ取得 & 描画
@@ -459,7 +467,18 @@
         navElement.classList.add('active');
       }
 
-      // 3. スマホの場合サイドバーを閉じる
+      // 3. 各ビュー固有の初期化ロジック
+      if (viewId === 'dashboard') {
+        fetchDataAndRender();
+      } else if (viewId === 'sales') {
+        if (typeof initSalesAnalytics === 'function') initSalesAnalytics();
+      } else if (viewId === 'staff') {
+        if (typeof initStaffAnalytics === 'function') initStaffAnalytics();
+      } else if (viewId === 'money') {
+        if (typeof initMoneySettings === 'function') initMoneySettings();
+      }
+
+      // 4. スマホの場合サイドバーを閉じる
       if (window.innerWidth < 768) {
         document.getElementById('sidebarMenu').classList.remove('show');
       }
