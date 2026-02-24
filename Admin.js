@@ -26,36 +26,38 @@ function getAdminDashboardData() {
   var yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
 
-  // 1. 単価マスタの取得
-  var priceMap = getPriceMap_();
+  // 1. 各部から詳細データを取得
+  var salesStats = getDetailedSalesStats();
+  var staffStats = getDetailedStaffStats();
+  var expiryInfo = checkTankExpiry_();
+  var orderCount = 0; // いったん固定
 
-  // 2. 売上計算 (本日・昨日)
+  // 2. 取得したデータをダッシュボードトップ用の形式にマッピング
+  var salesToday = 0;
+  var salesRatio = salesStats.momRatio || 0;
+
+  // 今日の売上を算出する処理 (ActionBreakdown等から取るか、別途当日だけ再取得。
+  // 簡単のために、getDetailedSalesStats では当月全体のトータルを currentMonthTotal として返しているので、
+  // 今日の売上は、元々の calcDailySales_ ではなく、昨日/今日を計算するか、または月間トータルをそのまま「今月の売上」として表示するように変更するのもありです。
+  // ユーザーの要件に合わせて、ダッシュボードトップには「本日の売上」を残すため、当日分だけ簡易計算します)
+  var priceMap = getPriceMap_();
   var salesToday = calcDailySales_(today, priceMap);
   var salesYesterday = calcDailySales_(yesterday, priceMap);
-
-  // 前日比 (%)
-  var salesRatio = 0;
   if (salesYesterday > 0) {
     salesRatio = Math.round(((salesToday - salesYesterday) / salesYesterday) * 100);
+  } else if (salesToday > 0) {
+    salesRatio = 100;
   }
 
-  // 3. 売上推移 (過去7日間)
   var trendData = getSalesTrend_(7, priceMap);
-
-  // 4. 耐圧検査期限切れチェック
-  var expiryInfo = checkTankExpiry_();
-
-  // 5. その他 (仮置きのまま)
-  var orderCount = 5;
-  var activeStaff = countActiveStaff_(today);
 
   return {
     sales: salesToday,
     salesRatio: salesRatio,
-    alertCount: expiryInfo.expiredCount, // 期限切れ件数
-    warningCount: expiryInfo.warningCount, // 期限間近件数
+    alertCount: expiryInfo.expiredCount,
+    warningCount: expiryInfo.warningCount,
     orderCount: orderCount,
-    activeStaff: activeStaff,
+    activeStaff: staffStats.activeStaffCount,
 
     // チャート用データ
     chartLabels: trendData.labels,
@@ -89,59 +91,25 @@ function getPriceMap_() {
 }
 
 /**
- * 指定日の売上を計算
+ * フロントエンドからの詳細売上データ取得用エンドポイント
  */
-function calcDailySales_(targetDate, priceMap) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var year = targetDate.getFullYear();
-  var sheetName = "履歴ログ" + year; // 例: "履歴ログ2026"
-  var sheet = ss.getSheetByName(sheetName);
-
-  // 年またぎ対応 (シートがない場合は現在のログシートなどを探す処理が必要ですが今回は省略)
-  if (!sheet) sheet = ss.getSheetByName("履歴ログ");
-  if (!sheet) return 0;
-
-  var targetDateStr = Utilities.formatDate(targetDate, "Asia/Tokyo", "yyyy/MM/dd");
-  var data = sheet.getDataRange().getValues();
-  var total = 0;
-
-  for (var i = 1; i < data.length; i++) {
-    var rowDate = data[i][ADMIN_CONFIG.COL_LOG_DATE];
-    // 日付判定
-    if (isValidDate_(rowDate)) {
-      var rowDateStr = Utilities.formatDate(new Date(rowDate), "Asia/Tokyo", "yyyy/MM/dd");
-      if (rowDateStr === targetDateStr) {
-        var action = String(data[i][ADMIN_CONFIG.COL_LOG_ACTION]).trim();
-        // 単価マップにあれば加算
-        if (priceMap[action]) {
-          total += priceMap[action];
-        }
-      }
-    }
+function getAdminSalesData() {
+  try {
+    return getDetailedSalesStats(); // Admin_Feature_Sales.js の関数を呼び出す
+  } catch (e) {
+    return { success: false, message: e.message };
   }
-  return total;
 }
 
 /**
- * 過去N日間の売上推移を取得
+ * フロントエンドからの詳細スタッフデータ取得用エンドポイント
  */
-function getSalesTrend_(days, priceMap) {
-  var labels = [];
-  var data = [];
-  var today = new Date();
-
-  // 過去days分ループ (今日を含まない場合は i=days, i>0)
-  for (var i = days - 1; i >= 0; i--) {
-    var d = new Date(today);
-    d.setDate(today.getDate() - i);
-
-    var label = Utilities.formatDate(d, "Asia/Tokyo", "MM/dd");
-    var sales = calcDailySales_(d, priceMap);
-
-    labels.push(label);
-    data.push(sales);
+function getAdminStaffData() {
+  try {
+    return getDetailedStaffStats(); // Admin_Feature_Staff.js の関数を呼び出す
+  } catch (e) {
+    return { success: false, message: e.message };
   }
-  return { labels: labels, data: data };
 }
 
 /**
