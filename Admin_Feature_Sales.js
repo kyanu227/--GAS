@@ -188,3 +188,77 @@ function calculateMonthStats_(data, moneyData, targetYear, targetMonth, priceMap
 
     return result;
 }
+
+/**
+ * 毎日の売上を計算する内部関数。ダッシュボードのトップサマリー等で使用。
+ */
+function calcDailySales_(targetDate, priceMap) {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var year = targetDate.getFullYear();
+    var sheetName = "履歴ログ" + year; // 例: "履歴ログ2026"
+    var sheet = ss.getSheetByName(sheetName);
+
+    // シートがない場合は基本名を探すフォールバック
+    if (!sheet) sheet = ss.getSheetByName("履歴ログ");
+    if (!sheet) return 0;
+
+    var targetDateStr = Utilities.formatDate(targetDate, "Asia/Tokyo", "yyyy/MM/dd");
+    var data = sheet.getDataRange().getValues();
+    var total = 0;
+
+    for (var i = 1; i < data.length; i++) {
+        var rowDate = data[i][ADMIN_CONFIG.COL_LOG_DATE];
+        // 日付判定
+        if (isValidDate_(rowDate)) {
+            var rowDateStr = Utilities.formatDate(new Date(rowDate), "Asia/Tokyo", "yyyy/MM/dd");
+            if (rowDateStr === targetDateStr) {
+                var action = String(data[i][ADMIN_CONFIG.COL_LOG_ACTION]).trim();
+                // 単価マップにあれば加算
+                if (priceMap[action] && action !== "返却(未充填)" && action !== "未使用返却") {
+                    total += priceMap[action];
+                }
+            }
+        }
+    }
+    return total;
+}
+
+/**
+ * ダッシュボードのトレンドグラフ用に過去N日間の売上を取得する
+ */
+function getSalesTrend_(days, priceMap) {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var labels = [];
+    var dataArr = [];
+
+    var today = new Date();
+    var year = today.getFullYear();
+    var sheet = ss.getSheetByName("履歴ログ" + year);
+    if (!sheet) sheet = ss.getSheetByName("履歴ログ");
+    var sheetData = sheet ? sheet.getDataRange().getValues() : [];
+
+    for (var i = days - 1; i >= 0; i--) {
+        var d = new Date();
+        d.setDate(today.getDate() - i);
+        var dStr = Utilities.formatDate(d, "Asia/Tokyo", "MM/dd");
+        var targetDateStr = Utilities.formatDate(d, "Asia/Tokyo", "yyyy/MM/dd");
+
+        labels.push(dStr);
+
+        var total = 0;
+        for (var r = 1; r < sheetData.length; r++) {
+            var rowDate = sheetData[r][ADMIN_CONFIG.COL_LOG_DATE];
+            if (isValidDate_(rowDate)) {
+                var rowDateStr = Utilities.formatDate(new Date(rowDate), "Asia/Tokyo", "yyyy/MM/dd");
+                if (rowDateStr === targetDateStr) {
+                    var action = String(sheetData[r][ADMIN_CONFIG.COL_LOG_ACTION]).trim();
+                    if (priceMap[action] && action !== "返却(未充填)" && action !== "未使用返却") {
+                        total += priceMap[action];
+                    }
+                }
+            }
+        }
+        dataArr.push(total);
+    }
+    return { labels: labels, data: dataArr };
+}
