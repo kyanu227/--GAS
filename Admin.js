@@ -2,19 +2,20 @@
 
 // シート名や列の設定 (環境に合わせて変更してください)
 const ADMIN_CONFIG = {
-  SHEET_LOG_PREFIX: '履歴ログ',   // "履歴ログ2024" などの接頭辞
-  SHEET_PRICE: '設定_単価',
-  SHEET_TANK: '在庫管理',         // タンク一覧シート (ボンベマスタ)
-  
+  SHEET_PRICE: 'M_設定_単価',      // 既存のFeature系と同じ単価マスタ
+  SHEET_TANK: 'タンクステータス',    // ボンベの現在の状況
+
   // 各シートの列番号 (0始まり: A列=0, B列=1...)
-  COL_LOG_DATE: 1,    // ログの日付列
-  COL_LOG_ACTION: 4,  // ログのアクション列 (貸出, 充填 etc)
-  
-  COL_PRICE_NAME: 0,  // 単価マスタの品名
-  COL_PRICE_VAL: 1,   // 単価マスタの価格 (基本単価)
-  
-  COL_TANK_ID: 0,     // タンクID列
-  COL_TANK_LIMIT: 5   // 耐圧検査期限の列 (仮定)
+  COL_LOG_DATE: 1,    // ログの日付列 (B列)
+  COL_LOG_ACTION: 4,  // ログのアクション列 (E列)
+  COL_LOG_STAFF: 7,   // ログの担当者列 (H列)
+
+  COL_PRICE_NAME: 0,  // 単価マスタの品名 (A列)
+  COL_PRICE_VAL: 1,   // 単価マスタの価格 (B列)
+
+  COL_TANK_ID: 0,     // タンクID列 (A列)
+  COL_TANK_STATUS: 1, // ステータス列 (B列)
+  COL_TANK_LIMIT: 4   // 耐圧検査期限の列 (E列)
 };
 
 /**
@@ -31,7 +32,7 @@ function getAdminDashboardData() {
   // 2. 売上計算 (本日・昨日)
   var salesToday = calcDailySales_(today, priceMap);
   var salesYesterday = calcDailySales_(yesterday, priceMap);
-  
+
   // 前日比 (%)
   var salesRatio = 0;
   if (salesYesterday > 0) {
@@ -45,8 +46,8 @@ function getAdminDashboardData() {
   var expiryInfo = checkTankExpiry_();
 
   // 5. その他 (仮置きのまま)
-  var orderCount = 5; 
-  var activeStaff = countActiveStaff_(today); 
+  var orderCount = 5;
+  var activeStaff = countActiveStaff_(today);
 
   return {
     sales: salesToday,
@@ -55,11 +56,11 @@ function getAdminDashboardData() {
     warningCount: expiryInfo.warningCount, // 期限間近件数
     orderCount: orderCount,
     activeStaff: activeStaff,
-    
+
     // チャート用データ
     chartLabels: trendData.labels,
     chartData: trendData.data,
-    
+
     // お知らせリスト (期限切れ情報を追加)
     notifications: expiryInfo.messages
   };
@@ -93,11 +94,11 @@ function getPriceMap_() {
 function calcDailySales_(targetDate, priceMap) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var year = targetDate.getFullYear();
-  var sheetName = ADMIN_CONFIG.SHEET_LOG_PREFIX + year; // "履歴ログ2025"
+  var sheetName = "履歴ログ" + year; // 例: "履歴ログ2026"
   var sheet = ss.getSheetByName(sheetName);
-  
+
   // 年またぎ対応 (シートがない場合は現在のログシートなどを探す処理が必要ですが今回は省略)
-  if (!sheet) sheet = ss.getSheetByName("履歴ログ"); 
+  if (!sheet) sheet = ss.getSheetByName("履歴ログ");
   if (!sheet) return 0;
 
   var targetDateStr = Utilities.formatDate(targetDate, "Asia/Tokyo", "yyyy/MM/dd");
@@ -133,10 +134,10 @@ function getSalesTrend_(days, priceMap) {
   for (var i = days - 1; i >= 0; i--) {
     var d = new Date(today);
     d.setDate(today.getDate() - i);
-    
+
     var label = Utilities.formatDate(d, "Asia/Tokyo", "MM/dd");
     var sales = calcDailySales_(d, priceMap);
-    
+
     labels.push(label);
     data.push(sales);
   }
@@ -152,7 +153,7 @@ function checkTankExpiry_() {
   var expiredCount = 0;
   var warningCount = 0;
   var messages = [];
-  
+
   if (!sheet) return { expiredCount: 0, warningCount: 0, messages: [] };
 
   var data = sheet.getDataRange().getValues();
@@ -166,7 +167,7 @@ function checkTankExpiry_() {
 
     if (isValidDate_(limitDate)) {
       var limit = new Date(limitDate);
-      
+
       if (limit < today) {
         // 期限切れ
         expiredCount++;
@@ -184,9 +185,32 @@ function checkTankExpiry_() {
  * 稼働中スタッフ数 (本日ログがある人数)
  */
 function countActiveStaff_(today) {
-  // 簡易実装: 本日のログに登場するユニークなスタッフ数をカウント
-  // 必要に応じて実装してください
-  return 8; // ダミー
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var year = today.getFullYear();
+  var sheet = ss.getSheetByName("履歴ログ" + year);
+  if (!sheet) sheet = ss.getSheetByName("履歴ログ");
+  if (!sheet) return 0;
+
+  var targetDateStr = Utilities.formatDate(today, "Asia/Tokyo", "yyyy/MM/dd");
+  var data = sheet.getDataRange().getValues();
+  var staffSet = {};
+
+  for (var i = 1; i < data.length; i++) {
+    var rowDate = data[i][ADMIN_CONFIG.COL_LOG_DATE];
+    if (isValidDate_(rowDate)) {
+      var rowDateStr = Utilities.formatDate(new Date(rowDate), "Asia/Tokyo", "yyyy/MM/dd");
+      if (rowDateStr === targetDateStr) {
+        var staffName = String(data[i][ADMIN_CONFIG.COL_LOG_STAFF] || "").trim();
+        // プログラムのエラーや空文字の担当者は除外
+        if (staffName && staffName !== "不明" && staffName !== "-") {
+          staffSet[staffName] = true;
+        }
+      }
+    }
+  }
+
+  // ユニークなスタッフ名をカウントして返す
+  return Object.keys(staffSet).length;
 }
 
 // 日付妥当性チェック
