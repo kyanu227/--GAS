@@ -408,11 +408,6 @@ function updateNotifySettings(data) {
  */
 function updateMoneySettings(data) {
   try {
-    var userEmail = Session.getActiveUser().getEmail();
-    if (!forceCheckAdminByEmail(userEmail)) {
-      return { success: false, message: "権限がありません。" };
-    }
-
     var ssMoney = getMoneySS();
 
     // 1. 単価マスタの更新
@@ -469,11 +464,6 @@ function updateMoneySettings(data) {
  */
 function getMoneySettingsData() {
   try {
-    var userEmail = Session.getActiveUser().getEmail();
-    if (!forceCheckAdminByEmail(userEmail)) {
-      return { success: false, message: "管理者権限がありません。" };
-    }
-
     var ssMoney = getMoneySS(); // 3_Money.gs
     var moneyPrices = [];
     var moneyRanks = [];
