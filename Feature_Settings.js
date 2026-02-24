@@ -470,9 +470,13 @@ function getMoneySettingsData() {
 
     // 1. 単価マスタ取得
     var priceSheet = ssMoney.getSheetByName(MONEY_CONFIG.SHEET_PRICE || "M_設定_単価");
+    var rankHeaders = [];
     if (priceSheet) {
       var pData = priceSheet.getDataRange().getValues();
       var headers = pData[0];
+      for (var col = 3; col < headers.length; col++) {
+        rankHeaders.push(String(headers[col]).replace(/加算/g, "").replace(/\(円\)|（円）/g, "").trim());
+      }
       for (var p = 1; p < pData.length; p++) {
         var actionName = pData[p][0];
         if (!actionName) continue;
@@ -480,7 +484,7 @@ function getMoneySettingsData() {
         var score = Number(pData[p][2]) || 0;
         var rankAdd = {};
         for (var col = 3; col < headers.length; col++) {
-          var rName = String(headers[col]).replace(/加算/g, "").replace(/\(円\)|（円）/g, "").trim();
+          var rName = rankHeaders[col - 3];
           rankAdd[rName] = Number(pData[p][col]) || 0;
         }
         moneyPrices.push({ action: actionName, base: basePrice, score: score, rankAdd: rankAdd });
@@ -498,7 +502,7 @@ function getMoneySettingsData() {
       }
     }
 
-    return { success: true, prices: moneyPrices, ranks: moneyRanks };
+    return { success: true, prices: moneyPrices, ranks: moneyRanks, rankHeaders: rankHeaders };
   } catch (e) {
     return { success: false, message: "データ取得エラー: " + e.message };
   }

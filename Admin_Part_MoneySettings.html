@@ -20,12 +20,8 @@
                             <th style="min-width:120px;">アクション</th>
                             <th style="min-width:80px;">基本経費</th>
                             <th style="min-width:80px;">獲得スコア</th>
-                            <th>ﾚｷﾞｭﾗｰ</th>
-                            <th>ﾌﾞﾛﾝｽﾞ</th>
-                            <th>ｼﾙﾊﾞｰ</th>
-                            <th>ｺﾞｰﾙﾄﾞ</th>
-                            <th>ﾌﾟﾗﾁﾅ</th>
-                            <th></th>
+                            <!-- rank headers will be injected here -->
+                            <th id="th-money-price-delete"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -71,25 +67,44 @@
 </div>
 
 <script>
+    var globalRankHeaders = []; // To store headers for add/save
+
     function initMoneySettings() {
         var tbodyPrice = document.querySelector('#table-money-price tbody');
         var tbodyRank = document.querySelector('#table-money-rank tbody');
-        if (tbodyPrice) tbodyPrice.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4"><span class="spinner-border text-secondary spinner-border-sm me-2"></span>Loading...</td></tr>';
+        if (tbodyPrice) tbodyPrice.innerHTML = '<tr><td colspan="15" class="text-center text-muted py-4"><span class="spinner-border text-secondary spinner-border-sm me-2"></span>Loading...</td></tr>';
         if (tbodyRank) tbodyRank.innerHTML = '<tr><td colspan="2" class="text-center text-muted py-3">Loading...</td></tr>';
 
         google.script.run
             .withSuccessHandler(function (data) {
                 if (data && data.success === false) { alert("エラー:\n" + data.message); return; }
-                if (data.prices && data.ranks) renderMoneySettings(data.prices, data.ranks);
+                if (data.prices && data.ranks) renderMoneySettings(data.prices, data.ranks, data.rankHeaders);
             })
             .withFailureHandler(function (error) { alert("データ読み込みエラー:\n" + error.message); })
             .getMoneySettingsData();
     }
 
-    function renderMoneySettings(prices, ranks) {
+    function renderMoneySettings(prices, ranks, rankHeaders) {
         var tbodyPrice = document.querySelector('#table-money-price tbody');
         var tbodyRank = document.querySelector('#table-money-rank tbody');
         if (!tbodyPrice || !tbodyRank) return;
+
+        globalRankHeaders = rankHeaders || ['レギュラー', 'ブロンズ', 'シルバー', 'ゴールド', 'プラチナ'];
+
+        // Inject THs dynamically into the table head
+        var theadTr = document.querySelector('#table-money-price thead tr');
+        var deleteTh = document.getElementById('th-money-price-delete');
+
+        // Remove old dynamic THs
+        document.querySelectorAll('.th-dynamic-rank').forEach(th => th.remove());
+
+        // Insert new THs
+        globalRankHeaders.forEach(rName => {
+            var th = document.createElement('th');
+            th.className = 'th-dynamic-rank';
+            th.innerText = rName;
+            theadTr.insertBefore(th, deleteTh);
+        });
 
         tbodyPrice.innerHTML = '';
         tbodyRank.innerHTML = '';
@@ -111,22 +126,27 @@
 
     function createMoneyPriceRow(item) {
         var tr = document.createElement('tr');
-        tr.innerHTML = `
+
+        var html = `
     <td class="bg-dark border-secondary align-middle"><input type="text" class="form-control form-control-sm bg-dark text-light border-secondary val-action fw-bold" value="${item.action || ''}"></td>
     <td class="bg-dark border-secondary align-middle"><input type="number" class="form-control form-control-sm bg-dark text-light border-secondary text-end val-base" value="${item.base || 0}"></td>
-    <td class="bg-dark border-secondary align-middle"><input type="number" class="form-control form-control-sm bg-dark text-success border-success text-end val-score fw-bold" value="${item.score || 0}"></td>
-    <td class="bg-dark border-secondary align-middle"><input type="number" class="form-control form-control-sm bg-dark text-light border-secondary text-end val-reg" value="${item.rankAdd['レギュラー'] || 0}"></td>
-    <td class="bg-dark border-secondary align-middle"><input type="number" class="form-control form-control-sm bg-dark text-light border-secondary text-end val-bro" value="${item.rankAdd['ブロンズ'] || 0}"></td>
-    <td class="bg-dark border-secondary align-middle"><input type="number" class="form-control form-control-sm bg-dark text-light border-secondary text-end val-sil" value="${item.rankAdd['シルバー'] || 0}"></td>
-    <td class="bg-dark border-secondary align-middle"><input type="number" class="form-control form-control-sm bg-dark text-light border-secondary text-end val-gol" value="${item.rankAdd['ゴールド'] || 0}"></td>
-    <td class="bg-dark border-secondary align-middle"><input type="number" class="form-control form-control-sm bg-dark text-light border-secondary text-end val-pla" value="${item.rankAdd['プラチナ'] || 0}"></td>
-    <td class="bg-dark border-secondary text-center align-middle"><button class="btn btn-sm btn-link text-danger p-0 m-0" onclick="this.closest('tr').remove()"><i class="bi bi-x-circle fs-5"></i></button></td>
-  `;
+    <td class="bg-dark border-secondary align-middle"><input type="number" class="form-control form-control-sm bg-dark text-success border-success text-end val-score fw-bold" value="${item.score || 0}"></td>`;
+
+        globalRankHeaders.forEach(rName => {
+            var val = (item.rankAdd && item.rankAdd[rName] !== undefined) ? item.rankAdd[rName] : 0;
+            html += `<td class="bg-dark border-secondary align-middle"><input type="number" data-rank="${rName}" class="form-control form-control-sm bg-dark text-light border-secondary text-end val-rank-bonus" value="${val}"></td>`;
+        });
+
+        html += `<td class="bg-dark border-secondary text-center align-middle"><button class="btn btn-sm btn-link text-danger p-0 m-0" onclick="this.closest('tr').remove()"><i class="bi bi-x-circle fs-5"></i></button></td>`;
+
+        tr.innerHTML = html;
         return tr;
     }
 
     function addMoneyPriceRow() {
-        document.querySelector('#table-money-price tbody').appendChild(createMoneyPriceRow({ action: '', base: 0, score: 0, rankAdd: { 'レギュラー': 0, 'ブロンズ': 0, 'シルバー': 0, 'ゴールド': 0, 'プラチナ': 0 } }));
+        var emptyRankAdd = {};
+        globalRankHeaders.forEach(r => emptyRankAdd[r] = 0);
+        document.querySelector('#table-money-price tbody').appendChild(createMoneyPriceRow({ action: '', base: 0, score: 0, rankAdd: emptyRankAdd }));
     }
 
     function saveMoneySettings(btn) {
@@ -134,17 +154,16 @@
         document.querySelectorAll('#table-money-price tbody tr').forEach(tr => {
             var act = tr.querySelector('.val-action').value.trim();
             if (act) {
+                var rankAdd = {};
+                tr.querySelectorAll('.val-rank-bonus').forEach(input => {
+                    rankAdd[input.getAttribute('data-rank')] = Number(input.value);
+                });
+
                 prices.push({
                     action: act,
                     base: Number(tr.querySelector('.val-base').value),
                     score: Number(tr.querySelector('.val-score').value),
-                    rankAdd: {
-                        'レギュラー': Number(tr.querySelector('.val-reg').value),
-                        'ブロンズ': Number(tr.querySelector('.val-bro').value),
-                        'シルバー': Number(tr.querySelector('.val-sil').value),
-                        'ゴールド': Number(tr.querySelector('.val-gol').value),
-                        'プラチナ': Number(tr.querySelector('.val-pla').value)
-                    }
+                    rankAdd: rankAdd
                 });
             }
         });
