@@ -1,22 +1,20 @@
-// ■■■ Feature_Operations.gs : 現場操作 (完全統合版) ■■■
+// ■■■ Feature_Operations.gs : 現場操作 ■■■
 
+// 操作ルール定義: 許容する直前ステータスと操作後ステータス
 const OP_RULES = {
   '貸出': { allowedPrev: ['充填済み', '保管中'], nextStatus: '貸出中' },
   '自社利用': { allowedPrev: ['充填済み', '保管中'], nextStatus: '自社利用中' },
   '返却': { allowedPrev: ['貸出中', '未返却', '自社利用中'], nextStatus: '空' },
+  '自社一括返却': { allowedPrev: ['自社利用中'], nextStatus: '空' },
   '充填': { allowedPrev: ['空'], nextStatus: '充填済み' },
   '破損報告': { allowedPrev: [], nextStatus: '破損' },
   '修理済み': { allowedPrev: ['破損', '不良', '故障'], nextStatus: '空' }
 };
 
+// 新規登録直後など、ステータス不整合チェックを免除する特殊ステータス
 const SPECIAL_STATUSES = ["", "新規登録", "不明", "メンテナンス完了"];
 
-// キャッシュクリア関数
-function clearMasterCaches() {
-  var cache = CacheService.getScriptCache();
-  cache.removeAll(['貸出先リスト', 'TANK_PREFIXES']);
-  return { success: true };
-}
+// ※ clearMasterCaches は 2_Utils.gs に定義済み
 
 function getOperationsInitData() {
   var repairOpts = [];
@@ -144,8 +142,8 @@ function submitOperations(data) {
     }
 
     // 操作実行者の特定 (Google優先 -> パスコード)
-    var staffInfo = getUserInfo(Session.getActiveUser().getEmail(), userPasscode);
-    var identifiedStaffName = staffInfo.name;
+    var userInfo = getUserInfo(getSafeUserEmail(), userPasscode);
+    var identifiedStaffName = userInfo.name;
 
     var prevStatusMap = {};
     validItems.forEach(function (item) {
@@ -172,6 +170,7 @@ function submitOperations(data) {
       case '貸出': writeResult = processLend(processData, preLoadedData, identifiedStaffName); break;
       case '自社利用': writeResult = processCompanyUse(processData, preLoadedData, identifiedStaffName); break;
       case '返却': writeResult = processReturn(processData, preLoadedData, identifiedStaffName); break;
+      case '自社一括返却': writeResult = processCompanyBulkReturn(processData, preLoadedData, identifiedStaffName); break;
       case '充填': writeResult = processFill(processData, preLoadedData, identifiedStaffName); break;
       case '破損報告': writeResult = processDamageReport(processData, preLoadedData, identifiedStaffName); break;
       case '修理済み': writeResult = processRepair(processData, preLoadedData, identifiedStaffName); break;
@@ -198,11 +197,17 @@ function submitOperations(data) {
             if (action === '返却' && oldStatus === '自社利用中') {
               moneyLogAction = '自社返却';
             }
+            if (action === '自社一括返却') {
+              if (item.statusTag === 'unused') moneyLogAction = '自社返却(未使用)';
+              else if (item.statusTag === 'defect') moneyLogAction = '自社返却(不備)';
+              else moneyLogAction = '自社返却';
+            }
+
             moneyLogs.push({
               uuid: Utilities.getUuid(),
               date: now,
               staff: identifiedStaffName,
-              rank: staffInfo.rank,
+              rank: userInfo.rank,
               action: moneyLogAction,
               tankId: formatDisplayId(item.id),
               note: item.note,
@@ -267,44 +272,34 @@ function validateOperations(items, action, preLoadedData) {
 }
 
 // ----------------------------------------------------
-// 各操作の個別処理関数 (I列への書き込み内容を指定)
+// 操作別の個別処理関数
+// writeToSheet の第7引数: 履歴ログのI列(直前場所/取引先)に記録する値
+//   - 貸出: 貸出先名を渡す
+//   - 返却・充填: null を渡す → writeToSheet が現在の場所を自動取得
 // ----------------------------------------------------
 
 function processLend(data, preLoadedData, staffName) {
   if (!data.destination) return { success: false, message: "貸出先未選択", failedItems: [], successIds: [] };
-  // 第7引数: 「貸出先」をI列(直前/取引先)に記録
   return writeToSheet(data.items, '貸出中', data.destination, '貸出', preLoadedData, staffName, data.destination);
-}
-
-function processCompanyUse(data, preLoadedData, staffName) {
-  data.items.forEach(item => { if (!item.note) item.note = '社内使用'; });
-  // 第7引数: 「自社」をI列に記録
-  return writeToSheet(data.items, '自社利用中', '自社', '自社利用', preLoadedData, staffName, '自社');
 }
 
 function processReturn(data, preLoadedData, staffName) {
   var newStatus = '空';
   var logAction = '返却';
   if (data.isDefect) {
-    newStatus = '空'; // 以前は '不良' だったのを修正
-    logAction = '返却(未充填)'; // 以前は '返却(不備)' だったのを修正
+    logAction = '返却(未充填)';
   } else if (data.isUnused) {
     newStatus = '充填済み';
     logAction = '未使用返却';
   }
-  // 第7引数: nullを指定 → Utils側で自動的に「更新前の場所(返却元)」を取得してI列に記録
   return writeToSheet(data.items, newStatus, '倉庫', logAction, preLoadedData, staffName, null);
 }
 
 function processFill(data, preLoadedData, staffName) {
-  // 充填時: 取引先は特にないので null (直前の場所が記録される)
   return writeToSheet(data.items, '充填済み', '倉庫', '充填', preLoadedData, staffName, null);
-}
-
-function processDamageReport(data, preLoadedData, staffName) {
-  return writeToSheet(data.items, '破損', '倉庫', '破損報告', preLoadedData, staffName, null);
 }
 
 function processRepair(data, preLoadedData, staffName) {
   return writeToSheet(data.items, '空', '倉庫', '修理済み', preLoadedData, staffName, null);
 }
+

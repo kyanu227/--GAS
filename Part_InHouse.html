@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <style>
+    body {
+      background-color: #f8f9fa;
+      padding-bottom: 160px;
+    }
+
+    .bulk-card {
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .bulk-id {
+      font-size: 1.2rem;
+      font-weight: bold;
+      font-family: monospace;
+      color: #333;
+    }
+
+    .bulk-tag-btn {
+      font-size: 0.8rem;
+      padding: 4px 10px;
+      border: 1px solid #ced4da;
+      background: #fff;
+      color: #6c757d;
+      border-radius: 20px;
+      margin-left: 5px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .bulk-tag-btn.active-unused {
+      background: #198754;
+      color: #fff;
+      border-color: #198754;
+    }
+
+    .bulk-tag-btn.active-defect {
+      background: #dc3545;
+      color: #fff;
+      border-color: #dc3545;
+    }
+
+    .inhouse-prefix-header {
+      background: #f0f4ff;
+      border-left: 4px solid #0d6efd;
+      padding: 4px 10px;
+      font-weight: bold;
+      font-size: 0.85rem;
+      color: #0d6efd;
+      border-radius: 4px;
+      margin-bottom: 4px;
+      margin-top: 10px;
+    }
+
+    .submit-float {
+      position: fixed;
+      bottom: calc(90px + env(safe-area-inset-bottom));
+      left: 5%;
+      width: 90%;
+      padding: 15px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      border-radius: 50px;
+      border: none;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      z-index: 900;
+      background-color: #0dcaf0;
+      color: #000;
+    }
+
+    .submit-float:disabled {
+      opacity: 0.6;
+    }
+
+    .bulk-tag-all-btn {
+      flex: 1;
+      padding: 10px 8px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container-fluid mt-3">
+
+    <!-- ヘッダー -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <span class="fw-bold fs-6">自社使用中タンク</span>
+        <span class="badge bg-info text-dark ms-2" id="ih-count-badge">0件</span>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary" onclick="ihLoad()">
+        <i class="bi bi-arrow-clockwise"></i> 再取得
+      </button>
+    </div>
+
+    <!-- 一括タグパネル -->
+    <div class="d-flex gap-2 mb-3" id="ih-bulk-tag-panel" style="display:none !important;">
+      <button class="bulk-tag-all-btn btn btn-outline-success" id="ih-btn-all-unused" onclick="ihSetBulkTag('unused')">
+        <i class="bi bi-fuel-pump-fill"></i><br>全て未使用
+      </button>
+      <button class="bulk-tag-all-btn btn btn-outline-danger" id="ih-btn-all-defect" onclick="ihSetBulkTag('defect')">
+        <i class="bi bi-exclamation-triangle-fill"></i><br>全て未充填
+      </button>
+      <button class="bulk-tag-all-btn btn btn-outline-secondary" style="flex:0.4;" onclick="ihSetBulkTag('normal')">
+        <i class="bi bi-x-circle"></i><br>リセット
+      </button>
+    </div>
+
+    <!-- タンク一覧 -->
+    <div id="ih-list">
+      <div class="text-center text-muted p-4">
+        <span class="spinner-border spinner-border-sm"></span> 読み込み中...
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 固定フッター送信ボタン -->
+  <button class="submit-float" id="ih-submit-btn" style="display:none;" onclick="ihSubmit()">
+    <span id="ih-submit-label">全て返却</span>
+  </button>
+
+</body>
+
+<script>
+  var inHouseTanks = [];
+
+  function initInHouse() {
+    inHouseTanks = [];
+    ihRenderList();
+    ihLoad();
+  }
+
+  function ihLoad() {
+    var listEl = document.getElementById('ih-list');
+    listEl.innerHTML = '<div class="text-center text-muted p-4"><span class="spinner-border spinner-border-sm"></span> 取得中...</div>';
+    document.getElementById('ih-submit-btn').style.display = 'none';
+    document.getElementById('ih-bulk-tag-panel').style.display = 'none';
+
+    google.script.run
+      .withSuccessHandler(function (list) {
+        inHouseTanks = ihSortTanks(
+          list.map(function (item) { return { id: item.id, statusTag: 'normal' }; })
+        );
+        ihRenderList();
+      })
+      .withFailureHandler(function (e) {
+        listEl.innerHTML = '<div class="alert alert-danger py-2 small">取得エラー: ' + e.message + '</div>';
+      })
+      .getInHouseTanks();
+  }
+
+  function ihSortTanks(tanks) {
+    return tanks.slice().sort(function (a, b) {
+      var mA = String(a.id).replace(/[-\s]/g, '').toUpperCase().match(/^([A-Z]+)(\d+)$/);
+      var mB = String(b.id).replace(/[-\s]/g, '').toUpperCase().match(/^([A-Z]+)(\d+)$/);
+      if (!mA && !mB) return 0;
+      if (!mA) return 1;
+      if (!mB) return -1;
+      if (mA[1] !== mB[1]) return mA[1] < mB[1] ? -1 : 1;
+      return parseInt(mA[2], 10) - parseInt(mB[2], 10);
+    });
+  }
+
+  function ihRenderList() {
+    var listEl = document.getElementById('ih-list');
+    var countBadge = document.getElementById('ih-count-badge');
+    var submitBtn = document.getElementById('ih-submit-btn');
+    var bulkPanel = document.getElementById('ih-bulk-tag-panel');
+
+    listEl.innerHTML = '';
+    countBadge.innerText = inHouseTanks.length + '件';
+
+    if (inHouseTanks.length === 0) {
+      listEl.innerHTML = '<div class="text-center text-muted p-4 mt-3"><i class="bi bi-check-circle display-1 text-success d-block mb-3"></i><h5>自社使用中のタンクはありません</h5><p class="small">現在自社使用中のタンクは0件です。</p></div>';
+      submitBtn.style.display = 'none';
+      bulkPanel.style.display = 'none';
+      return;
+    }
+
+    // 一括タグパネル・送信ボタンを表示
+    bulkPanel.style.display = 'flex';
+    submitBtn.style.display = 'block';
+    document.getElementById('ih-submit-label').innerText = inHouseTanks.length + '件 全て返却';
+
+    // 一括タグボタンのハイライト更新
+    ihUpdateBulkBtnState();
+
+    // prefixグループ別に描画
+    var currentPrefix = null;
+    inHouseTanks.forEach(function (item, idx) {
+      var m = String(item.id).replace(/[-\s]/g, '').toUpperCase().match(/^([A-Z]+)/);
+      var prefix = m ? m[1] : '?';
+
+      if (prefix !== currentPrefix) {
+        currentPrefix = prefix;
+        var header = document.createElement('div');
+        header.className = 'inhouse-prefix-header';
+        header.innerText = prefix + ' タンク';
+        listEl.appendChild(header);
+      }
+
+      var unusedCls = (item.statusTag === 'unused') ? 'active-unused' : '';
+      var defectCls = (item.statusTag === 'defect') ? 'active-defect' : '';
+
+      var card = document.createElement('div');
+      card.className = 'bulk-card';
+      card.innerHTML =
+        '<div class="bulk-id">' + escapeHtml(item.id) + '</div>' +
+        '<div>' +
+          '<button class="bulk-tag-btn ' + unusedCls + '" onclick="ihToggleTag(' + idx + ', \'unused\')">未使用</button>' +
+          '<button class="bulk-tag-btn ' + defectCls + '" onclick="ihToggleTag(' + idx + ', \'defect\')">未充填</button>' +
+        '</div>';
+      listEl.appendChild(card);
+    });
+  }
+
+  function ihUpdateBulkBtnState() {
+    var btnUnused = document.getElementById('ih-btn-all-unused');
+    var btnDefect = document.getElementById('ih-btn-all-defect');
+    if (!btnUnused || !btnDefect) return;
+
+    var allUnused = inHouseTanks.length > 0 && inHouseTanks.every(function (t) { return t.statusTag === 'unused'; });
+    var allDefect = inHouseTanks.length > 0 && inHouseTanks.every(function (t) { return t.statusTag === 'defect'; });
+
+    btnUnused.className = 'bulk-tag-all-btn btn ' + (allUnused ? 'btn-success' : 'btn-outline-success');
+    btnDefect.className = 'bulk-tag-all-btn btn ' + (allDefect ? 'btn-danger' : 'btn-outline-danger');
+  }
+
+  function ihSetBulkTag(tag) {
+    if (inHouseTanks.length === 0) return;
+    var allSame = inHouseTanks.every(function (t) { return t.statusTag === tag; });
+    inHouseTanks.forEach(function (t) {
+      t.statusTag = allSame ? 'normal' : tag;
+    });
+    ihRenderList();
+  }
+
+  function ihToggleTag(idx, tag) {
+    if (inHouseTanks[idx].statusTag === tag) {
+      inHouseTanks[idx].statusTag = 'normal';
+    } else {
+      inHouseTanks[idx].statusTag = tag;
+    }
+    ihRenderList();
+  }
+
+  function ihSubmit() {
+    if (inHouseTanks.length === 0) return;
+
+    var unusedCount = inHouseTanks.filter(function (t) { return t.statusTag === 'unused'; }).length;
+    var defectCount = inHouseTanks.filter(function (t) { return t.statusTag === 'defect'; }).length;
+    var normalCount = inHouseTanks.length - unusedCount - defectCount;
+
+    var msg = inHouseTanks.length + '件を返却します。\n';
+    if (normalCount > 0) msg += '・通常返却: ' + normalCount + '件\n';
+    if (unusedCount > 0) msg += '・未使用返却: ' + unusedCount + '件\n';
+    if (defectCount > 0) msg += '・未充填返却: ' + defectCount + '件\n';
+    msg += '\n実行しますか？';
+
+    if (!confirm(msg)) return;
+
+    var btn = document.getElementById('ih-submit-btn');
+    btn.disabled = true;
+    document.getElementById('ih-submit-label').innerText = '送信中...';
+
+    var payload = {
+      action: '自社一括返却',
+      items: inHouseTanks,
+      userPasscode: (typeof GLOBAL_PASSCODE !== 'undefined') ? GLOBAL_PASSCODE : ''
+    };
+
+    google.script.run
+      .withSuccessHandler(function (res) {
+        btn.disabled = false;
+        if (res.success) {
+          inHouseTanks = [];
+          ihRenderList();
+          alert(res.message);
+        } else {
+          document.getElementById('ih-submit-label').innerText = inHouseTanks.length + '件 全て返却';
+          var errMsg = 'エラー: ' + res.message + '\n';
+          if (res.failedItems) res.failedItems.forEach(function (i) { errMsg += i.id + ': ' + i.reason + '\n'; });
+          alert(errMsg);
+        }
+      })
+      .withFailureHandler(function (e) {
+        btn.disabled = false;
+        document.getElementById('ih-submit-label').innerText = inHouseTanks.length + '件 全て返却';
+        alert('システムエラー: ' + e.message);
+      })
+      .submitOperations(payload);
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+</script>
+
+</html>

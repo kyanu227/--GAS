@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-bottom: 180px;
+        }
+
+        .queue-card {
+            background: white;
+            border-left: 6px solid #6c757d;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .queue-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .queue-id {
+            font-size: 1.2rem;
+            font-weight: bold;
+            font-family: monospace;
+        }
+
+        .quick-note-btn {
+            font-size: 0.7rem;
+            padding: 3px 8px;
+            margin-right: 4px;
+            margin-top: 4px;
+            border: 1px solid #dc3545;
+            color: #dc3545;
+            background: white;
+            border-radius: 15px;
+        }
+
+        .quick-note-btn:active {
+            background: #dc3545;
+            color: white;
+        }
+
+        .submit-float {
+            position: fixed;
+            bottom: calc(90px + env(safe-area-inset-bottom));
+            left: 5%;
+            width: 90%;
+            padding: 15px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            transition: transform 0.1s;
+            border: none;
+            color: white;
+        }
+
+        .submit-float:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="opsub-container" class="container-fluid mt-3">
+        <div class="d-flex justify-content-end mb-2">
+            <button id="btn-refresh-sub" class="btn btn-sm btn-outline-secondary border-0"
+                onclick="refreshMasterDataSub()">
+                <i class="bi bi-arrow-clockwise"></i> リスト更新
+            </button>
+        </div>
+
+        <div class="card p-3 mb-3 border-0 shadow-sm" style="background:#fff;">
+            <div id="opsub-settings-damage" class="op-setting-panel" style="display:block;">
+                <div class="alert alert-danger py-2 text-center mb-0"
+                    style="background-color:#f8d7da; color:#842029; border:1px solid #f5c2c7; border-radius: 8px;">
+                    <i class="bi bi-exclamation-triangle-fill fs-5 d-inline-block me-1"></i>
+                    <span class="fw-bold small">破損・不備として記録</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="opsub-inputs"></div>
+
+        <div id="opsub-queue-box" class="mt-4" style="display:none;">
+            <div class="d-flex justify-content-between align-items-end mb-2">
+                <span class="fw-bold text-dark small"><i class="bi bi-list-check"></i> 送信リスト (<span
+                        id="opsub-queue-count">0</span>)</span>
+                <button class="btn btn-sm btn-outline-secondary py-0" style="font-size:0.8rem;"
+                    onclick="clearOpSubQueue()">全消去</button>
+            </div>
+            <div id="opsub-queue-list" class="d-grid gap-2"></div>
+        </div>
+    </div>
+
+    <button id="opsub-submit-btn" class="submit-float" style="display:none; background-color: #dc3545;"
+        onclick="submitOpSub()">
+        <i class="bi bi-send-fill"></i> <span id="opsub-submit-label">報告送信</span>
+    </button>
+
+    <script>
+        var opSubQueue = [];
+        var opPrefixesSub = [];
+
+        function initOperationsSub() {
+            opSubQueue = [];
+            renderOpSubQueue();
+
+            var btn = document.getElementById('opsub-submit-btn');
+            if (btn) {
+                btn.style.backgroundColor = '#dc3545';
+                document.getElementById('opsub-submit-label').innerText = '報告送信';
+            }
+            renderOpSubInputs('#dc3545');
+
+            if (opPrefixesSub.length === 0) {
+                loadAllMasterDataSub();
+            }
+        }
+
+        function loadAllMasterDataSub() {
+            google.script.run.withSuccessHandler(function (data) {
+                if (data.prefixes && data.prefixes.length > 0) {
+                    opPrefixesSub = data.prefixes;
+                    renderOpSubInputs('#dc3545');
+                }
+            }).getOperationsInitData();
+        }
+
+        function refreshMasterDataSub() {
+            if (!confirm("最新のリストを取得しますか？")) return;
+            var btn = document.getElementById('btn-refresh-sub');
+            var orgHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 更新中';
+            google.script.run.withSuccessHandler(function (res) {
+                loadAllMasterDataSub(); btn.disabled = false; btn.innerHTML = orgHtml;
+            }).withFailureHandler(function (e) {
+                alert("更新エラー: " + e.message); btn.disabled = false; btn.innerHTML = orgHtml;
+            }).clearMasterCaches();
+        }
+
+        function renderOpSubInputs(color) {
+            var div = document.getElementById('opsub-inputs');
+            if (!div) return;
+            div.innerHTML = '';
+            div.style.display = 'block';
+            if (opPrefixesSub.length === 0) {
+                div.innerHTML = '<div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm"></span> タンクIDリスト読み込み中...</div>';
+                return;
+            }
+            opPrefixesSub.forEach(p => {
+                div.innerHTML += `<div class="input-row-card d-flex gap-2 mb-2 align-items-center p-2 bg-white rounded shadow-sm" style="border-left: 5px solid ${color};">
+     <span class="fs-4 fw-bold" style="width:30px; text-align:center;">${p}</span>
+     <input type="tel" class="form-control fw-bold text-center fs-5" maxlength="2" placeholder="--" oninput="checkOpSubInput('${p}', this)">
+     <button class="btn text-white fw-bold" style="background:${color};" onclick="addOpSubQueue('${p}-OK')">OK</button></div>`;
+            });
+        }
+
+        function checkOpSubInput(prefix, el) {
+            var val = el.value.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+            el.value = val;
+            if (val.length >= 2) { addOpSubQueue(prefix + '-' + val); el.value = ''; }
+        }
+
+        function addOpSubQueue(id) {
+            if (!opSubQueue.some(item => item.id === id)) { opSubQueue.push({ id: id, note: '' }); renderOpSubQueue(); }
+        }
+
+        function updateSubItemNote(index, text) { opSubQueue[index].note = text; }
+
+        function appendSubQuickNote(index, text) {
+            var current = opSubQueue[index].note;
+            if (current) text = current + ", " + text;
+            opSubQueue[index].note = text;
+            document.getElementById('note-input-sub-' + index).value = text;
+        }
+
+        function renderOpSubQueue() {
+            var list = document.getElementById('opsub-queue-list');
+            if (!list) return;
+            list.innerHTML = '';
+            document.getElementById('opsub-queue-count').innerText = opSubQueue.length;
+            var box = document.getElementById('opsub-queue-box');
+            var btn = document.getElementById('opsub-submit-btn');
+            var color = '#dc3545';
+
+            if (opSubQueue.length > 0) {
+                box.style.display = 'block';
+                btn.style.display = 'block';
+                opSubQueue.slice().reverse().forEach((item, revIndex) => {
+                    var index = opSubQueue.length - 1 - revIndex;
+                    var quickBtns = `<div class="mt-1">
+         <button class="btn quick-note-btn" onclick="appendSubQuickNote(${index}, 'バルブ固・歪み')">バルブ固・歪み</button>
+         <button class="btn quick-note-btn" onclick="appendSubQuickNote(${index}, 'エア漏れ')">エア漏れ</button>
+         <button class="btn quick-note-btn" onclick="appendSubQuickNote(${index}, 'Oリング')">Oリング</button>
+       </div>`;
+                    var ph = '破損内容';
+                    list.innerHTML += `<div class="queue-card" style="border-left-color: ${color};">
+       <div class="queue-card-header"><span class="queue-id">${item.id}</span>
+         <button class="btn btn-link text-secondary p-0" onclick="removeOpSubQueue(${index})"><i class="bi bi-trash3-fill"></i></button></div>
+       <div><input type="text" id="note-input-sub-${index}" class="form-control form-control-sm" placeholder="${ph}" value="${item.note}" oninput="updateSubItemNote(${index}, this.value)">${quickBtns}</div></div>`;
+                });
+            } else {
+                box.style.display = 'none';
+                btn.style.display = 'none';
+            }
+        }
+
+        function removeOpSubQueue(index) { opSubQueue.splice(index, 1); renderOpSubQueue(); }
+        function clearOpSubQueue() { opSubQueue = []; renderOpSubQueue(); }
+
+        function submitOpSub() {
+            var confirmMsg = opSubQueue.length + '件 送信しますか？';
+            if (!confirm(confirmMsg)) return;
+
+            var btn = document.getElementById('opsub-submit-btn');
+            var orgText = document.getElementById('opsub-submit-label').innerText;
+            btn.disabled = true; document.getElementById('opsub-submit-label').innerText = "送信中...";
+
+            var payload = {
+                action: '破損報告',
+                items: opSubQueue,
+                destination: "",
+                isUnused: false,
+                isDefect: false,
+                repairCost: 0,
+                repairDetail: "",
+                userPasscode: (typeof GLOBAL_PASSCODE !== 'undefined') ? GLOBAL_PASSCODE : ""
+            };
+
+            google.script.run.withSuccessHandler(res => {
+                btn.disabled = false; document.getElementById('opsub-submit-label').innerText = orgText;
+                clearOpSubQueue();
+
+                var msg = "【送信結果】\\n総数: " + (res.totalCount || 0) + " 本\\n----------------\\n";
+                if (res.successIds && res.successIds.length > 0) msg += "✅ 成功 (" + res.successIds.length + "本):\\n" + res.successIds.join(", ") + "\\n\\n";
+                else msg += "✅ 成功: なし\\n\\n";
+                if (res.failedItems && res.failedItems.length > 0) {
+                    msg += "❌ 失敗 (" + res.failedItems.length + "本):\\n";
+                    res.failedItems.forEach(item => msg += "・" + item.id + " : " + item.reason + "\\n");
+                }
+                alert(msg);
+
+            }).withFailureHandler(function (e) {
+                btn.disabled = false; document.getElementById('opsub-submit-label').innerText = orgText;
+                alert("システムエラー: " + e);
+            }).submitOperations(payload);
+        }
+    </script>
+</body>
+
+</html>

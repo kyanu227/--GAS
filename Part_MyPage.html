@@ -1,15 +1,17 @@
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+<link
+  href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&family=Noto+Sans+JP:wght@400;700;900&display=swap"
+  rel="stylesheet">
 
 <div id="app-container" class="app-wrapper theme-default">
   <div class="app-bg-overlay"></div>
 
   <div class="pt-4 px-3">
     <div class="container-fluid" style="max-width: 600px;">
-      
+
       <div class="status-card shadow-2xl position-relative overflow-hidden p-4 text-white">
         <div class="card-curve-bg"></div>
         <div class="card-shine-effect"></div>
-        
+
         <div class="position-relative z-1">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="rank-pill px-3 py-1 d-flex align-items-center gap-2 shadow-sm">
@@ -17,7 +19,8 @@
               <span id="my-rank-text" class="small fw-bold ls-2 text-uppercase">LOADING</span>
             </div>
 
-            <button class="btn btn-link text-inherit p-0 opacity-75 hover-scale" onclick="loadMyPageData(window.GLOBAL_PASSCODE)">
+            <button class="btn btn-link text-inherit p-0 opacity-75 hover-scale"
+              onclick="loadMyPageData(window.GLOBAL_PASSCODE)">
               <i class="bi bi-arrow-clockwise fs-5"></i>
             </button>
           </div>
@@ -49,150 +52,187 @@
     </div>
   </div>
 
-  <div style="height: 24px;"></div>
-
-  <div class="px-3 pb-3">
-    <div class="container-fluid" style="max-width: 600px;">
-      
-      <div class="d-flex align-items-center justify-content-between mb-3 px-1">
-        <h5 class="fw-bold m-0 text-main d-flex align-items-center text-shadow-sm">
-          <i class="bi bi-activity me-2 accent-color"></i>Activity Log
-        </h5>
-        
-        <div id="edit-controls" class="d-flex gap-2" style="display:none;">
-          <div id="action-buttons" style="display:none;" class="fade-in-right">
-            <button class="btn btn-danger btn-sm rounded-pill fw-bold px-3 shadow-sm" onclick="executeDelete()">
-              <i class="bi bi-trash-fill me-1"></i> 削除
-            </button>
-            <button class="glass-btn btn-sm rounded-circle d-flex align-items-center justify-content-center" style="width:32px;height:32px;padding:0;" onclick="toggleEditMode()">
-              <i class="bi bi-x fs-5"></i>
-            </button>
-          </div>
-          <button id="btn-edit-mode" class="glass-btn btn-sm border-0 rounded-pill px-3 fw-bold shadow-sm" onclick="toggleEditMode()">
-            編集
-          </button>
-        </div>
-      </div>
-
-      <div id="log-panel-container" class="card border-0 shadow-lg rounded-4 overflow-hidden log-panel" style="min-height: 400px;">
-        
-        <div class="card-header border-bottom border-theme p-3" style="background-color: var(--tab-inactive-bg);">
-          <ul class="nav nav-pills nav-fill p-1 rounded-3 border border-theme shadow-sm" style="background-color: var(--log-bg);">
-            <li class="nav-item">
-              <button id="nav-btn-summary" class="nav-link fw-bold small text-main active" onclick="switchTab('summary')">
-                <i class="bi bi-pie-chart-fill me-1"></i> 集計
-              </button>
-            </li>
-            <li class="nav-item">
-              <button id="nav-btn-today" class="nav-link fw-bold small text-main" onclick="switchTab('today')">
-                <i class="bi bi-list-ul me-1"></i> 本日詳細
-              </button>
-            </li>
-            <li class="nav-item">
-              <button id="nav-btn-weekly" class="nav-link fw-bold small text-main" onclick="switchTab('weekly')">
-                <i class="bi bi-calendar-week me-1"></i> 週間履歴
-              </button>
-            </li>
-          </ul>
-        </div>
-
-        <div class="card-body p-0 tab-content custom-scroll" style="height: 400px; overflow-y: auto; background-color: var(--log-bg);">
-          
-          <div class="tab-pane fade show active" id="pane-summary">
-            <div class="p-3">
-              <div id="summary-container" class="d-flex flex-column gap-3">
-                <div class="text-center py-5"><div class="spinner-border accent-color" role="status"></div></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="tab-pane fade" id="pane-today">
-            <div class="sticky-top border-bottom border-theme p-2 d-flex gap-2 overflow-auto no-scrollbar" style="background-color: var(--log-bg); z-index: 5;">
-              <button class="chip-filter active" data-filter="ALL" onclick="setOpFilter('ALL')">すべて</button>
-              <button class="chip-filter" data-filter="貸出" onclick="setOpFilter('貸出')">貸出</button>
-              <button class="chip-filter" data-filter="返却" onclick="setOpFilter('返却')">返却</button>
-              <button class="chip-filter" data-filter="充填" onclick="setOpFilter('充填')">充填</button>
-            </div>
-            <div id="list-today" class="list-group list-group-flush pb-3"></div>
-          </div>
-
-          <div class="tab-pane fade" id="pane-weekly">
-            <div id="weekly-date-bar" class="sticky-top border-bottom border-theme p-2 d-flex gap-2 overflow-auto no-scrollbar" style="background-color: var(--log-bg); z-index: 5;">
-            </div>
-            <div id="list-weekly" class="list-group list-group-flush pb-3"></div>
-          </div>
-
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <style>
   /* --- 基本設定 --- */
-  :root { --app-font: 'Inter', 'Noto Sans JP', sans-serif; }
-  body { font-family: var(--app-font); margin: 0; background-color: #f3f4f6; }
-  .app-wrapper { min-height: 100vh; display: flex; flex-direction: column; }
-  .fw-900 { font-weight: 900; }
-  .font-num { font-family: 'Inter', sans-serif; font-feature-settings: "tnum"; letter-spacing: -0.5px; }
-  .text-shadow-lg { text-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-  .text-shadow-sm { text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .custom-scroll::-webkit-scrollbar { width: 4px; }
-  .custom-scroll::-webkit-scrollbar-thumb { background-color: rgba(128,128,128,0.3); border-radius: 2px; }
+  :root {
+    --app-font: 'Inter', 'Noto Sans JP', sans-serif;
+  }
+
+  body {
+    font-family: var(--app-font);
+    margin: 0;
+    background-color: #f3f4f6;
+  }
+
+  .app-wrapper {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .fw-900 {
+    font-weight: 900;
+  }
+
+  .font-num {
+    font-family: 'Inter', sans-serif;
+    font-feature-settings: "tnum";
+    letter-spacing: -0.5px;
+  }
+
+  .text-shadow-lg {
+    text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  }
+
+  .text-shadow-sm {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .custom-scroll::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .custom-scroll::-webkit-scrollbar-thumb {
+    background-color: rgba(128, 128, 128, 0.3);
+    border-radius: 2px;
+  }
 
   /* テーマカラー定義 */
-  .theme-default { 
-    --app-bg: #f3f4f6; --card-bg: linear-gradient(135deg, #0f2027 0%, #203a43 100%); 
-    --log-bg: #fff; --text-main: #333; --text-card: #fff; --accent: #3b82f6; 
-    --border: rgba(0,0,0,0.1); --glass-bg: rgba(0,0,0,0.05); --glass-active: rgba(0,0,0,0.1); --tab-inactive-bg: #f8f9fa; 
+  .theme-default {
+    --app-bg: #f3f4f6;
+    --card-bg: linear-gradient(135deg, #0f2027 0%, #203a43 100%);
+    --log-bg: #fff;
+    --text-main: #333;
+    --text-card: #fff;
+    --accent: #3b82f6;
+    --border: rgba(0, 0, 0, 0.1);
+    --glass-bg: rgba(0, 0, 0, 0.05);
+    --glass-active: rgba(0, 0, 0, 0.1);
+    --tab-inactive-bg: #f8f9fa;
   }
-  .rank-platinum { 
-    --app-bg: #0a0a0a; --card-bg: radial-gradient(circle at 100% 0%, #333 0%, #000 100%); 
-    --log-bg: #141414; --text-main: #f0f0f0; --text-card: #d4af37; --accent: #d4af37; 
-    --border: rgba(212, 175, 55, 0.3); --glass-bg: rgba(255,255,255,0.1); --glass-active: rgba(212, 175, 55, 0.6); --tab-inactive-bg: #222; 
+
+  .rank-platinum {
+    --app-bg: #0a0a0a;
+    --card-bg: radial-gradient(circle at 100% 0%, #333 0%, #000 100%);
+    --log-bg: #141414;
+    --text-main: #f0f0f0;
+    --text-card: #d4af37;
+    --accent: #d4af37;
+    --border: rgba(212, 175, 55, 0.3);
+    --glass-bg: rgba(255, 255, 255, 0.1);
+    --glass-active: rgba(212, 175, 55, 0.6);
+    --tab-inactive-bg: #222;
   }
-  .rank-platinum h1, .rank-platinum .text-glow { background: linear-gradient(to bottom, #fff 30%, #f3e5ab 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-  .rank-platinum .progress-bar { background: linear-gradient(90deg, #d4af37, #f1c40f); }
-  .rank-gold { 
-    --app-bg: #fdfcf5; --card-bg: linear-gradient(135deg, #f0e6cc 0%, #e5c365 40%, #b38728 100%); 
-    --log-bg: #fffbf0; --text-main: #4a3b00; --text-card: #4a3b00; --accent: #b8860b; 
-    --border: rgba(184, 134, 11, 0.2); --glass-bg: rgba(184, 134, 11, 0.1); --glass-active: rgba(184, 134, 11, 0.3); --tab-inactive-bg: rgba(184, 134, 11, 0.05); 
+
+  .rank-platinum h1,
+  .rank-platinum .text-glow {
+    background: linear-gradient(to bottom, #fff 30%, #f3e5ab 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
-  .rank-silver { 
-    --app-bg: #f0f4f8; --card-bg: linear-gradient(135deg, #ffffff 0%, #eef2f3 30%, #aebcce 100%); 
-    --log-bg: #ffffff; --text-main: #1e293b; --text-card: #1e293b; --accent: #334155; 
-    --border: rgba(51, 65, 85, 0.15); --glass-bg: rgba(51, 65, 85, 0.05); --glass-active: rgba(51, 65, 85, 0.2); --tab-inactive-bg: #f1f5f9; 
+
+  .rank-platinum .progress-bar {
+    background: linear-gradient(90deg, #d4af37, #f1c40f);
   }
-  .rank-bronze { 
-    --app-bg: #fdf8f6; --card-bg: linear-gradient(135deg, #e67e52 0%, #b3542b 60%, #873e23 100%); 
-    --log-bg: #fff; --text-main: #5d4037; --text-card: #fff; --accent: #d84315; 
-    --border: rgba(216, 67, 21, 0.2); --glass-bg: rgba(216, 67, 21, 0.05); --glass-active: rgba(216, 67, 21, 0.2); --tab-inactive-bg: #fbe9e7; 
+
+  .rank-gold {
+    --app-bg: #fdfcf5;
+    --card-bg: linear-gradient(135deg, #f0e6cc 0%, #e5c365 40%, #b38728 100%);
+    --log-bg: #fffbf0;
+    --text-main: #4a3b00;
+    --text-card: #4a3b00;
+    --accent: #b8860b;
+    --border: rgba(184, 134, 11, 0.2);
+    --glass-bg: rgba(184, 134, 11, 0.1);
+    --glass-active: rgba(184, 134, 11, 0.3);
+    --tab-inactive-bg: rgba(184, 134, 11, 0.05);
   }
-  .rank-regular { 
-    --app-bg: #f3f4f6; --card-bg: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); 
-    --log-bg: #fff; --text-main: #333; --text-card: #fff; --accent: #1e3c72; 
-    --border: rgba(0,0,0,0.1); --glass-bg: rgba(0,0,0,0.05); --glass-active: rgba(30, 60, 114, 0.2); --tab-inactive-bg: #eee; 
+
+  .rank-silver {
+    --app-bg: #f0f4f8;
+    --card-bg: linear-gradient(135deg, #ffffff 0%, #eef2f3 30%, #aebcce 100%);
+    --log-bg: #ffffff;
+    --text-main: #1e293b;
+    --text-card: #1e293b;
+    --accent: #334155;
+    --border: rgba(51, 65, 85, 0.15);
+    --glass-bg: rgba(51, 65, 85, 0.05);
+    --glass-active: rgba(51, 65, 85, 0.2);
+    --tab-inactive-bg: #f1f5f9;
+  }
+
+  .rank-bronze {
+    --app-bg: #fdf8f6;
+    --card-bg: linear-gradient(135deg, #e67e52 0%, #b3542b 60%, #873e23 100%);
+    --log-bg: #fff;
+    --text-main: #5d4037;
+    --text-card: #fff;
+    --accent: #d84315;
+    --border: rgba(216, 67, 21, 0.2);
+    --glass-bg: rgba(216, 67, 21, 0.05);
+    --glass-active: rgba(216, 67, 21, 0.2);
+    --tab-inactive-bg: #fbe9e7;
+  }
+
+  .rank-regular {
+    --app-bg: #f3f4f6;
+    --card-bg: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    --log-bg: #fff;
+    --text-main: #333;
+    --text-card: #fff;
+    --accent: #1e3c72;
+    --border: rgba(0, 0, 0, 0.1);
+    --glass-bg: rgba(0, 0, 0, 0.05);
+    --glass-active: rgba(30, 60, 114, 0.2);
+    --tab-inactive-bg: #eee;
   }
 
   /* コンポーネント */
-  .app-wrapper { background-color: var(--app-bg); transition: background-color 0.8s ease; }
-  .app-bg-overlay { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.05) 0%, transparent 60%); }
-  .text-content, .text-inherit { color: var(--text-card); }
-  .text-main { color: var(--text-main); }
-  .accent-color { color: var(--accent); }
-  .border-theme { border-color: var(--border) !important; }
+  .app-wrapper {
+    background-color: var(--app-bg);
+    transition: background-color 0.8s ease;
+  }
+
+  .app-bg-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.05) 0%, transparent 60%);
+  }
+
+  .text-content,
+  .text-inherit {
+    color: var(--text-card);
+  }
+
+  .text-main {
+    color: var(--text-main);
+  }
+
+  .accent-color {
+    color: var(--accent);
+  }
+
+  .border-theme {
+    border-color: var(--border) !important;
+  }
 
   /* ステータスカード */
-  .status-card { 
-    background: var(--card-bg); 
-    border-radius: 28px; 
-    box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.35); 
-    border: 1px solid var(--border); 
-    position: relative; 
-    z-index: 10; 
+  .status-card {
+    background: var(--card-bg);
+    border-radius: 28px;
+    box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--border);
+    position: relative;
+    z-index: 10;
     color: var(--text-card);
-    
+
     /* ▼▼▼ 修正箇所: 高さを確保し、内容を中央揃えにする設定 ▼▼▼ */
     min-height: 240px;
     display: flex;
@@ -200,332 +240,266 @@
     justify-content: center;
     /* ▲▲▲ 修正ここまで ▲▲▲ */
   }
-  
-  .card-curve-bg { position: absolute; inset: 0; opacity: 0.15; pointer-events: none; background-image: url("data:image/svg+xml,%3Csvg width='100%25' height='100%25' viewBox='0 0 100 100' preserveAspectRatio='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 100 C 20 0 50 0 100 100' stroke='white' stroke-width='0.8' fill='none' opacity='0.3'/%3E%3Cpath d='M0 100 C 30 30 70 30 100 100' stroke='white' stroke-width='0.8' fill='none' opacity='0.2'/%3E%3C/svg%3E"); background-size: cover; mix-blend-mode: overlay; }
-  .card-shine-effect { position: absolute; top: -100%; left: -100%; width: 300%; height: 300%; background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.3) 45%, transparent 55%); animation: shine 6s infinite cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; }
-  @keyframes shine { 0% { transform: translate(0,0); } 100% { transform: translate(40%, 40%); } }
-  
-  .rank-pill { border-radius: 30px; background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border: 1px solid var(--border); }
-  .progress-glass { background: rgba(0,0,0,0.25); border-radius: 10px; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.2); }
-  .progress-bar { background-color: var(--text-card); }
-  
+
+  .card-curve-bg {
+    position: absolute;
+    inset: 0;
+    opacity: 0.15;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='100%25' height='100%25' viewBox='0 0 100 100' preserveAspectRatio='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 100 C 20 0 50 0 100 100' stroke='white' stroke-width='0.8' fill='none' opacity='0.3'/%3E%3Cpath d='M0 100 C 30 30 70 30 100 100' stroke='white' stroke-width='0.8' fill='none' opacity='0.2'/%3E%3C/svg%3E");
+    background-size: cover;
+    mix-blend-mode: overlay;
+  }
+
+  .card-shine-effect {
+    position: absolute;
+    top: -100%;
+    left: -100%;
+    width: 300%;
+    height: 300%;
+    background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.3) 45%, transparent 55%);
+    animation: shine 6s infinite cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+  }
+
+  @keyframes shine {
+    0% {
+      transform: translate(0, 0);
+    }
+
+    100% {
+      transform: translate(40%, 40%);
+    }
+  }
+
+  .rank-pill {
+    border-radius: 30px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+  }
+
+  .progress-glass {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  .progress-bar {
+    background-color: var(--text-card);
+  }
+
   /* ログパネル・リスト */
-  .log-panel { background: var(--log-bg); border: 1px solid var(--border); transition: background 0.5s ease; }
-  .glass-btn { background: var(--glass-bg); color: var(--text-main); border: 1px solid var(--border); transition: all 0.2s; }
-  .glass-btn:hover { background: var(--glass-active); }
-  .hover-scale:active { transform: scale(0.95); transition: 0.2s; }
+  .log-panel {
+    background: var(--log-bg);
+    border: 1px solid var(--border);
+    transition: background 0.5s ease;
+  }
 
-  .nav-pills .nav-link { color: var(--text-main); opacity: 0.6; background: transparent; border-radius: 6px; transition: all 0.2s; }
-  .nav-pills .nav-link:hover { background-color: var(--glass-bg); }
-  .nav-pills .nav-link.active { background-color: var(--glass-active); color: var(--accent); font-weight: 800; opacity: 1; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid var(--border); }
-  
-  .chip-filter { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--tab-inactive-bg); color: var(--text-main); font-size: 0.8rem; font-weight: 600; white-space: nowrap; transition: all 0.2s; opacity: 0.8; }
-  .chip-filter:hover { opacity: 1; transform: translateY(-1px); }
-  .chip-filter.active { background: var(--accent); color: #fff; border-color: var(--accent); opacity: 1; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-  
-  .list-group-item { background-color: transparent !important; border: none; border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; align-items: center; color: var(--text-main); transition: background 0.1s; }
-  .list-group-item:last-child { border-bottom: none; }
-  
-  .check-wrapper { width: 0; overflow: hidden; transition: width 0.2s ease; display: flex; align-items: center; }
-  .mode-edit .check-wrapper { width: 36px; margin-right: 4px; }
-  
-  .custom-check { width: 20px; height: 20px; cursor: pointer; accent-color: #dc3545; }
+  .glass-btn {
+    background: var(--glass-bg);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+  }
 
-  .tank-badge-mini { font-family: monospace; font-weight: 700; font-size: 0.8rem; background: var(--tab-inactive-bg); padding: 2px 6px; border-radius: 4px; color: var(--text-main); border: 1px solid var(--border); }
-  .fade-in-right { animation: fadeInRight 0.3s ease; }
-  @keyframes fadeInRight { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+  .glass-btn:hover {
+    background: var(--glass-active);
+  }
 
-  .last-no-border:last-child { border-bottom: none !important; }
+  .hover-scale:active {
+    transform: scale(0.95);
+    transition: 0.2s;
+  }
+
+  .nav-pills .nav-link {
+    color: var(--text-main);
+    opacity: 0.6;
+    background: transparent;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+
+  .nav-pills .nav-link:hover {
+    background-color: var(--glass-bg);
+  }
+
+  .nav-pills .nav-link.active {
+    background-color: var(--glass-active);
+    color: var(--accent);
+    font-weight: 800;
+    opacity: 1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border);
+  }
+
+  .chip-filter {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--tab-inactive-bg);
+    color: var(--text-main);
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: all 0.2s;
+    opacity: 0.8;
+  }
+
+  .chip-filter:hover {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+
+  .chip-filter.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+    opacity: 1;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  }
+
+  .list-group-item {
+    background-color: transparent !important;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    color: var(--text-main);
+    transition: background 0.1s;
+  }
+
+  .list-group-item:last-child {
+    border-bottom: none;
+  }
+
+  .check-wrapper {
+    width: 0;
+    overflow: hidden;
+    transition: width 0.2s ease;
+    display: flex;
+    align-items: center;
+  }
+
+  .mode-edit .check-wrapper {
+    width: 36px;
+    margin-right: 4px;
+  }
+
+  .custom-check {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: #dc3545;
+  }
+
+  .tank-badge-mini {
+    font-family: monospace;
+    font-weight: 700;
+    font-size: 0.8rem;
+    background: var(--tab-inactive-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--text-main);
+    border: 1px solid var(--border);
+  }
+
+  .fade-in-right {
+    animation: fadeInRight 0.3s ease;
+  }
+
+  @keyframes fadeInRight {
+    from {
+      opacity: 0;
+      transform: translateX(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .last-no-border:last-child {
+    border-bottom: none !important;
+  }
 </style>
 
 <script>
- var cache = { today: [], weekly: [], all: [] };
- var currentFilter = 'ALL';
- var currentTabId = 'summary';
- var selectedDate = 'ALL';
- var isEditMode = false;
+  var cache = { today: [], weekly: [], all: [] };
+  var currentFilter = 'ALL';
+  var currentTabId = 'summary';
+  var selectedDate = 'ALL';
+  var isEditMode = false;
 
- function loadMyPageData(passcode) {
-   var pass = passcode || ((typeof window.GLOBAL_PASSCODE !== 'undefined') ? window.GLOBAL_PASSCODE : "");
-   google.script.run
-     .withSuccessHandler(renderMyPage)
-     .withFailureHandler(e => alert("読み込みエラー: " + e.message))
-     .getMyStats(pass);
- }
+  function loadMyPageData(passcode) {
+    var pass = passcode || ((typeof window.GLOBAL_PASSCODE !== 'undefined') ? window.GLOBAL_PASSCODE : "");
+    google.script.run
+      .withSuccessHandler(renderMyPage)
+      .withFailureHandler(e => alert("読み込みエラー: " + e.message))
+      .getMyStats(pass);
+  }
 
- function renderMyPage(data) {
-   if(!data) return;
+  function renderMyPage(data) {
+    if (!data) return;
 
-   document.getElementById('my-name').innerText = data.name;
-   animateValue("my-money", 0, data.estimatedMoney, 1000);
-   document.getElementById('my-score').innerText = data.currentScore.toLocaleString();
-  
-   if (data.nextRankScore > 0) {
-     var diff = data.nextRankScore - data.currentScore;
-     document.getElementById('score-diff').innerText = diff > 0 ? diff.toLocaleString() : 0;
-     var percent = Math.min(100, (data.currentScore / data.nextRankScore) * 100);
-     document.getElementById('rank-progress').style.width = percent + "%";
-   } else {
-     document.getElementById('score-diff').innerText = "MAX";
-     document.getElementById('rank-progress').style.width = "100%";
-   }
+    document.getElementById('my-name').innerText = data.name;
+    animateValue("my-money", 0, data.estimatedMoney, 1000);
+    document.getElementById('my-score').innerText = data.currentScore.toLocaleString();
 
-   // ※ 管理者バッジの処理は削除済み
+    if (data.nextRankScore > 0) {
+      var diff = data.nextRankScore - data.currentScore;
+      document.getElementById('score-diff').innerText = diff > 0 ? diff.toLocaleString() : 0;
+      var percent = Math.min(100, (data.currentScore / data.nextRankScore) * 100);
+      document.getElementById('rank-progress').style.width = percent + "%";
+    } else {
+      document.getElementById('score-diff').innerText = "MAX";
+      document.getElementById('rank-progress').style.width = "100%";
+    }
 
-   updateTheme(data.rank);
-   cache.today = data.todayLog || [];
-   cache.weekly = data.weeklyLog || [];
+    // ※ 管理者バッジの処理は削除済み
 
-   renderDateBar();
-   switchTab(currentTabId);
- }
+    updateTheme(data.rank);
+    cache.today = data.todayLog || [];
+    cache.weekly = data.weeklyLog || [];
+  }
 
- function updateTheme(rank) {
-   var app = document.getElementById('app-container');
-   var txt = document.getElementById('my-rank-text');
-   var icon = document.getElementById('rank-icon');
-   app.className = 'app-wrapper theme-default';
-   var rankClass = 'rank-regular';
-   var iconClass = 'bi-stars';
-   if(rank === 'プラチナ') { rankClass = 'rank-platinum'; iconClass = 'bi-gem'; }
-   else if(rank === 'ゴールド') { rankClass = 'rank-gold'; iconClass = 'bi-trophy-fill'; }
-   else if(rank === 'シルバー') { rankClass = 'rank-silver'; iconClass = 'bi-award-fill'; }
-   else if(rank === 'ブロンズ') { rankClass = 'rank-bronze'; iconClass = 'bi-shield-fill'; }
-   app.classList.add(rankClass);
-   txt.innerText = rank || 'REGULAR';
-   icon.className = 'bi ' + iconClass;
- }
+  function updateTheme(rank) {
+    var app = document.getElementById('app-container');
+    var txt = document.getElementById('my-rank-text');
+    var icon = document.getElementById('rank-icon');
+    app.className = 'app-wrapper theme-default';
+    var rankClass = 'rank-regular';
+    var iconClass = 'bi-stars';
+    if (rank === 'プラチナ') { rankClass = 'rank-platinum'; iconClass = 'bi-gem'; }
+    else if (rank === 'ゴールド') { rankClass = 'rank-gold'; iconClass = 'bi-trophy-fill'; }
+    else if (rank === 'シルバー') { rankClass = 'rank-silver'; iconClass = 'bi-award-fill'; }
+    else if (rank === 'ブロンズ') { rankClass = 'rank-bronze'; iconClass = 'bi-shield-fill'; }
+    app.classList.add(rankClass);
+    txt.innerText = rank || 'REGULAR';
+    icon.className = 'bi ' + iconClass;
+  }
 
- function switchTab(tabId) {
-   currentTabId = tabId;
-   
-   if(isEditMode) toggleEditMode();
+  function switchTab(tabId) {
+    currentTabId = tabId;
+  }
 
-   document.querySelectorAll('.nav-link').forEach(btn => btn.classList.remove('active'));
-   document.getElementById('nav-btn-' + tabId).classList.add('active');
-   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active', 'show'));
-   document.getElementById('pane-' + tabId).classList.add('active', 'show');
-   
-   var controls = document.getElementById('edit-controls');
-   if(tabId === 'summary') {
-     controls.style.display = 'none';
-   } else {
-     controls.style.display = 'flex';
-   }
 
-   refreshLists();
- }
 
- function setOpFilter(mode, btn) {
-   currentFilter = mode;
-   document.querySelectorAll('.chip-filter[data-filter]').forEach(b => b.classList.remove('active'));
-   document.querySelectorAll(`.chip-filter[data-filter="${mode}"]`).forEach(b => b.classList.add('active'));
-   refreshLists();
- }
+  function animateValue(id, start, end, duration) {
+    var obj = document.getElementById(id);
+    var range = end - start;
+    var current = start;
+    var increment = end > start ? Math.ceil(end / 20) : 0;
+    var stepTime = Math.abs(Math.floor(duration / (range / increment))) || 10;
+    var timer = setInterval(function () {
+      current += increment;
+      if (current >= end) { current = end; clearInterval(timer); }
+      obj.innerHTML = current.toLocaleString();
+    }, stepTime);
+  }
 
- function renderDateBar() {
-   var bar = document.getElementById('weekly-date-bar');
-   bar.innerHTML = '<button class="chip-filter active" data-date="ALL" onclick="setDateFilter(\'ALL\')">すべて</button>';
-   var dates = [...new Set(cache.weekly.map(item => item.dateDisplay))];
-   dates.forEach(d => {
-     bar.insertAdjacentHTML('beforeend', `<button class="chip-filter" data-date="${d}" onclick="setDateFilter('${d}')">${d}</button>`);
-   });
- }
-
- function setDateFilter(date) {
-   selectedDate = date;
-   document.querySelectorAll('#weekly-date-bar .chip-filter').forEach(b => b.classList.remove('active'));
-   var btn = document.querySelector(`#weekly-date-bar .chip-filter[data-date="${date}"]`);
-   if(btn) btn.classList.add('active');
-   refreshLists();
- }
-
- function refreshLists() {
-   if (currentTabId === 'summary') {
-     renderDetailedSummary();
-   } else if (currentTabId === 'today') {
-     renderLogList('list-today', filterLogs(cache.today));
-   } else if (currentTabId === 'weekly') {
-     var logs = filterLogs(cache.weekly);
-     if(selectedDate !== 'ALL') logs = logs.filter(l => l.dateDisplay === selectedDate);
-     renderLogList('list-weekly', logs);
-   }
- }
-
- function filterLogs(logs) {
-   if (currentFilter === 'ALL') return logs;
-   return logs.filter(l => l.action.indexOf(currentFilter) !== -1);
- }
-
- function renderDetailedSummary() {
-   var container = document.getElementById('summary-container');
-   container.innerHTML = '';
-   var logs = cache.today;
-
-   if(logs.length === 0) {
-     container.innerHTML = '<div class="text-center py-5 opacity-75 small text-main">データがありません</div>';
-     return;
-   }
-
-   var data = {
-     '貸出': { count: 0, details: {} },
-     '返却': { count: 0, details: {} },
-     '充填': { count: 0, details: {} },
-     '破損': { count: 0, details: {} },
-     '修理': { count: 0, details: {} }
-   };
-
-   logs.forEach(l => {
-     var action = l.action;
-     var type = null;
-     if (action.includes('貸出')) type = '貸出';
-     else if (action.includes('返却')) type = '返却';
-     else if (action.includes('充填')) type = '充填';
-     else if (action.includes('破損')) type = '破損';
-     else if (action.includes('修理')) type = '修理';
-
-     if (type) {
-       data[type].count++;
-       var loc = l.loc || '場所不明';
-       if (type === '返却' && l.note) {
-          loc = l.note.replace(/[()]/g, '').replace('より返却','').trim();
-       }
-       if (type === '貸出' || type === '返却') {
-          data[type].details[loc] = (data[type].details[loc] || 0) + 1;
-       }
-     }
-   });
-
-   function createSection(title, icon, colorClass, info) {
-     if (info.count === 0) return '';
-     var html = `<div class="mb-2 border rounded-3 overflow-hidden" style="background:var(--tab-inactive-bg); border-color:var(--border)!important;">
-       <div class="p-2 px-3 d-flex justify-content-between align-items-center bg-white border-bottom border-theme">
-          <div class="fw-bold ${colorClass}"><i class="bi ${icon} me-2"></i>${title}</div>
-          <div class="fw-900 font-num">${info.count} <span class="small fw-normal opacity-75">本</span></div>
-       </div>
-       <div class="bg-white">`;
-     var details = info.details;
-     var keys = Object.keys(details);
-     if (keys.length > 0) {
-        keys.forEach(k => {
-          html += `<div class="d-flex justify-content-between px-3 py-2 border-bottom border-theme last-no-border small">
-            <span class="text-main opacity-75">${k}</span>
-            <span class="font-num fw-bold">${details[k]}</span>
-          </div>`;
-        });
-     } else {
-        html += `<div class="px-3 py-2 small text-muted text-end">合計 ${info.count} 本</div>`;
-     }
-     html += `</div></div>`;
-     return html;
-   }
-
-   var html = '';
-   html += createSection('貸出', 'bi-box-arrow-up', 'text-primary', data['貸出']);
-   html += createSection('返却', 'bi-box-arrow-in-down', 'text-success', data['返却']);
-   html += createSection('充填', 'bi-fuel-pump-fill', 'text-warning', data['充填']);
-   html += createSection('破損', 'bi-exclamation-triangle-fill', 'text-danger', data['破損']);
-   html += createSection('修理', 'bi-tools', 'text-info', data['修理']);
-   container.innerHTML = html;
- }
-
- function renderLogList(elementId, logs) {
-   var container = document.getElementById(elementId);
-   container.innerHTML = logs.length ? '' : '<div class="text-center py-5 opacity-75 small text-main">データなし</div>';
-   
-   logs.forEach(item => {
-     var color = 'secondary';
-     if(item.action.indexOf('貸出')!==-1) color='primary';
-     else if(item.action.indexOf('返却')!==-1) color='success';
-     else if(item.action.indexOf('充填')!==-1) color='warning';
-     var locText = item.loc;
-     if(item.action.indexOf('返却')!==-1 && item.note) locText = item.note;
-     
-     container.insertAdjacentHTML('beforeend', `
-       <label class="list-group-item" style="cursor:pointer;">
-         <div class="check-wrapper">
-           <input type="checkbox" class="custom-check delete-check" value="${item.uuid}">
-         </div>
-         <div class="d-flex align-items-center w-100">
-           <div class="me-3 text-center opacity-75" style="min-width:40px;">
-             <div class="font-num fw-bold text-main" style="font-size:0.85rem; line-height:1;">${item.time}</div>
-           </div>
-           <div class="flex-grow-1">
-             <div class="d-flex align-items-center mb-1">
-               <span class="badge bg-${color} me-2" style="font-size:0.7rem;">${item.action}</span>
-               <span class="tank-badge-mini font-num">${item.tankId}</span>
-             </div>
-             <div class="small fw-bold text-main text-truncate" style="max-width:180px;">
-               ${locText || '-'}
-             </div>
-           </div>
-         </div>
-       </label>
-     `);
-   });
- }
-
- function toggleEditMode() {
-   isEditMode = !isEditMode;
-   var actions = document.getElementById('action-buttons');
-   var btn = document.getElementById('btn-edit-mode');
-   var panel = document.getElementById('log-panel-container');
-
-   if(isEditMode) {
-     actions.style.display = 'flex';
-     btn.classList.add('glass-active');
-     btn.innerText = '完了';
-     panel.classList.add('mode-edit'); 
-   } else {
-     actions.style.display = 'none';
-     btn.classList.remove('glass-active');
-     btn.innerText = '編集';
-     panel.classList.remove('mode-edit');
-     document.querySelectorAll('.delete-check').forEach(c => c.checked = false);
-   }
- }
-
- function executeDelete() {
-   var checks = document.querySelectorAll('.delete-check:checked');
-   if(checks.length === 0) return;
-   if(!confirm('選択した ' + checks.length + ' 件の履歴を削除しますか？\n(在庫ステータスは戻りません)')) return;
-  
-   var uuids = Array.from(checks).map(c => c.value);
-   var pass = (typeof window.GLOBAL_PASSCODE !== 'undefined') ? window.GLOBAL_PASSCODE : "";
-   
-   var btn = document.querySelector('#action-buttons button.btn-danger');
-   var originalText = btn.innerHTML;
-   btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 削除中...';
-   btn.disabled = true;
-
-   google.script.run
-     .withSuccessHandler(function(res) {
-       alert(res.message);
-       btn.innerHTML = originalText;
-       btn.disabled = false;
-       toggleEditMode();
-       loadMyPageData(pass);
-     })
-     .withFailureHandler(function(e) {
-       alert("削除エラー: " + e.message);
-       btn.innerHTML = originalText;
-       btn.disabled = false;
-     })
-     .batchDeleteMyLog({ uuids: uuids, userPasscode: pass });
- }
-
- function animateValue(id, start, end, duration) {
-   var obj = document.getElementById(id);
-   var range = end - start;
-   var current = start;
-   var increment = end > start ? Math.ceil(end / 20) : 0;
-   var stepTime = Math.abs(Math.floor(duration / (range / increment))) || 10;
-   var timer = setInterval(function() {
-     current += increment;
-     if (current >= end) { current = end; clearInterval(timer); }
-     obj.innerHTML = current.toLocaleString();
-   }, stepTime);
- }
-
- loadMyPageData(window.GLOBAL_PASSCODE);
+  loadMyPageData(window.GLOBAL_PASSCODE);
 </script>

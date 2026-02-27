@@ -1,6 +1,15 @@
-// ファイル名: 2_Utils.gs
+// ■■■ 2_Utils.gs : ユーティリティ & 共通書き込み処理 ■■■
 
-// ■■■ ユーティリティ & 共通書き込み処理 (完全統合版) ■■■
+/**
+ * 安全なユーザーメール取得 (匿名アクセス時のエラー回避)
+ */
+function getSafeUserEmail() {
+  try {
+    return Session.getActiveUser().getEmail() || "";
+  } catch (e) {
+    return "";
+  }
+}
 
 /**
  * IDの正規化
@@ -8,7 +17,7 @@
 function normalizeId(id) {
   if (id === null || id === undefined) return "";
   var s = String(id).toUpperCase();
-  s = s.replace(/[０-９Ａ-Ｚａ-ｚ]/g, function(s) { return String.fromCharCode(s.charCodeAt(0) - 0xFEE0); });
+  s = s.replace(/[０-９Ａ-Ｚａ-ｚ]/g, function (s) { return String.fromCharCode(s.charCodeAt(0) - 0xFEE0); });
   return s.replace(/[-−\s_ー]/g, '');
 }
 
@@ -39,9 +48,9 @@ function formatDisplayId(id) {
   var mNum = s.match(/^([A-Z]+)(\d+)$/);
   if (mNum) {
     var prefix = mNum[1];
-    var num = parseInt(mNum[2], 10); 
-    var suffix = (num < 10) ? '0' + num : '' + num; 
-    return prefix + '-' + suffix; 
+    var num = parseInt(mNum[2], 10);
+    var suffix = (num < 10) ? '0' + num : '' + num;
+    return prefix + '-' + suffix;
   }
   var mOK = s.match(/^([A-Z]+)(OK)$/);
   if (mOK) {
@@ -69,25 +78,25 @@ function getListWithCache(sheetName, durationSec) {
   }
   var list = getList(sheetName);
   if (list.length > 0) {
-    try { cache.put(cacheKey, JSON.stringify(list), durationSec); } catch (e) {}
+    try { cache.put(cacheKey, JSON.stringify(list), durationSec); } catch (e) { }
   }
   return list;
 }
 
 function clearMasterCaches() {
   var cache = CacheService.getScriptCache();
-  cache.removeAll(["list_cache_貸出先リスト", "price_master_data", "repair_options", "order_master_data_v11", "TANK_PREFIXES"]);
+  cache.removeAll(["list_cache_貸出先リスト", "price_master_data", "repair_options", "order_master_data_v12", "TANK_PREFIXES"]);
   return { success: true, message: "マスタデータを最新化しました。" };
 }
 
 /**
- * ユーザー情報取得 (パスコード対応版)
+ * ユーザー情報取得 (Googleアカウント・パスコード両対応)
  */
 function getUserInfo(email, passcode) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheetName = (typeof SHEET_NAMES !== 'undefined' && SHEET_NAMES.STAFF) ? SHEET_NAMES.STAFF : 'M_設定_スタッフ';
+  var sheetName = (typeof SHEET_NAMES !== 'undefined' && SHEET_NAMES.STAFF) ? SHEET_NAMES.STAFF : '担当者リスト';
   var sheet = ss.getSheetByName(sheetName);
-  
+
   var info = { name: "ゲスト", role: "一般", rank: "レギュラー", email: "" };
   var mode = getLoginMode();
 
@@ -111,7 +120,7 @@ function getUserInfo(email, passcode) {
 
         // 管理者権限またはパスコード一致で特定
         if (isPassMatch || (isEmailMatch && isAdmin) || (isEmailMatch && mode === 'GOOGLE')) {
-           return { name: dbName, role: dbRole, rank: dbRank || "レギュラー", email: dbEmail };
+          return { name: dbName, role: dbRole, rank: dbRank || "レギュラー", email: dbEmail };
         }
       }
     }
@@ -135,7 +144,7 @@ function getCurrentLogSheet(ss) {
 }
 
 /**
- * ★書き込み関数 (修正版)
+ * ステータスシートへの書き込みと履歴ログ追記を行う共通関数
  * 列定義: A:ID, B:Status, C:Loc, D:Staff, E:Limit, F:Note, G:Log, H:Update, I:Type
  */
 function writeToSheet(items, newStatus, newLoc, action, preLoadedData, optStaffName, optDirectPrevLoc) {
@@ -148,10 +157,10 @@ function writeToSheet(items, newStatus, newLoc, action, preLoadedData, optStaffN
   var sheet = preLoadedData.sheet;
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var log = getCurrentLogSheet(ss);
-  
+
   var staff = optStaffName;
-  if (!staff) staff = getUserInfo(Session.getActiveUser().getEmail()).name;
-  
+  if (!staff) staff = getUserInfo(getSafeUserEmail()).name;
+
   var now = new Date();
   var timeStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'HH:mm');
 
@@ -159,11 +168,11 @@ function writeToSheet(items, newStatus, newLoc, action, preLoadedData, optStaffN
   var failedItems = [];
   var logRows = [];
 
-  items.forEach(function(item) {
+  items.forEach(function (item) {
     var rawId = item.id;
     var nTargetId = normalizeId(rawId);
     var noteText = item.note || "";
-    var rowIndex = idMap[nTargetId]; 
+    var rowIndex = idMap[nTargetId];
 
     if (rowIndex !== undefined) {
       // 1. マスタデータから情報取得
@@ -172,7 +181,7 @@ function writeToSheet(items, newStatus, newLoc, action, preLoadedData, optStaffN
 
       // 場所(C列:index 2)を取得 (日付で上書きしないように注意)
       var recordPrevLoc = (optDirectPrevLoc !== undefined && optDirectPrevLoc !== null) ? optDirectPrevLoc : (masterData[rowIndex][2] || "");
-      
+
       // 種別(I列:index 8)を取得
       var tankType = (masterData[rowIndex].length > 8) ? masterData[rowIndex][8] : "";
 
@@ -183,14 +192,14 @@ function writeToSheet(items, newStatus, newLoc, action, preLoadedData, optStaffN
 
       // F: 備考
       if (newStatus === '空' || newStatus === '充填済み') {
-        masterData[rowIndex][5] = ""; 
+        masterData[rowIndex][5] = "";
       }
-      if (['破損','不良','故障'].indexOf(newStatus) !== -1) {
-        if(noteText) masterData[rowIndex][5] = noteText;
+      if (['破損', '不良', '故障'].indexOf(newStatus) !== -1) {
+        if (noteText) masterData[rowIndex][5] = noteText;
       } else {
         masterData[rowIndex][6] = noteText ? noteText : ""; // G列(ログ用)
       }
-      
+
       // H: 更新日時 (index 7)
       // I列(種別)は既存を維持
       while (masterData[rowIndex].length < 9) masterData[rowIndex].push("");
@@ -200,15 +209,15 @@ function writeToSheet(items, newStatus, newLoc, action, preLoadedData, optStaffN
 
       // 3. ログ行作成
       logRows.push([
-        Utilities.getUuid(),    
-        now,                    
-        timeStr,                
-        logId,                  
-        action,                 
-        newLoc,                 
-        noteText,               
-        staff,                  
-        recordPrevLoc,          
+        Utilities.getUuid(),
+        now,
+        timeStr,
+        logId,
+        action,
+        newLoc,
+        noteText,
+        staff,
+        recordPrevLoc,
         tankType  // 種別も記録              
       ]);
     } else {
@@ -218,8 +227,8 @@ function writeToSheet(items, newStatus, newLoc, action, preLoadedData, optStaffN
 
   if (successIds.length > 0) {
     var maxCols = 9; // I列までカバー
-    for(var i=0; i<masterData.length; i++){
-        while(masterData[i].length < maxCols) masterData[i].push("");
+    for (var i = 0; i < masterData.length; i++) {
+      while (masterData[i].length < maxCols) masterData[i].push("");
     }
     // ステータス更新
     sheet.getRange(1, 1, masterData.length, maxCols).setValues(masterData);
@@ -286,12 +295,12 @@ function getNotificationSettings() {
     var validityYears = (data.length > 1 && data[1][1] !== "") ? Number(data[1][1]) : defaults.validityYears;
     var emails = [];
     var tokens = [];
-    for(var i=4; i<data.length; i++) {
-      if(data[i][0]) emails.push(String(data[i][0]).trim());
-      if(data[i].length > 1 && data[i][1]) tokens.push(String(data[i][1]).trim());
+    for (var i = 4; i < data.length; i++) {
+      if (data[i][0]) emails.push(String(data[i][0]).trim());
+      if (data[i].length > 1 && data[i][1]) tokens.push(String(data[i][1]).trim());
     }
     return { alertMonths: alertMonths, validityYears: validityYears, emails: emails, lineTokens: tokens };
-  } catch(e) {
+  } catch (e) {
     return defaults;
   }
 }
@@ -311,4 +320,13 @@ function verifyPasscode(inputPass) {
     return { success: true, user: user };
   }
   return { success: false, message: "パスコードが正しくありません" };
+}
+
+/**
+ * 日付オブジェクトの妥当性チェック
+ * Admin.js・Feature_Dashboard.js で重複定義されていたものを統合
+ */
+function isValidDate(d) {
+  if (!d) return false;
+  return Object.prototype.toString.call(d) === "[object Date]" && !isNaN(d.getTime());
 }

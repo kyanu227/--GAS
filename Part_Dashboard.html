@@ -1,515 +1,523 @@
-<div class="container-fluid p-0" style="max-width: 1000px; margin: 0 auto;">
-  
-  <div class="row g-3 mb-4 align-items-center">
-    <div class="col-md-5">
-      <div class="date-widget p-3 bg-white shadow-sm rounded-3 d-flex align-items-center justify-content-between">
-        <div>
-          <div class="text-muted small fw-bold text-uppercase ls-1">TODAY</div>
-          <div class="d-flex align-items-baseline">
-            <span class="fs-1 fw-bold text-dark lh-1 me-2" id="dash-date-day">--.--</span>
-            <span class="fs-5 text-secondary" id="dash-date-year">----</span>
-          </div>
-        </div>
-        <div>
-          <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="loadDashboard()">
-            <i class="bi bi-arrow-clockwise me-1"></i>更新
-          </button>
-        </div>
-      </div>
-    </div>
-    
-    <div class="col-md-7">
-      <div class="row g-2">
-        <div class="col-4">
-          <div class="kpi-card bg-white shadow-sm rounded-3 p-3 h-100 text-center border-bottom border-4 border-secondary">
-            <div class="small text-muted fw-bold">総保有</div>
-            <div class="fs-2 fw-bold text-dark lh-1 mt-2"><span id="dash-total">0</span><small class="fs-6 text-muted">本</small></div>
-          </div>
-        </div>
-        <div class="col-4">
-          <div class="kpi-card bg-white shadow-sm rounded-3 p-3 h-100 text-center border-bottom border-4 border-primary">
-            <div class="small text-muted fw-bold mb-1">貸出中 <span id="dash-count-lend" class="badge bg-primary rounded-pill">0</span></div>
-            <div class="d-flex justify-content-center gap-3">
-              <div class="text-center">
-                <div class="fs-4 fw-bold text-primary lh-1" id="dash-lend-long">0</div>
-                <div style="font-size:0.6rem" class="text-danger fw-bold">未返却</div>
-              </div>
-              <div class="border-start"></div>
-              <div class="text-center">
-                <div class="fs-4 fw-bold text-dark lh-1" id="dash-lend-today">0</div>
-                <div style="font-size:0.6rem" class="text-muted">本日</div>
-              </div>
+<link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&family=Noto+Sans+JP:wght@400;700;900&display=swap"
+    rel="stylesheet">
+
+<div id="dashboard-container" class="dashboard-wrapper theme-default">
+    <div class="pt-4 px-3 pb-3">
+        <div class="container-fluid" style="max-width: 600px;">
+
+            <div class="d-flex align-items-center justify-content-between mb-3 px-1">
+                <h5 class="fw-bold m-0 text-main d-flex align-items-center text-shadow-sm">
+                    <i class="bi bi-speedometer2 me-2 accent-color"></i>ダッシュボード
+                </h5>
+
+                <div id="dashboard-edit-controls" class="d-flex gap-2" style="display:none;">
+                    <div id="dashboard-action-buttons" style="display:none;" class="fade-in-right">
+                        <button class="btn btn-danger btn-sm rounded-pill fw-bold px-3 shadow-sm"
+                            onclick="executeDashboardDelete()">
+                            <i class="bi bi-trash-fill me-1"></i> 削除
+                        </button>
+                        <button class="glass-btn btn-sm rounded-circle d-flex align-items-center justify-content-center"
+                            style="width:32px;height:32px;padding:0;" onclick="toggleDashboardEditMode()">
+                            <i class="bi bi-x fs-5"></i>
+                        </button>
+                    </div>
+                    <button id="btn-dashboard-edit-mode"
+                        class="glass-btn btn-sm border-0 rounded-pill px-3 fw-bold shadow-sm"
+                        onclick="toggleDashboardEditMode()">
+                        編集
+                    </button>
+                </div>
             </div>
-          </div>
-        </div>
-        <div class="col-4">
-          <div class="kpi-card bg-white shadow-sm rounded-3 p-3 h-100 text-center border-bottom border-4 border-danger">
-            <div class="small text-muted fw-bold">要対応</div>
-            <div class="fs-2 fw-bold text-danger lh-1 mt-2"><span id="dash-count-damage">0</span><small class="fs-6 text-muted">本</small></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <div class="mb-5">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <h5 class="fw-bold m-0 text-dark"><i class="bi bi-activity me-2 text-warning"></i>Activity Log</h5>
-    </div>
+            <div id="dashboard-log-panel-container" class="card border-0 shadow-lg rounded-4 overflow-hidden log-panel"
+                style="min-height: 400px; margin-bottom: 80px;">
 
-    <div class="card border-0 shadow-sm rounded-4 overflow-hidden" style="min-height: 400px;">
-      <div class="card-header bg-light border-bottom-0 p-3">
-        <ul class="nav nav-pills nav-fill bg-white p-1 rounded-3 border shadow-sm" role="tablist">
-          <li class="nav-item">
-            <button class="nav-link active fw-bold small" data-bs-toggle="pill" data-bs-target="#tab-summary" onclick="renderSummaryTab()">
-              <i class="bi bi-pie-chart-fill me-1"></i>集計
-            </button>
-          </li>
-          <li class="nav-item">
-            <button class="nav-link fw-bold small" data-bs-toggle="pill" data-bs-target="#tab-today" onclick="renderTodayTab()">
-              <i class="bi bi-list-ul me-1"></i>本日詳細
-            </button>
-          </li>
-          <li class="nav-item">
-            <button class="nav-link fw-bold small" data-bs-toggle="pill" data-bs-target="#tab-weekly" onclick="renderWeeklyTab()">
-              <i class="bi bi-calendar-week me-1"></i>週間履歴
-            </button>
-          </li>
-        </ul>
-      </div>
+                <div class="card-header border-bottom border-theme p-3"
+                    style="background-color: var(--tab-inactive-bg);">
+                    <ul class="nav nav-pills nav-fill p-1 rounded-3 border border-theme shadow-sm"
+                        style="background-color: var(--log-bg);">
+                        <li class="nav-item">
+                            <button id="nav-btn-db-summary" class="nav-link fw-bold small text-main active"
+                                onclick="switchDashboardTab('summary')">
+                                <i class="bi bi-pie-chart-fill me-1"></i> 集計
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button id="nav-btn-db-today" class="nav-link fw-bold small text-main"
+                                onclick="switchDashboardTab('today')">
+                                <i class="bi bi-list-ul me-1"></i> 本日詳細
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button id="nav-btn-db-weekly" class="nav-link fw-bold small text-main"
+                                onclick="switchDashboardTab('weekly')">
+                                <i class="bi bi-calendar-week me-1"></i> 週間履歴
+                            </button>
+                        </li>
+                    </ul>
+                </div>
 
-      <div class="card-body p-0 tab-content bg-white custom-scroll" style="height: 400px; overflow-y: auto;">
-        
-        <div class="tab-pane fade show active" id="tab-summary">
-          <div class="p-3">
-            <div id="view-summary" class="d-flex flex-column gap-3">
-              <div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 small text-muted">Loading...</div></div>
+                <div class="card-body p-0 tab-content custom-scroll"
+                    style="height: 60vh; min-height: 400px; overflow-y: auto; background-color: var(--log-bg);">
+
+                    <div class="tab-pane fade show active" id="pane-db-summary">
+                        <div class="p-3">
+                            <div id="db-summary-container" class="d-flex flex-column gap-3">
+                                <div class="text-center py-5">
+                                    <div class="spinner-border accent-color" role="status"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="pane-db-today">
+                        <div class="sticky-top border-bottom border-theme p-2 d-flex gap-2 overflow-auto no-scrollbar"
+                            style="background-color: var(--log-bg); z-index: 5;">
+                            <button class="chip-filter active" data-filter="ALL"
+                                onclick="setDashboardOpFilter('ALL')">すべて</button>
+                            <button class="chip-filter" data-filter="貸出"
+                                onclick="setDashboardOpFilter('貸出')">貸出</button>
+                            <button class="chip-filter" data-filter="返却"
+                                onclick="setDashboardOpFilter('返却')">返却</button>
+                            <button class="chip-filter" data-filter="充填"
+                                onclick="setDashboardOpFilter('充填')">充填</button>
+                        </div>
+                        <div id="list-db-today" class="list-group list-group-flush pb-3"></div>
+                    </div>
+
+                    <div class="tab-pane fade" id="pane-db-weekly">
+                        <div id="db-weekly-date-bar"
+                            class="sticky-top border-bottom border-theme p-2 d-flex gap-2 overflow-auto no-scrollbar"
+                            style="background-color: var(--log-bg); z-index: 5;">
+                        </div>
+                        <div id="list-db-weekly" class="list-group list-group-flush pb-3"></div>
+                    </div>
+
+                </div>
             </div>
-          </div>
         </div>
-
-        <div class="tab-pane fade" id="tab-today">
-          <div class="sticky-top bg-white border-bottom p-2 d-flex gap-2 overflow-auto no-scrollbar">
-            <button class="chip-filter active" data-filter="ALL" onclick="filterTodayLog('ALL', this)">すべて</button>
-            <button class="chip-filter" data-filter="貸出" onclick="filterTodayLog('貸出', this)">貸出</button>
-            <button class="chip-filter" data-filter="返却" onclick="filterTodayLog('返却', this)">返却</button>
-            <button class="chip-filter" data-filter="充填" onclick="filterTodayLog('充填', this)">充填</button>
-            <button class="chip-filter" data-filter="修理" onclick="filterTodayLog('修理', this)">修理</button>
-            <button class="chip-filter" data-filter="破損" onclick="filterTodayLog('破損', this)">破損</button>
-          </div>
-          <div id="view-today" class="list-group list-group-flush"></div>
-        </div>
-
-        <div class="tab-pane fade" id="tab-weekly">
-          <div class="sticky-top bg-light border-bottom p-2 d-flex gap-2 overflow-auto no-scrollbar" id="weekly-dates-bar"></div>
-          <div id="view-weekly" class="list-group list-group-flush">
-            <div class="text-center py-5 text-muted small">日付を選択してください</div>
-          </div>
-        </div>
-
-      </div>
     </div>
-  </div>
-
-  <div class="row g-4 pb-5">
-    <div class="col-lg-4">
-      <div class="card h-100 border-0 shadow-sm rounded-3">
-        <div class="card-body text-center d-flex flex-column justify-content-center">
-          <h6 class="fw-bold text-secondary mb-3 small">稼働率チャート</h6>
-          <div style="position: relative; height: 180px;">
-            <canvas id="dashChart"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col-lg-8">
-      <div class="card h-100 border-0 shadow-sm rounded-3">
-        <div class="card-header bg-white pt-3 border-bottom-0">
-          <ul class="nav nav-pills nav-fill gap-2 p-1 bg-light rounded-pill" id="dash-bottom-tab">
-            <li class="nav-item"><a class="nav-link active rounded-pill small fw-bold" onclick="renderBottomList('unreturned', this)">未返却リスト</a></li>
-            <li class="nav-item"><a class="nav-link rounded-pill small fw-bold text-danger" onclick="renderBottomList('expired', this)">期限アラート</a></li>
-          </ul>
-        </div>
-        <div class="card-body p-0">
-          <div id="view-bottom-list" class="list-group list-group-flush custom-scroll" style="height: 250px; overflow-y: auto;"></div>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <style>
-/* カスタムスタイル */
-.ls-1 { letter-spacing: 1px; }
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.custom-scroll::-webkit-scrollbar { width: 6px; }
-.custom-scroll::-webkit-scrollbar-thumb { background-color: #ced4da; border-radius: 3px; }
+    /* --- 基本設定 --- */
+    .dashboard-wrapper {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background-color: #f3f4f6;
+    }
 
-/* フィルタチップ */
-.chip-filter {
-  border: 1px solid #dee2e6; background: #fff; color: #6c757d;
-  padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; white-space: nowrap; transition: 0.2s;
-}
-.chip-filter.active { background: #495057; color: #fff; border-color: #495057; }
+    .font-num {
+        font-family: 'Inter', sans-serif;
+        font-feature-settings: "tnum";
+        letter-spacing: -0.5px;
+    }
 
-/* ログ行 */
-.log-item { padding: 10px 15px; border-bottom: 1px solid #f0f0f0; transition: background 0.1s; }
-.log-item:hover { background-color: #f8f9fa; }
+    .text-shadow-sm {
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
 
-/* バッジ類 */
-.action-badge { width: 60px; text-align: center; font-size: 0.7rem; padding: 3px 0; border-radius: 4px; font-weight: bold; margin-right: 10px; display:inline-block; }
-.badge-lend { background: #e7f1ff; color: #0d6efd; border: 1px solid #b6d4fe; }
-.badge-return { background: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
-.badge-fill { background: #fff3cd; color: #664d03; border: 1px solid #ffecb5; }
-.badge-repair { background: #e2d9f3; color: #6f42c1; border: 1px solid #d0bfff; }
-.badge-damage { background: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
-.badge-other { background: #f8f9fa; color: #6c757d; border: 1px solid #dee2e6; }
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
 
-/* 担当者チップ */
-.staff-chip {
-  background-color: #e9ecef; color: #495057; font-size: 0.75rem; font-weight: bold;
-  padding: 3px 10px; border-radius: 15px; display: inline-flex; align-items: center; gap: 4px;
-  border: 1px solid #ced4da; margin-left: auto; white-space: nowrap;
-}
+    .custom-scroll::-webkit-scrollbar {
+        width: 4px;
+    }
 
-/* 集計ボックススタイル (追加) */
-.summary-box { background: #fff; border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
-.summary-header { padding: 10px 15px; font-weight: bold; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
-.summary-list .list-row { padding: 8px 15px; border-bottom: 1px dashed #eee; font-size: 0.85rem; display: flex; justify-content: space-between; color: #555; }
-.summary-list .list-row:last-child { border-bottom: none; }
+    .custom-scroll::-webkit-scrollbar-thumb {
+        background-color: rgba(128, 128, 128, 0.3);
+        border-radius: 2px;
+    }
 
-/* ボックスの色分けテーマ */
-.theme-lend { border-left: 4px solid #0d6efd; }
-.theme-lend .summary-header { background-color: #f0f7ff; color: #0d6efd; }
-.theme-return { border-left: 4px solid #198754; }
-.theme-return .summary-header { background-color: #f0fdf4; color: #198754; }
-.theme-fill { border-left: 4px solid #ffc107; }
-.theme-fill .summary-header { background-color: #fffbf0; color: #b48900; }
-.theme-damage { border-left: 4px solid #dc3545; }
-.theme-damage .summary-header { background-color: #fef2f2; color: #dc3545; }
-.theme-repair { border-left: 4px solid #6f42c1; }
-.theme-repair .summary-header { background-color: #f3f0ff; color: #6f42c1; }
+    /* テーマカラー定義 */
+    .theme-default {
+        --app-bg: #f3f4f6;
+        --log-bg: #fff;
+        --text-main: #333;
+        --text-card: #fff;
+        --accent: #3b82f6;
+        --border: rgba(0, 0, 0, 0.1);
+        --glass-bg: rgba(0, 0, 0, 0.05);
+        --glass-active: rgba(0, 0, 0, 0.1);
+        --tab-inactive-bg: #f8f9fa;
+    }
+
+    .text-main {
+        color: var(--text-main);
+    }
+
+    .accent-color {
+        color: var(--accent);
+    }
+
+    .border-theme {
+        border-color: var(--border) !important;
+    }
+
+    /* ログパネル・リスト */
+    .log-panel {
+        background: var(--log-bg);
+        border: 1px solid var(--border);
+        transition: background 0.5s ease;
+    }
+
+    .glass-btn {
+        background: var(--glass-bg);
+        color: var(--text-main);
+        border: 1px solid var(--border);
+        transition: all 0.2s;
+    }
+
+    .glass-btn:hover {
+        background: var(--glass-active);
+    }
+
+    .nav-pills .nav-link {
+        color: var(--text-main);
+        opacity: 0.6;
+        background: transparent;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+
+    .nav-pills .nav-link:hover {
+        background-color: var(--glass-bg);
+    }
+
+    .nav-pills .nav-link.active {
+        background-color: var(--glass-active);
+        color: var(--accent);
+        font-weight: 800;
+        opacity: 1;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid var(--border);
+    }
+
+    .chip-filter {
+        padding: 6px 14px;
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        background: var(--tab-inactive-bg);
+        color: var(--text-main);
+        font-size: 0.8rem;
+        font-weight: 600;
+        white-space: nowrap;
+        transition: all 0.2s;
+        opacity: 0.8;
+    }
+
+    .chip-filter:hover {
+        opacity: 1;
+        transform: translateY(-1px);
+    }
+
+    .chip-filter.active {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+        opacity: 1;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .list-group-item {
+        background-color: transparent !important;
+        border: none;
+        border-bottom: 1px solid var(--border);
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        color: var(--text-main);
+        transition: background 0.1s;
+    }
+
+    .list-group-item:last-child {
+        border-bottom: none;
+    }
+
+    .check-wrapper {
+        width: 0;
+        overflow: hidden;
+        transition: width 0.2s ease;
+        display: flex;
+        align-items: center;
+    }
+
+    .mode-edit .check-wrapper {
+        width: 36px;
+        margin-right: 4px;
+    }
+
+    .custom-check {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        accent-color: #dc3545;
+    }
+
+    .tank-badge-mini {
+        font-family: monospace;
+        font-weight: 700;
+        font-size: 0.8rem;
+        background: var(--tab-inactive-bg);
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: var(--text-main);
+        border: 1px solid var(--border);
+    }
+
+    .fade-in-right {
+        animation: fadeInRight 0.3s ease;
+    }
 </style>
 
 <script>
-// ■■■ フロントエンドロジック ■■■
-var DASH_DATA = null;
-var CHART_INST = null;
+    var dbCache = { today: [], weekly: [], all: [] };
+    var dbCurrentFilter = 'ALL';
+    var dbCurrentTabId = 'summary';
+    var dbSelectedDate = 'ALL';
+    var dbIsEditMode = false;
 
-function loadDashboard() {
-  var summaryEl = document.getElementById('view-summary');
-  if(summaryEl) {
-    summaryEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><div class="mt-2 text-muted">Updating...</div></div>';
-  }
-  
-  google.script.run
-    .withSuccessHandler(onDataLoaded)
-    .withFailureHandler(onDataError)
-    .getDashboardData();
-}
+    function loadDashboardData(passcode) {
+        var pass = passcode || ((typeof window.GLOBAL_PASSCODE !== 'undefined') ? window.GLOBAL_PASSCODE : "");
 
-function onDataLoaded(data) {
-  if (!data || data.error) {
-    onDataError(data ? data.error : "データが空です");
-    return;
-  }
-  DASH_DATA = data;
-  
-  document.getElementById('dash-date-year').innerText = data.dateYear;
-  document.getElementById('dash-date-day').innerText = data.dateDay;
-  document.getElementById('dash-total').innerText = data.total;
-  document.getElementById('dash-count-lend').innerText = data.lending;
-  document.getElementById('dash-lend-today').innerText = data.lendingToday;
-  document.getElementById('dash-lend-long').innerText = data.lendingLong;
-  document.getElementById('dash-count-damage').innerText = data.damaged.length;
-
-  renderSummaryTab();
-  renderChart();
-  renderBottomList('unreturned', null);
-}
-
-function onDataError(e) {
-  var el = document.getElementById('view-summary');
-  if(el) el.innerHTML = `<div class="alert alert-danger m-3">読み込みエラー: ${e}</div>`;
-}
-
-// ■ 集計タブ (デザイン刷新)
-function renderSummaryTab() {
-  if (!DASH_DATA) return;
-  var container = document.getElementById('view-summary');
-  var logs = DASH_DATA.todayLog;
-  
-  if (!logs || logs.length === 0) {
-    container.innerHTML = '<div class="text-center py-5 text-muted">本日の履歴はありません</div>';
-    return;
-  }
-
-  // 1. データを分類
-  var data = {
-    '貸出': { count: 0, details: {} }, // 貸出先ごとの集計
-    '返却': { count: 0, details: {} }, // 返却元ごとの集計
-    '充填': { count: 0, staffs: {} },  // 担当者ごとの集計
-    '破損': { count: 0, staffs: {} },
-    '修理': { count: 0, staffs: {} }
-  };
-
-  logs.forEach(function(item) {
-    var act = item.action;
-    var type = null;
-    if (act.includes('貸出')) type = '貸出';
-    else if (act.includes('返却')) type = '返却';
-    else if (act.includes('充填')) type = '充填';
-    else if (act.includes('破損')) type = '破損';
-    else if (act.includes('修理')) type = '修理';
-
-    if (type) {
-      data[type].count++;
-      
-      // 内訳キーの決定
-      var key = "";
-      if (type === '貸出') {
-        key = item.loc || "場所未指定";
-        data[type].details[key] = (data[type].details[key] || 0) + 1;
-      } else if (type === '返却') {
-        // 返却時は備考欄に「(〇〇)より返却」と入る場合があるため整形
-        key = item.loc || "場所不明";
-        if (item.note) {
-           var m = item.note.match(/\((.+?)\)より返却/);
-           if (m && m[1]) key = m[1];
-        }
-        data[type].details[key] = (data[type].details[key] || 0) + 1;
-      } else {
-        // 充填・破損・修理は「誰がやったか」を集計
-        key = item.staff || "担当不明";
-        data[type].staffs[key] = (data[type].staffs[key] || 0) + 1;
-      }
-    }
-  });
-
-  // 2. HTML生成
-  var html = '';
-
-  // 貸出ボックス
-  html += createSummaryBox('貸出', 'bi-box-arrow-up', 'theme-lend', data['貸出'], 'details');
-  // 返却ボックス
-  html += createSummaryBox('返却', 'bi-box-arrow-in-down', 'theme-return', data['返却'], 'details');
-  // 充填ボックス
-  html += createSummaryBox('充填', 'bi-fuel-pump-fill', 'theme-fill', data['充填'], 'staffs');
-  // 破損ボックス
-  html += createSummaryBox('破損', 'bi-exclamation-triangle-fill', 'theme-damage', data['破損'], 'staffs');
-  // 修理ボックス
-  html += createSummaryBox('修理', 'bi-tools', 'theme-repair', data['修理'], 'staffs');
-
-  if (html === '') html = '<div class="text-center py-5 text-muted">集計対象データがありません</div>';
-  container.innerHTML = html;
-}
-
-// ボックス生成ヘルパー
-function createSummaryBox(title, icon, themeClass, info, subKey) {
-  if (info.count === 0) return ''; // データがなければ表示しない
-
-  var listHtml = '';
-  var targetObj = info[subKey]; // details または staffs
-  var keys = Object.keys(targetObj);
-
-  if (keys.length > 0) {
-    keys.forEach(function(k) {
-      listHtml += `
-        <div class="list-row">
-          <span>${k}</span>
-          <span class="fw-bold">${targetObj[k]} <span style="font-size:0.7em; font-weight:normal;">本</span></span>
-        </div>`;
-    });
-  } else {
-    listHtml = `<div class="list-row text-center text-muted">詳細なし</div>`;
-  }
-
-  return `
-    <div class="summary-box ${themeClass}">
-      <div class="summary-header">
-        <div><i class="bi ${icon} me-2"></i>${title}</div>
-        <div class="fs-5">${info.count} <span style="font-size:0.7rem;">本</span></div>
-      </div>
-      <div class="summary-list">
-        ${listHtml}
-      </div>
-    </div>
-  `;
-}
-
-// ■ 本日詳細 & フィルタ
-function renderTodayTab() {
-  filterTodayLog('ALL', document.querySelector('.chip-filter[data-filter="ALL"]'));
-}
-
-function filterTodayLog(filterType, btn) {
-  if (!DASH_DATA) return;
-  if (btn) {
-    document.querySelectorAll('#tab-today .chip-filter').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-  }
-
-  var logs = DASH_DATA.todayLog;
-  var container = document.getElementById('view-today');
-
-  if (!logs || logs.length === 0) {
-    container.innerHTML = '<div class="text-center py-5 text-muted">本日の履歴はありません</div>';
-    return;
-  }
-
-  var filtered = logs.filter(function(item) {
-    if (filterType === 'ALL') return true;
-    return item.action.indexOf(filterType) !== -1;
-  });
-
-  container.innerHTML = generateLogListHTML(filtered);
-}
-
-// ■ 週間履歴
-function renderWeeklyTab() {
-  if (!DASH_DATA) return;
-  var logs = DASH_DATA.weeklyLog;
-  var bar = document.getElementById('weekly-dates-bar');
-  var view = document.getElementById('view-weekly');
-
-  bar.innerHTML = '';
-  if (!logs || logs.length === 0) {
-    view.innerHTML = '<div class="text-center py-5 text-muted">週間履歴はありません</div>';
-    return;
-  }
-
-  var dates = [];
-  logs.forEach(function(item) {
-    if (dates.indexOf(item.date) === -1) dates.push(item.date);
-  });
-
-  dates.forEach(function(dateStr, idx) {
-    var btn = document.createElement('button');
-    btn.className = 'chip-filter';
-    if (idx === 0) btn.className += ' active';
-    btn.innerText = dateStr;
-    
-    btn.onclick = function() {
-      var allBtns = bar.querySelectorAll('button');
-      allBtns.forEach(b => b.classList.remove('active'));
-      this.classList.add('active');
-      var targetLogs = logs.filter(l => l.date === dateStr);
-      view.innerHTML = generateLogListHTML(targetLogs);
-    };
-    bar.appendChild(btn);
-  });
-
-  if (dates.length > 0) {
-    var latest = dates[0];
-    var targetLogs = logs.filter(l => l.date === latest);
-    view.innerHTML = generateLogListHTML(targetLogs);
-  }
-}
-
-function generateLogListHTML(list) {
-  if (list.length === 0) return '<div class="p-4 text-center text-muted small">該当データなし</div>';
-  
-  var html = '';
-  list.forEach(function(item) {
-    var badgeClass = getBadgeClass(item.action);
-    var noteHtml = item.note ? `<div class="small text-muted mt-1 ps-2 border-start border-2"><i class="bi bi-info-circle me-1"></i>${item.note}</div>` : '';
-    
-    html += `
-      <div class="log-item">
-        <div class="d-flex align-items-center mb-1">
-          <span class="text-muted fw-bold small me-2" style="width:40px;">${item.time}</span>
-          <span class="action-badge ${badgeClass}">${item.action}</span>
-          <span class="fw-bold text-dark small me-2 font-monospace bg-light border px-1 rounded">${item.id}</span>
-          <span class="fw-bold text-dark text-truncate flex-grow-1" style="font-size:0.9rem;">${item.loc}</span>
-          <span class="staff-chip"><i class="bi bi-person-fill"></i> ${item.staff}</span>
-        </div>
-        ${noteHtml}
-      </div>
-    `;
-  });
-  return html;
-}
-
-function getBadgeClass(action) {
-  if (action === '貸出') return 'badge-lend';
-  if (action.indexOf('返却') !== -1) return 'badge-return';
-  if (action === '充填') return 'badge-fill';
-  if (action.indexOf('修理') !== -1) return 'badge-repair';
-  if (action.indexOf('破損') !== -1) return 'badge-damage';
-  return 'badge-other';
-}
-
-function renderChart() {
-  if (!DASH_DATA) return;
-  var ctxEl = document.getElementById('dashChart');
-  if(!ctxEl) return;
-  
-  var ctx = ctxEl.getContext('2d');
-  if (CHART_INST) CHART_INST.destroy();
-  
-  var stock = Math.max(0, DASH_DATA.total - DASH_DATA.lending - DASH_DATA.damaged.length);
-  
-  if(typeof Chart !== 'undefined') {
-      CHART_INST = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: ['当日貸出', '長期未返却', '倉庫(在庫)', '破損・不備'],
-          datasets: [{
-            data: [DASH_DATA.lendingToday, DASH_DATA.lendingLong, stock, DASH_DATA.damaged.length],
-            backgroundColor: ['#6ea8fe', '#0d6efd', '#e9ecef', '#dc3545'],
-            borderWidth: 0, hoverOffset: 4
-          }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true, padding: 15 } } },
-          cutout: '70%'
-        }
-      });
-  }
-}
-
-function renderBottomList(type, btn) {
-  if (!DASH_DATA) return;
-  
-  var links = document.querySelectorAll('#dash-bottom-tab .nav-link');
-  links.forEach(l => l.classList.remove('active'));
-  
-  if (btn) btn.classList.add('active');
-  else if (type === 'unreturned' && links[0]) links[0].classList.add('active');
-  else if (type === 'expired' && links[1]) links[1].classList.add('active');
-
-  var list = (type === 'unreturned') ? DASH_DATA.unreturned : DASH_DATA.expired;
-  var container = document.getElementById('view-bottom-list');
-  
-  if (!list || list.length === 0) {
-    container.innerHTML = '<div class="d-flex h-100 justify-content-center align-items-center text-muted small">該当なし</div>';
-    return;
-  }
-
-  var html = '';
-  list.forEach(function(item) {
-    var rightSide = '';
-    if (type === 'expired') {
-      var color = (item.alertType === 'expired') ? 'text-danger' : 'text-warning';
-      rightSide = `<div class="text-end"><div class="${color} fw-bold small">${item.alertType==='expired'?'期限切れ':'期限間近'}</div><div class="small text-dark">${item.limit}</div></div>`;
-    } else {
-      rightSide = `<div class="text-end"><div class="badge bg-secondary opacity-50 text-white">${item.status}</div></div>`;
+        // マイページのデータを借用してダッシュボードに描画する
+        google.script.run
+            .withSuccessHandler(renderDashboard)
+            .withFailureHandler(e => alert("読み込みエラー: " + e.message))
+            .getMyStats(pass);
     }
 
-    html += `
-      <div class="list-group-item d-flex justify-content-between align-items-center p-2">
-        <div>
-           <div class="d-flex align-items-center">
-             <span class="font-monospace fw-bold me-2 px-2 py-1 bg-light border rounded text-dark small">${item.id}</span>
-             <span class="small fw-bold text-secondary">${item.loc}</span>
+    function renderDashboard(data) {
+        if (!data) return;
+
+        dbCache.today = data.todayLog || [];
+        dbCache.weekly = data.weeklyLog || [];
+
+        renderDashboardDateBar();
+        switchDashboardTab(dbCurrentTabId);
+    }
+
+    function switchDashboardTab(tabId) {
+        dbCurrentTabId = tabId;
+
+        if (dbIsEditMode) toggleDashboardEditMode();
+
+        document.querySelectorAll('#dashboard-log-panel-container .nav-link').forEach(btn => btn.classList.remove('active'));
+        var activeBtn = document.getElementById('nav-btn-db-' + tabId);
+        if (activeBtn) activeBtn.classList.add('active');
+
+        document.querySelectorAll('#dashboard-log-panel-container .tab-pane').forEach(p => p.classList.remove('active', 'show'));
+        var activePane = document.getElementById('pane-db-' + tabId);
+        if (activePane) activePane.classList.add('active', 'show');
+
+        var controls = document.getElementById('dashboard-edit-controls');
+        if (tabId === 'summary') {
+            controls.style.display = 'none';
+        } else {
+            controls.style.display = 'flex';
+        }
+
+        refreshDashboardLists();
+    }
+
+    function setDashboardOpFilter(mode, btn) {
+        dbCurrentFilter = mode;
+        document.querySelectorAll('#pane-db-today .chip-filter[data-filter]').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll(`#pane-db-today .chip-filter[data-filter="${mode}"]`).forEach(b => b.classList.add('active'));
+        refreshDashboardLists();
+    }
+
+    function renderDashboardDateBar() {
+        var bar = document.getElementById('db-weekly-date-bar');
+        bar.innerHTML = '<button class="chip-filter active" data-date="ALL" onclick="setDashboardDateFilter(\'ALL\')">すべて</button>';
+        var dates = [...new Set(dbCache.weekly.map(item => item.dateDisplay))];
+        dates.forEach(d => {
+            bar.insertAdjacentHTML('beforeend', `<button class="chip-filter" data-date="${d}" onclick="setDashboardDateFilter('${d}')">${d}</button>`);
+        });
+    }
+
+    function setDashboardDateFilter(date) {
+        dbSelectedDate = date;
+        document.querySelectorAll('#db-weekly-date-bar .chip-filter').forEach(b => b.classList.remove('active'));
+        var btn = document.querySelector(`#db-weekly-date-bar .chip-filter[data-date="${date}"]`);
+        if (btn) btn.classList.add('active');
+        refreshDashboardLists();
+    }
+
+    function refreshDashboardLists() {
+        if (dbCurrentTabId === 'summary') {
+            renderDashboardSummary();
+        } else if (dbCurrentTabId === 'today') {
+            renderDashboardLogList('list-db-today', filterDashboardLogs(dbCache.today));
+        } else if (dbCurrentTabId === 'weekly') {
+            var logs = filterDashboardLogs(dbCache.weekly);
+            if (dbSelectedDate !== 'ALL') logs = logs.filter(l => l.dateDisplay === dbSelectedDate);
+            renderDashboardLogList('list-db-weekly', logs);
+        }
+    }
+
+    function filterDashboardLogs(logs) {
+        if (dbCurrentFilter === 'ALL') return logs;
+        return logs.filter(l => l.action.indexOf(dbCurrentFilter) !== -1);
+    }
+
+    function renderDashboardSummary() {
+        var container = document.getElementById('db-summary-container');
+        container.innerHTML = '';
+        var logs = dbCache.today;
+
+        if (logs.length === 0) {
+            container.innerHTML = '<div class="text-center py-5 opacity-75 small text-main">本日のデータがありません</div>';
+            return;
+        }
+
+        var data = {
+            '貸出': { count: 0, details: {} },
+            '返却': { count: 0, details: {} },
+            '充填': { count: 0, details: {} },
+            '破損': { count: 0, details: {} },
+            '修理': { count: 0, details: {} }
+        };
+
+        logs.forEach(l => {
+            var action = l.action;
+            var type = null;
+            if (action.includes('貸出')) type = '貸出';
+            else if (action.includes('返却')) type = '返却';
+            else if (action.includes('充填')) type = '充填';
+            else if (action.includes('破損')) type = '破損';
+            else if (action.includes('修理')) type = '修理';
+
+            if (type) {
+                data[type].count++;
+                var loc = l.loc || '場所不明';
+                if (type === '返却' && l.note) {
+                    loc = l.note.replace(/[()]/g, '').replace('より返却', '').trim();
+                }
+                if (type === '貸出' || type === '返却') {
+                    data[type].details[loc] = (data[type].details[loc] || 0) + 1;
+                }
+            }
+        });
+
+        function createSection(title, icon, colorClass, info) {
+            if (info.count === 0) return '';
+            var html = `<div class="mb-2 border rounded-3 overflow-hidden" style="background:var(--tab-inactive-bg); border-color:var(--border)!important;">
+       <div class="p-2 px-3 d-flex justify-content-between align-items-center bg-white border-bottom border-theme">
+          <div class="fw-bold ${colorClass}"><i class="bi ${icon} me-2"></i>${title}</div>
+          <div class="fw-900 font-num">${info.count} <span class="small fw-normal opacity-75">本</span></div>
+       </div>
+       <div class="bg-white">`;
+            var details = info.details;
+            var keys = Object.keys(details);
+            if (keys.length > 0) {
+                keys.forEach(k => {
+                    html += `<div class="d-flex justify-content-between px-3 py-2 border-bottom border-theme last-no-border small">
+            <span class="text-main opacity-75">${k}</span>
+            <span class="font-num fw-bold">${details[k]}</span>
+          </div>`;
+                });
+            } else {
+                html += `<div class="px-3 py-2 small text-muted text-end">合計 ${info.count} 本</div>`;
+            }
+            html += `</div></div>`;
+            return html;
+        }
+
+        var html = '';
+        html += createSection('貸出', 'bi-box-arrow-up', 'text-primary', data['貸出']);
+        html += createSection('返却', 'bi-box-arrow-in-down', 'text-success', data['返却']);
+        html += createSection('充填', 'bi-fuel-pump-fill', 'text-warning', data['充填']);
+        html += createSection('破損', 'bi-exclamation-triangle-fill', 'text-danger', data['破損']);
+        html += createSection('修理', 'bi-tools', 'text-info', data['修理']);
+        container.innerHTML = html;
+    }
+
+    function renderDashboardLogList(elementId, logs) {
+        var container = document.getElementById(elementId);
+        container.innerHTML = logs.length ? '' : '<div class="text-center py-5 opacity-75 small text-main">データなし</div>';
+
+        logs.forEach(item => {
+            var color = 'secondary';
+            if (item.action.indexOf('貸出') !== -1) color = 'primary';
+            else if (item.action.indexOf('返却') !== -1) color = 'success';
+            else if (item.action.indexOf('充填') !== -1) color = 'warning';
+            var locText = item.loc;
+            if (item.action.indexOf('返却') !== -1 && item.note) locText = item.note;
+
+            container.insertAdjacentHTML('beforeend', `
+       <label class="list-group-item" style="cursor:pointer;">
+         <div class="check-wrapper">
+           <input type="checkbox" class="custom-check dashboard-delete-check" value="${item.uuid}">
+         </div>
+         <div class="d-flex align-items-center w-100">
+           <div class="me-3 text-center opacity-75" style="min-width:40px;">
+             <div class="font-num fw-bold text-main" style="font-size:0.85rem; line-height:1;">${item.time}</div>
            </div>
-           ${item.note ? `<div class="small text-muted ps-1 mt-1 text-truncate" style="max-width:200px;">${item.note}</div>` : ''}
-        </div>
-        ${rightSide}
-      </div>
-    `;
-  });
-  container.innerHTML = html;
-}
+           <div class="flex-grow-1">
+             <div class="d-flex align-items-center mb-1">
+               <span class="badge bg-${color} me-2" style="font-size:0.7rem;">${item.action}</span>
+               <span class="tank-badge-mini font-num">${item.tankId}</span>
+             </div>
+             <div class="small fw-bold text-main text-truncate" style="max-width:180px;">
+               ${locText || '-'}
+             </div>
+           </div>
+         </div>
+       </label>
+     `);
+        });
+    }
+
+    function toggleDashboardEditMode() {
+        dbIsEditMode = !dbIsEditMode;
+        var actions = document.getElementById('dashboard-action-buttons');
+        var btn = document.getElementById('btn-dashboard-edit-mode');
+        var panel = document.getElementById('dashboard-log-panel-container');
+
+        if (dbIsEditMode) {
+            actions.style.display = 'flex';
+            btn.classList.add('glass-active');
+            btn.innerText = '完了';
+            panel.classList.add('mode-edit');
+        } else {
+            actions.style.display = 'none';
+            btn.classList.remove('glass-active');
+            btn.innerText = '編集';
+            panel.classList.remove('mode-edit');
+            document.querySelectorAll('.dashboard-delete-check').forEach(c => c.checked = false);
+        }
+    }
+
+    function executeDashboardDelete() {
+        var checks = document.querySelectorAll('.dashboard-delete-check:checked');
+        if (checks.length === 0) return;
+        if (!confirm('選択した ' + checks.length + ' 件の履歴を削除しますか？\n(在庫ステータスは戻りません)')) return;
+
+        var uuids = Array.from(checks).map(c => c.value);
+        var pass = (typeof window.GLOBAL_PASSCODE !== 'undefined') ? window.GLOBAL_PASSCODE : "";
+
+        var btn = document.querySelector('#dashboard-action-buttons button.btn-danger');
+        var originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 削除中...';
+        btn.disabled = true;
+
+        google.script.run
+            .withSuccessHandler(function (res) {
+                alert(res.message);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                toggleDashboardEditMode();
+                loadDashboardData(pass);
+            })
+            .withFailureHandler(function (e) {
+                alert("削除エラー: " + e.message);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            })
+            .batchDeleteMyLog({ uuids: uuids, userPasscode: pass });
+    }
 </script>

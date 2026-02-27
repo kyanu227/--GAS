@@ -1,8 +1,8 @@
-// ■■■ 5_Notify.gs : 通知・アラート機能 (Messaging API対応・用途別) ■■■
+// ■■■ 5_Notify.gs : 通知・アラート機能 (LINE Messaging API 対応) ■■■
 
 /**
- * 1. 耐圧検査期限切れアラート (月次実行用)
- * 用途: 'INSPECTION'
+ * 耐圧検査期限切れアラート — 月次トリガーで実行
+ * LINE/メール通知の用途区分: 'INSPECTION'
  */
 function checkHydrostaticDeadline() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -71,8 +71,8 @@ function checkHydrostaticDeadline() {
 }
 
 /**
- * 2. 貸出0件アラート (日次実行用)
- * 用途: 'DAILY'
+ * 貸出0件アラート — 日次トリガーで実行
+ * LINE通知の用途区分: 'DAILY'
  */
 function checkDailyLendingCount() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -105,10 +105,10 @@ function checkDailyLendingCount() {
 }
 
 /**
- * LINE Messaging APIを使ってメッセージを送信する共通関数
- * ★修正: targets配列をチェックして送信判定
- * @param {string} message - 送信するメッセージ
- * @param {string} type - 通知の種類 ('ALL', 'INSPECTION', 'DAILY' など)
+ * LINE Messaging API でメッセージを送信する共通関数
+ * @param {string} message - 送信するメッセージ本文
+ * @param {string} type    - 通知の種類 ('ALL' / 'INSPECTION' / 'DAILY' など)
+ *                           各 LINE 設定の targets 配列と照合して送信先を決定する
  */
 function sendLineBroadcastOrPush(message, type) {
   var props = PropertiesService.getScriptProperties();
@@ -138,17 +138,14 @@ function sendLineBroadcastOrPush(message, type) {
     // targetsは配列であることを保証、なければ空配列
     var targets = Array.isArray(conf.targets) ? conf.targets : [];
     
-    // 旧データの文字列 target が残っていた場合の互換処理
+    // 旧データとの互換: target が文字列で残っている場合は配列に変換
     if (conf.target && !conf.targets) {
-        targets = (conf.target === 'ALL') ? ['ALL'] : [conf.target];
+      targets = (conf.target === 'ALL') ? ['ALL'] : [conf.target];
     }
 
     var reqType = type || 'ALL';
 
-    // 送信判定:
-    // 1. 設定に 'ALL' が含まれている (全通知OK)
-    // 2. 設定配列の中に、今回のタイプ(reqType)が含まれている
-    // 3. 今回のタイプが 'ALL' (テスト送信など)
+    // 送信判定: targets に 'ALL' が含まれるか、今回の type が一致するか、または reqType が 'ALL'
     var shouldSend = targets.includes('ALL') || targets.includes(reqType) || reqType === 'ALL';
 
     if (!shouldSend) return;
