@@ -362,7 +362,7 @@
     var opPrefixes = [];
     var bulkReturnTanks = [];
     var repairOptionsCache = [];
-    window.tankMapCache = {};
+    window.tankMapCache = null;
 
     // 操作ルール定義: 許容する直前ステータス
     const OP_RULES = {
@@ -750,7 +750,30 @@
           </div>`;
         });
       } else {
-        list.innerHTML = '<div class="text-muted small text-center mt-3">まだキューに追加されていません</div>';
+        var _emptyHtml = '<div class="p-4 text-center text-muted"><div class="mb-2">まだキューに追加されていません</div>';
+
+        if (window.tankMapCache !== null) {
+          var _counts = { '充填済み': 0, '貸出中': 0, '空': 0 };
+          var _cacheKeys = Object.keys(window.tankMapCache);
+          if (_cacheKeys.length > 0) {
+            for (var i = 0; i < _cacheKeys.length; i++) {
+              var s = window.tankMapCache[_cacheKeys[i]].status;
+              if (_counts.hasOwnProperty(s)) {
+                _counts[s]++;
+              }
+            }
+            _emptyHtml += `
+              <div class="d-flex justify-content-center gap-2 mt-3 flex-wrap">
+                <span class="badge bg-success" style="font-size:0.8rem; font-weight:normal;">充填済み: ${_counts['充填済み']}本</span>
+                <span class="badge bg-warning text-dark" style="font-size:0.8rem; font-weight:normal;">貸出中: ${_counts['貸出中']}本</span>
+                <span class="badge bg-secondary" style="font-size:0.8rem; font-weight:normal;">空: ${_counts['空']}本</span>
+              </div>
+            `;
+          }
+        }
+
+        _emptyHtml += '</div>';
+        list.innerHTML = _emptyHtml;
         if (opMode !== '自社一括') {
           if (dialBtn) dialBtn.style.display = 'none';
         }
