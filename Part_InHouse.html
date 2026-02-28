@@ -37,18 +37,6 @@
       border-left: 5px solid #dc3545 !important;
     }
 
-    .card-overlay-range {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      opacity: 0;
-      z-index: 2;
-      cursor: pointer;
-      margin: 0;
-      padding: 0;
-    }
 
     .mini-slider-track {
       width: 156px;
@@ -133,13 +121,13 @@
     <!-- 一括タグパネル（スワイプ） -->
     <div class="d-flex mb-3" id="ih-bulk-tag-panel" style="display:none !important;">
       <div class="bulk-card position-relative w-100 m-0 py-3 d-flex"
-        style="box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-color:#d5d9dd;">
-        <input type="range" class="card-overlay-range" min="0" max="2" step="1" id="inhouse-swipe-slider" value="1"
-          oninput="handleInHouseSwipe(this.value)" onchange="handleInHouseSwipe(this.value)">
+        style="box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-color:#d5d9dd; cursor: pointer;"
+        ontouchstart="sStart(event)" ontouchend="sEnd(event, 'global')" onclick="sEnd(event, 'global')">
+        <input type="hidden" id="inhouse-swipe-slider" value="1">
         <div class="d-flex justify-content-between align-items-center w-100 position-relative"
           style="pointer-events: none; z-index: 1;">
           <div class="fw-bold text-secondary ps-2">全体を一括操作</div>
-          <div class="mini-slider-track" style="width: 176px; pointer-events: auto;">
+          <div class="mini-slider-track" style="width: 176px; pointer-events: none;">
             <div class="mini-slider-thumb" id="global-swipe-thumb" style="left: calc(33.333% + 2px);"></div>
             <div class="mini-slider-section"><span id="swipe-label-defect" class="text-muted fw-bolder">未充填</span></div>
             <div class="mini-slider-section"><span id="swipe-label-normal" class="text-dark fw-bolder">通常</span></div>
@@ -167,6 +155,43 @@
 
 <script>
   var inHouseTanks = [];
+  var swipeStartX = null;
+
+  function sStart(e) {
+    swipeStartX = e.touches ? e.touches[0].clientX : e.clientX;
+  }
+
+  function sEnd(e, idx) {
+    var endX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+    var diffX = swipeStartX !== null ? (endX - swipeStartX) : 0;
+
+    if (e.type === 'touchend' && Math.abs(diffX) < 10) {
+      swipeStartX = null;
+      return;
+    }
+
+    var el = document.getElementById(idx === 'global' ? 'inhouse-swipe-slider' : 'card-slider-' + idx);
+    var currentV = el ? parseInt(el.value, 10) : 1;
+    var newV = currentV;
+
+    if (Math.abs(diffX) >= 30) {
+      newV = diffX > 0 ? 2 : 0;
+    } else if (e.type === 'click') {
+      var rect = e.currentTarget.getBoundingClientRect();
+      var clickX = endX - rect.left;
+      var w = rect.width;
+      if (clickX < w * 0.33) newV = 0;
+      else if (clickX > w * 0.66) newV = 2;
+      else newV = 1;
+    }
+
+    if (newV !== currentV && el) {
+      el.value = newV;
+      if (idx === 'global') handleInHouseSwipe(newV);
+      else ihCardSwipe(idx, newV);
+    }
+    swipeStartX = null;
+  }
 
   function initInHouse() {
     inHouseTanks = [];
@@ -258,12 +283,16 @@
       var card = document.createElement('div');
       card.id = 'ih-card-' + idx;
       card.className = 'bulk-card position-relative ' + tagCls;
+      card.style.cursor = 'pointer';
+      card.setAttribute('ontouchstart', 'sStart(event)');
+      card.setAttribute('ontouchend', "sEnd(event, '" + idx + "')");
+      card.setAttribute('onclick', "sEnd(event, '" + idx + "')");
+
       card.innerHTML =
-        '<input type="range" class="card-overlay-range" min="0" max="2" step="1" id="card-slider-' + idx + '" value="' + val + '" ' +
-        '  oninput="ihCardSwipe(' + idx + ', this.value)" onchange="ihCardSwipe(' + idx + ', this.value)">' +
+        '<input type="hidden" id="card-slider-' + idx + '" value="' + val + '">' +
         '<div class="d-flex justify-content-between align-items-center w-100 position-relative" style="pointer-events: none; z-index: 1;">' +
         '  <div class="bulk-id">' + escapeHtml(item.id) + '</div>' +
-        '  <div class="mini-slider-track" style="pointer-events: auto;">' +
+        '  <div class="mini-slider-track" style="pointer-events: none;">' +
         '    <div class="mini-slider-thumb" id="card-thumb-' + idx + '" style="left: ' + thumbLeft + ';"></div>' +
         '    <div class="mini-slider-section"><span id="card-label-defect-' + idx + '" class="' + defectLabelCls + '">未充填</span></div>' +
         '    <div class="mini-slider-section"><span id="card-label-normal-' + idx + '" class="' + normalLabelCls + '">通常</span></div>' +
