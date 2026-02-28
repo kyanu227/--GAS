@@ -254,6 +254,84 @@
     .pop-anim {
       animation: popPulse 0.2s ease-out;
     }
+
+    .swipe-container {
+      position: relative;
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 12px 16px 8px;
+    }
+
+    .swipe-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #6c757d;
+      margin-bottom: 6px;
+      pointer-events: none;
+    }
+
+    .swipe-dots-bg {
+      position: absolute;
+      top: 50%;
+      left: 20px;
+      right: 20px;
+      transform: translateY(-50%);
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .swipe-dot {
+      width: 10px;
+      height: 10px;
+      background: #ced4da;
+      border-radius: 50%;
+    }
+
+    .swipe-dot-center {
+      width: 12px;
+      height: 12px;
+      background: #adb5bd;
+      border-radius: 50%;
+      transform: translateY(-1px);
+    }
+
+    .custom-range-slider {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      background: transparent;
+      outline: none;
+      z-index: 2;
+      position: relative;
+    }
+
+    .custom-range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--thumb-color, #a8a8a8);
+      cursor: pointer;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
+      border: 3px solid #fff;
+      transition: background 0.2s;
+    }
+
+    .bulk-card.tag-unused {
+      background: #f0fff4 !important;
+      border-left-color: #198754 !important;
+    }
+
+    .bulk-card.tag-defect {
+      background: #fff5f5 !important;
+      border-left-color: #dc3545 !important;
+    }
   </style>
 </head>
 
@@ -285,20 +363,21 @@
         </div>
       </div>
       <div id="op-settings-return" class="op-setting-panel" style="display:none;">
-        <div class="selection-panel">
-          <div class="check-unused flex-fill">
-            <input type="checkbox" id="op-check-unused" class="check-card-input" onchange="toggleReturnCheck('unused')">
-            <label for="op-check-unused" class="check-card-label">
-              <i class="bi bi-fuel-pump-fill fs-4 mb-0"></i>
-              <span class="fw-bold small">未使用</span>
-            </label>
+        <div class="swipe-container">
+          <div class="swipe-labels">
+            <span id="swipe-label-defect" class="text-muted">未充填</span>
+            <span id="swipe-label-normal" class="text-dark fw-bolder">通常</span>
+            <span id="swipe-label-unused" class="text-muted">未使用</span>
           </div>
-          <div class="check-defect flex-fill">
-            <input type="checkbox" id="op-check-defect" class="check-card-input" onchange="toggleReturnCheck('defect')">
-            <label for="op-check-defect" class="check-card-label">
-              <i class="bi bi-exclamation-triangle-fill fs-4 mb-0"></i>
-              <span class="fw-bold small">未充填</span>
-            </label>
+          <div class="position-relative" style="height: 30px;">
+            <div class="swipe-dots-bg">
+              <div class="swipe-dot"></div>
+              <div class="swipe-dot-center"></div>
+              <div class="swipe-dot"></div>
+            </div>
+            <input type="range" class="custom-range-slider" min="0" max="2" step="1" id="return-swipe-slider" value="1"
+              oninput="handleReturnSwipe(this.value)" onchange="handleReturnSwipe(this.value)"
+              style="--thumb-color: #6c757d; margin-top: 12px;">
           </div>
         </div>
       </div>
@@ -335,6 +414,9 @@
         <div id="rotary-queue-list" class="d-grid gap-2">
           <div class="text-muted small text-center mt-3">まだキューに追加されていません</div>
         </div>
+      </div>
+      <div id="dial-submit-wrap"
+        style="position: absolute; bottom: 0; left: 0; right: 0; height: 80px; background: linear-gradient(180deg, transparent 0%, rgba(228,230,233,0.85) 40%, #e4e6e9 100%); z-index: 140; pointer-events: none;">
       </div>
       <button id="dial-submit-btn" class="btn" style="display:none;" onclick="submitOp()">
         <i class="bi bi-send-fill"></i> <span id="dial-submit-label">送信</span>
@@ -552,11 +634,22 @@
         }
       }
     }
-    function toggleReturnCheck(type) {
-      var unused = document.getElementById('op-check-unused');
-      var defect = document.getElementById('op-check-defect');
-      if (type === 'unused' && unused.checked) defect.checked = false;
-      else if (type === 'defect' && defect.checked) unused.checked = false;
+    var currentReturnState = 1; // 0=defect, 1=normal, 2=unused
+
+    function handleReturnSwipe(val) {
+      var v = parseInt(val, 10);
+      currentReturnState = v;
+      document.getElementById('swipe-label-defect').className = (v === 0) ? 'text-danger fw-bolder' : 'text-muted';
+      document.getElementById('swipe-label-normal').className = (v === 1) ? 'text-dark fw-bolder' : 'text-muted';
+      document.getElementById('swipe-label-unused').className = (v === 2) ? 'text-success fw-bolder' : 'text-muted';
+
+      var slider = document.getElementById('return-swipe-slider');
+      if (!slider) return;
+      if (v === 0) slider.style.setProperty('--thumb-color', '#dc3545'); // red
+      else if (v === 2) slider.style.setProperty('--thumb-color', '#198754'); // green
+      else slider.style.setProperty('--thumb-color', '#6c757d'); // gray center
+
+      renderOpQueue();
     }
 
     function loadBulkReturnList() {
@@ -587,9 +680,10 @@
       bulkReturnTanks.forEach(function (item, idx) {
         var unusedCls = (item.statusTag === 'unused') ? 'active-unused' : '';
         var defectCls = (item.statusTag === 'defect') ? 'active-defect' : '';
+        var tagCls = (item.statusTag === 'unused') ? 'tag-unused' : (item.statusTag === 'defect') ? 'tag-defect' : '';
 
         var html = `
-          <div class="bulk-card">
+          <div class="bulk-card ${tagCls}">
             <div class="bulk-id">${item.id}</div>
             <div>
               <button class="bulk-tag-btn ${unusedCls}" onclick="toggleBulkTag(${idx}, 'unused')">未使用</button>
@@ -739,7 +833,14 @@
             }
           }
 
-          list.innerHTML += `<div class="queue-card p-2 mb-1 shadow-sm" style="border-left-color: ${color};">
+          var cardBorder = color;
+          var cardBg = '#fff';
+          if (opMode === '返却' && typeof currentReturnState !== 'undefined') {
+            if (currentReturnState === 2) { cardBorder = '#198754'; cardBg = '#f0fff4'; }
+            else if (currentReturnState === 0) { cardBorder = '#dc3545'; cardBg = '#fff5f5'; }
+          }
+
+          list.innerHTML += `<div class="queue-card p-2 mb-1 shadow-sm" style="border-left-color: ${cardBorder}; background-color: ${cardBg};">
            <div class="d-flex justify-content-between align-items-center">
              <div>
                <span class="fw-bold fs-5 font-monospace">${item.id}</span>
@@ -813,8 +914,8 @@
         action: finalAction,
         items: opQueue,
         destination: finalDest,
-        isUnused: document.getElementById('op-check-unused') ? document.getElementById('op-check-unused').checked : false,
-        isDefect: document.getElementById('op-check-defect') ? document.getElementById('op-check-defect').checked : false,
+        isUnused: (opMode === '返却' && typeof currentReturnState !== 'undefined' && currentReturnState === 2),
+        isDefect: (opMode === '返却' && typeof currentReturnState !== 'undefined' && currentReturnState === 0),
         repairCost: 0,
         repairDetail: "",
         userPasscode: (typeof GLOBAL_PASSCODE !== 'undefined') ? GLOBAL_PASSCODE : ""
@@ -826,8 +927,11 @@
         clearOpQueue();
         if (isSelfUseMode) toggleSelfUse();
         if (opMode === '貸出') document.getElementById('op-dest-select').value = "";
-        if (document.getElementById('op-check-unused')) document.getElementById('op-check-unused').checked = false;
-        if (document.getElementById('op-check-defect')) document.getElementById('op-check-defect').checked = false;
+        var slider = document.getElementById('return-swipe-slider');
+        if (slider) {
+          slider.value = 1;
+          if (typeof handleReturnSwipe === 'function') handleReturnSwipe(1);
+        }
 
         var msg = "【送信結果】\n総数: " + (res.totalCount || 0) + " 本\n----------------\n";
         if (res.successIds && res.successIds.length > 0) msg += "✅ 成功 (" + res.successIds.length + "本):\n" + res.successIds.join(", ") + "\n\n";
