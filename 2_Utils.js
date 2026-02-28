@@ -85,7 +85,7 @@ function getListWithCache(sheetName, durationSec) {
 
 function clearMasterCaches() {
   var cache = CacheService.getScriptCache();
-  cache.removeAll(["list_cache_貸出先リスト", "price_master_data", "repair_options", "order_master_data_v12", "TANK_PREFIXES", "RENTED_TANKS_MAP"]);
+  cache.removeAll(["list_cache_貸出先リスト", "price_master_data", "repair_options", "order_master_data_v12", "TANK_PREFIXES", "ALL_TANK_STATUS_MAP"]);
   return { success: true, message: "マスタデータを最新化しました。" };
 }
 

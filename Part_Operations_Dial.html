@@ -362,7 +362,19 @@
     var opPrefixes = [];
     var bulkReturnTanks = [];
     var repairOptionsCache = [];
-    window.rentedTanksCache = {};
+    window.tankMapCache = {};
+
+    // 操作ルール定義: 許容する直前ステータス
+    const OP_RULES = {
+      '貸出': ['充填済み', '保管中'],
+      '自社利用': ['充填済み', '保管中'],
+      '返却': ['貸出中', '未返却', '自社利用中'],
+      '自社一括返却': ['自社利用中'],
+      '充填': ['空'],
+      '破損報告': [], // Any
+      '修理済み': ['破損', '不良', '故障']
+    };
+    const SPECIAL_STATUSES = ["", "新規登録", "不明", "メンテナンス完了"];
 
     // Initialization is now managed by initAppView in index.html
     function triggerInitialDataLoad(action) {
@@ -400,8 +412,8 @@
             renderDialMode(color);
           }
 
-          if (data.rentedTanks) {
-            window.rentedTanksCache = data.rentedTanks;
+          if (data.tankMap) {
+            window.tankMapCache = data.tankMap;
           }
 
           // Re-render the queue in case data loaded after items were added
@@ -641,8 +653,60 @@
       }
     }
 
+    function triggerErrorFeedback(msg) {
+      // 簡易的なトースト通知または画面上部のアラートバナーを表示
+      var existing = document.getElementById('dial-error-toast');
+      if (existing) existing.remove();
+      var toast = document.createElement('div');
+      toast.id = 'dial-error-toast';
+      toast.className = 'alert alert-danger shadow position-fixed w-75 text-center fw-bold py-2';
+      toast.style.top = '20px';
+      toast.style.left = '50%';
+      toast.style.transform = 'translateX(-50%)';
+      toast.style.zIndex = '9999';
+      toast.innerHTML = '<i class="bi bi-exclamation-octagon-fill"></i> ' + msg;
+
+      document.body.appendChild(toast);
+      setTimeout(() => { if (toast && toast.parentElement) toast.remove(); }, 3000);
+
+      var rList = document.getElementById('rotary-queue-list');
+      if (rList) {
+        rList.classList.remove('flash-error');
+        void rList.offsetWidth;
+        rList.classList.add('flash-error');
+      }
+    }
+
     function addOpQueue(id) {
-      if (!opQueue.some(item => item.id === id)) { opQueue.push({ id: id, note: '' }); renderOpQueue(); }
+      if (!opQueue.some(item => item.id === id)) {
+        // --- 事前バリデーション判定 ---
+        if (window.tankMapCache) {
+          var nId = id.replace(/[０-９Ａ-Ｚａ-ｚ]/g, function (s) { return String.fromCharCode(s.charCodeAt(0) - 0xFEE0); }).replace(/[-−\s_ー]/g, '').toUpperCase();
+          var tankInfo = window.tankMapCache[nId];
+
+          if (tankInfo) {
+            var currentStatus = tankInfo.status;
+            var isSpecial = SPECIAL_STATUSES.includes(currentStatus);
+
+            var targetMode = opMode;
+            if (opMode === '貸出' && isSelfUseMode) targetMode = '自社利用';
+
+            var allowedPrev = OP_RULES[targetMode];
+            if (!isSpecial && allowedPrev && allowedPrev.length > 0 && allowedPrev.indexOf(currentStatus) === -1) {
+              triggerErrorFeedback(`不適合なステータス: 現在 [${currentStatus}]`);
+              return false; // ブロック
+            }
+          } else {
+            // DBに存在しないIDの場合も警告を出しつつ追加はさせるか検討の余地あり
+            // 現状は未登録でも弾かずに追加（従来通りスプレッドシートで弾く）
+          }
+        }
+
+        opQueue.push({ id: id, note: '' });
+        renderOpQueue();
+        return true;
+      }
+      return false;
     }
     function updateItemNote(index, text) { opQueue[index].note = text; }
     function appendQuickNote(index, text) {
@@ -667,11 +731,11 @@
           var index = opQueue.length - 1 - revIndex;
 
           var destHtml = '';
-          if (opMode === '返却' && window.rentedTanksCache) {
+          if (opMode === '返却' && window.tankMapCache) {
             var nId = item.id.replace(/[０-９Ａ-Ｚａ-ｚ]/g, function (s) { return String.fromCharCode(s.charCodeAt(0) - 0xFEE0); }).replace(/[-−\s_ー]/g, '').toUpperCase();
-            var dest = window.rentedTanksCache[nId];
-            if (dest) {
-              destHtml = `<div class="text-secondary text-truncate ms-2 mt-1" style="font-size: 0.70rem; max-width: 120px;"><i class="bi bi-geo-alt-fill"></i> ${dest}</div>`;
+            var info = window.tankMapCache[nId];
+            if (info && info.loc) {
+              destHtml = `<div class="text-secondary text-truncate ms-2 mt-1" style="font-size: 0.70rem; max-width: 120px;"><i class="bi bi-geo-alt-fill"></i> ${info.loc}</div>`;
             }
           }
 
@@ -1065,8 +1129,8 @@
 
     function submitActiveOk() {
       if (activePrefix) {
-        addOpQueue(activePrefix + '-OK');
-        triggerSuccessFeedback(activePrefix);
+        var added = addOpQueue(activePrefix + '-OK');
+        if (added) triggerSuccessFeedback(activePrefix);
       }
     }
 
@@ -1075,9 +1139,9 @@
       val = val.replace(/[^0-9]/g, '');
       el.value = val;
       if (val.length >= 2) {
-        addOpQueue(activePrefix + '-' + val);
+        var added = addOpQueue(activePrefix + '-' + val);
         el.value = '';
-        triggerSuccessFeedback(activePrefix);
+        if (added) triggerSuccessFeedback(activePrefix);
       }
     }
   </script>
