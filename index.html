@@ -220,7 +220,7 @@
       </div>
       <div class="ms-auto">
         <button id="header-bulk-return-btn" class="btn btn-sm btn-outline-info py-1 px-3"
-          style="display:none; font-size:0.85rem; font-weight:bold;" onclick="switchMode('自社一括')">
+          style="display:none; font-size:0.85rem; font-weight:bold;" onclick="switchMode('自社管理')">
           <i class="bi bi-building-down"></i> 自社返却
         </button>
       </div>
@@ -596,7 +596,7 @@
 
       // Show bulk return button in header only on operations views
       var bulkRetBtn = document.getElementById('header-bulk-return-btn');
-      if (bulkRetBtn) bulkRetBtn.style.display = ['貸出', '返却', '充填', '自社一括'].includes(mode) ? 'inline-block' : 'none';
+      if (bulkRetBtn) bulkRetBtn.style.display = ['貸出', '返却', '充填'].includes(mode) ? 'inline-block' : 'none';
 
       var navOrder = ['貸出', '返却', '充填'];
       var oldIdx = navOrder.indexOf(currentView);
@@ -617,15 +617,11 @@
 
       var targetEl = null;
 
-      if (['貸出', '返却', '充填', '自社一括'].includes(mode)) {
+      if (['貸出', '返却', '充填'].includes(mode)) {
         targetEl = document.getElementById('view-operations');
         if (mode === '貸出') document.getElementById('nav-btn-lend').classList.add('active-lend');
         if (mode === '返却') document.getElementById('nav-btn-return').classList.add('active-return');
         if (mode === '充填') document.getElementById('nav-btn-fill').classList.add('active-fill');
-        if (mode === '自社一括') {
-          var bulkBtn = document.getElementById('nav-btn-bulk');
-          if (bulkBtn) bulkBtn.classList.add('active-bulk');
-        }
         if (typeof initOperations === 'function') initOperations(mode);
       }
       else if (['破損報告'].includes(mode)) {

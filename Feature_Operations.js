@@ -5,7 +5,6 @@ const OP_RULES = {
   '貸出': { allowedPrev: ['充填済み', '保管中'], nextStatus: '貸出中' },
   '自社利用': { allowedPrev: ['充填済み', '保管中'], nextStatus: '自社利用中' },
   '返却': { allowedPrev: ['貸出中', '未返却', '自社利用中'], nextStatus: '空' },
-  '自社一括返却': { allowedPrev: ['自社利用中'], nextStatus: '空' },
   '充填': { allowedPrev: ['空'], nextStatus: '充填済み' },
   '破損報告': { allowedPrev: [], nextStatus: '破損' },
   '修理済み': { allowedPrev: ['破損', '不良', '故障'], nextStatus: '空' }
@@ -213,7 +212,6 @@ function submitOperations(data) {
       case '貸出': writeResult = processLend(processData, preLoadedData, identifiedStaffName); break;
       case '自社利用': writeResult = processCompanyUse(processData, preLoadedData, identifiedStaffName); break;
       case '返却': writeResult = processReturn(processData, preLoadedData, identifiedStaffName); break;
-      case '自社一括返却': writeResult = processCompanyBulkReturn(processData, preLoadedData, identifiedStaffName); break;
       case '充填': writeResult = processFill(processData, preLoadedData, identifiedStaffName); break;
       case '破損報告': writeResult = processDamageReport(processData, preLoadedData, identifiedStaffName); break;
       case '修理済み': writeResult = processRepair(processData, preLoadedData, identifiedStaffName); break;
@@ -240,11 +238,6 @@ function submitOperations(data) {
             if (action === '返却' && oldStatus === '自社利用中') {
               moneyLogAction = '自社返却';
             }
-            if (action === '自社一括返却') {
-              if (item.statusTag === 'unused') moneyLogAction = '自社返却(未使用)';
-              else if (item.statusTag === 'defect') moneyLogAction = '自社返却(不備)';
-              else moneyLogAction = '自社返却';
-            }
 
             moneyLogs.push({
               uuid: Utilities.getUuid(),
@@ -265,7 +258,7 @@ function submitOperations(data) {
       }
 
       // 場所やステータスが変更された可能性があるため、キャッシュを破棄
-      if (['貸出', '自社利用', '返却', '自社一括返却', '充填', '破損報告', '修理済み'].indexOf(action) !== -1) {
+      if (['貸出', '自社利用', '返却', '充填', '破損報告', '修理済み'].indexOf(action) !== -1) {
         CacheService.getScriptCache().remove("ALL_TANK_STATUS_MAP");
       }
     }

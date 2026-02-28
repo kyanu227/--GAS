@@ -386,16 +386,6 @@
           <i class="bi bi-info-circle text-warning"></i> 充填したタンクのIDを入力してください。
         </div>
       </div>
-      <div id="op-settings-bulk-return" class="op-setting-panel" style="display:none;">
-        <div class="d-flex justify-content-between align-items-end mb-2">
-          <h6 class="fw-bold text-secondary mb-0"><i class="bi bi-building-down"></i> 自社使用中タンク</h6>
-          <button class="btn btn-sm btn-outline-secondary py-0" style="font-size:0.8rem;"
-            onclick="loadBulkReturnList()"><i class="bi bi-arrow-clockwise"></i> 再取得</button>
-        </div>
-        <div id="bulk-return-list" class="d-grid gap-1 mt-3">
-          <div class="text-center text-muted p-3"><span class="spinner-border spinner-border-sm"></span> 取得中...</div>
-        </div>
-      </div>
     </div>
 
     <!-- Dial mode (fills remaining space) -->
@@ -442,7 +432,6 @@
     var opMode = '';
     var isSelfUseMode = false;
     var opPrefixes = [];
-    var bulkReturnTanks = [];
     var repairOptionsCache = [];
     window.tankMapCache = null;
 
@@ -451,7 +440,6 @@
       '貸出': ['充填済み', '保管中'],
       '自社利用': ['充填済み', '保管中'],
       '返却': ['貸出中', '未返却', '自社利用中'],
-      '自社一括返却': ['自社利用中'],
       '充填': ['空'],
       '破損報告': [], // Any
       '修理済み': ['破損', '不良', '故障']
@@ -510,7 +498,6 @@
       if (opMode === '貸出') return '#0d6efd';
       if (opMode === '返却') return '#198754';
       if (opMode === '充填') return '#fd7e14';
-      if (opMode === '自社一括') return '#0dcaf0';
       return '#6c757d';
     }
 
@@ -536,20 +523,10 @@
         } else if (mode === '充填') {
           document.getElementById('op-settings-fill').style.display = 'block';
           btnText = '充填完了';
-        } else if (mode === '自社一括') {
-          document.getElementById('op-settings-bulk-return').style.display = 'block';
-          btnText = '一括返却';
-          loadBulkReturnList();
         }
 
         var dialBtn = document.getElementById('dial-submit-btn');
-        var hasItems = false;
-
-        if (mode === '自社一括') {
-          hasItems = (bulkReturnTanks.length > 0);
-        } else {
-          hasItems = (opQueue && opQueue.length > 0);
-        }
+        var hasItems = (opQueue && opQueue.length > 0);
 
         if (dialBtn) {
           dialBtn.style.display = hasItems ? 'block' : 'none';
@@ -565,13 +542,7 @@
           if (el.dataset.mode === mode) el.classList.add('active');
         });
 
-        if (mode === '自社一括') {
-          var dm = document.getElementById('op-dial-mode');
-          if (dm) dm.style.display = 'none';
-          document.body.classList.remove('dial-lock');
-        } else {
-          activateDialMode(color);
-        }
+        activateDialMode(color);
       } catch (e) {
         alert("Error in initOperations: " + e.message);
       }
@@ -652,63 +623,6 @@
       renderOpQueue();
     }
 
-    function loadBulkReturnList() {
-      var container = document.getElementById('bulk-return-list');
-      if (!container) return;
-      container.innerHTML = '<div class="text-center text-muted p-3"><span class="spinner-border spinner-border-sm"></span> 取得中...</div>';
-
-      google.script.run.withSuccessHandler(function (list) {
-        bulkReturnTanks = list.map(item => ({ id: item.id, statusTag: 'normal', note: '' }));
-        renderBulkReturnList();
-      }).withFailureHandler(function (e) {
-        container.innerHTML = '<div class="alert alert-danger py-2 small">取得エラー: ' + e.message + '</div>';
-      }).getInHouseTanks();
-    }
-
-    function renderBulkReturnList() {
-      var container = document.getElementById('bulk-return-list');
-      if (!container) return;
-      container.innerHTML = '';
-
-      if (bulkReturnTanks.length === 0) {
-        container.innerHTML = '<div class="text-center text-muted p-3 mt-4"><i class="bi bi-check-circle display-1 text-success d-block mb-3"></i><h5>返却するタンクはありません</h5><p class="small">現在自社利用中のタンクは0件です。</p></div>';
-        var dialBtn = document.getElementById('dial-submit-btn');
-        if (dialBtn) dialBtn.style.display = 'none';
-        return;
-      }
-
-      bulkReturnTanks.forEach(function (item, idx) {
-        var unusedCls = (item.statusTag === 'unused') ? 'active-unused' : '';
-        var defectCls = (item.statusTag === 'defect') ? 'active-defect' : '';
-        var tagCls = (item.statusTag === 'unused') ? 'tag-unused' : (item.statusTag === 'defect') ? 'tag-defect' : '';
-
-        var html = `
-          <div class="bulk-card ${tagCls}">
-            <div class="bulk-id">${item.id}</div>
-            <div>
-              <button class="bulk-tag-btn ${unusedCls}" onclick="toggleBulkTag(${idx}, 'unused')">未使用</button>
-              <button class="bulk-tag-btn ${defectCls}" onclick="toggleBulkTag(${idx}, 'defect')">未充填</button>
-            </div>
-          </div>
-        `;
-        container.insertAdjacentHTML('beforeend', html);
-      });
-
-      var dialBtn = document.getElementById('dial-submit-btn');
-      if (dialBtn && opMode === '自社一括') {
-        dialBtn.style.display = 'block';
-        document.getElementById('dial-submit-label').innerText = bulkReturnTanks.length + "件 全て返却";
-      }
-    }
-
-    function toggleBulkTag(idx, tag) {
-      if (bulkReturnTanks[idx].statusTag === tag) {
-        bulkReturnTanks[idx].statusTag = 'normal';
-      } else {
-        bulkReturnTanks[idx].statusTag = tag;
-      }
-      renderBulkReturnList();
-    }
 
     function renderRepairCheckboxes() {
       var container = document.getElementById('repair-options-container');
@@ -875,9 +789,7 @@
 
         _emptyHtml += '</div>';
         list.innerHTML = _emptyHtml;
-        if (opMode !== '自社一括') {
-          if (dialBtn) dialBtn.style.display = 'none';
-        }
+        if (dialBtn) dialBtn.style.display = 'none';
       }
     }
 
@@ -885,10 +797,6 @@
     function clearOpQueue() { opQueue = []; renderOpQueue(); }
 
     function submitOp() {
-      if (opMode === '自社一括') {
-        submitBulkReturn();
-        return;
-      }
 
       if (opMode === '貸出' && !isSelfUseMode) {
         var dest = document.getElementById('op-dest-select').value;
@@ -949,40 +857,6 @@
       }).submitOperations(payload);
     }
 
-    function submitBulkReturn() {
-      if (bulkReturnTanks.length === 0) return;
-      if (!confirm(bulkReturnTanks.length + "件の自社タンクを一括送信しますか？\n※未使用・未充填のタグを付けたものはその状態で返却されます。")) return;
-
-      var dialBtn = document.getElementById('dial-submit-btn');
-      var dialLabel = document.getElementById('dial-submit-label');
-      var orgText = dialLabel ? dialLabel.innerText : '送信';
-      if (dialBtn) dialBtn.disabled = true;
-      if (dialLabel) dialLabel.innerText = "送信中...";
-
-      var payload = {
-        action: '自社一括返却',
-        items: bulkReturnTanks,
-        userPasscode: (typeof GLOBAL_PASSCODE !== 'undefined') ? GLOBAL_PASSCODE : ""
-      };
-
-      google.script.run.withSuccessHandler(res => {
-        if (dialBtn) dialBtn.disabled = false;
-        if (dialLabel) dialLabel.innerText = orgText;
-        if (res.success) {
-          bulkReturnTanks = [];
-          renderBulkReturnList();
-          alert(res.message);
-        } else {
-          var msg = "エラー: " + res.message + "\n";
-          if (res.failedItems) res.failedItems.forEach(i => msg += i.id + " : " + i.reason + "\n");
-          alert(msg);
-        }
-      }).withFailureHandler(function (e) {
-        if (dialBtn) dialBtn.disabled = false;
-        if (dialLabel) dialLabel.innerText = orgText;
-        alert("システムエラー: " + e);
-      }).submitOperations(payload);
-    }
 
     // ■■■ ロータリーモード用JS ■■■
     var currentScrollY = 0;
