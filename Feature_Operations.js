@@ -45,11 +45,54 @@ function getOperationsInitData() {
   // 2. タンクID Prefix
   var prefixes = getTankPrefixesWithCache();
 
+  // 3. 貸出中・自社利用中のタンク一覧（返却用）
+  var rentedTanks = getRentedTanksWithCache(false);
+
   return {
     destList: activeDestList,
     repairOptions: repairOpts,
-    prefixes: prefixes
+    prefixes: prefixes,
+    rentedTanks: rentedTanks
   };
+}
+
+function getRentedTanksWithCache(forceRefresh) {
+  var cacheKey = "RENTED_TANKS_MAP";
+  var cache = CacheService.getScriptCache();
+
+  if (!forceRefresh) {
+    var cached = cache.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+  }
+
+  var map = {};
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheetName = (typeof SHEET_NAMES !== 'undefined' && SHEET_NAMES.STATUS) ? SHEET_NAMES.STATUS : 'タンクステータス';
+    var sheet = ss.getSheetByName(sheetName);
+
+    if (sheet) {
+      var lastRow = sheet.getLastRow();
+      if (lastRow > 1) {
+        // A列(ID), B列(状態), C列(場所/貸出先)
+        var data = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
+        for (var i = 0; i < data.length; i++) {
+          var id = normalizeId(data[i][0]);
+          var status = String(data[i][1]);
+          var loc = String(data[i][2]);
+
+          if (id && (status === '貸出中' || status === '未返却' || status === '自社利用中')) {
+            map[id] = loc;
+          }
+        }
+      }
+    }
+    // 最大6時間キャッシュ
+    cache.put(cacheKey, JSON.stringify(map), 21600);
+  } catch (e) {
+    console.error("貸出中タンク一覧取得エラー", e);
+  }
+  return map;
 }
 
 function getTankPrefixesWithCache() {
@@ -219,6 +262,11 @@ function submitOperations(data) {
         recordMoneyLog(moneyLogs);
       } catch (e) {
         console.error("金銭ログ記録エラー: " + e.toString());
+      }
+
+      // 場所が変更された可能性があるため、キャッシュを破棄
+      if (['貸出', '自社利用', '返却', '自社一括返却'].indexOf(action) !== -1) {
+        CacheService.getScriptCache().remove("RENTED_TANKS_MAP");
       }
     }
 

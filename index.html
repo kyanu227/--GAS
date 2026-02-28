@@ -4,6 +4,7 @@
 <head>
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="referrer" content="no-referrer">
   <title>
     <?= appTitle ?>
   </title>
@@ -18,7 +19,7 @@
     var SERVER_USER_ROLE = "<?= userRole ?>";
     var SERVER_LOGIN_MODE = "<?= loginMode ?>";
     var SERVER_USER_EMAIL = "<?= (typeof userEmail !== 'undefined') ? userEmail : '' ?>";
-    var SERVER_FOUND_PASSCODE = "<?= (typeof foundPasscode !== 'undefined') ? foundPasscode : '' ?>";
+    var SERVER_VIEW_MODE = "<?= (typeof viewMode !== 'undefined') ? viewMode : 'リスト' ?>";
 
     // ▼▼▼ 追加: ターゲットページの受け取り ▼▼▼
     var SERVER_TARGET_PAGE = "<?= (typeof targetPage !== 'undefined') ? targetPage : '' ?>";
@@ -28,9 +29,9 @@
     var GLOBAL_USER_ROLE = SERVER_USER_ROLE;
     var GLOBAL_LOGIN_MODE = SERVER_LOGIN_MODE;
     var GLOBAL_USER_EMAIL = SERVER_USER_EMAIL;
-    var GLOBAL_PASSCODE = SERVER_FOUND_PASSCODE;
+    var GLOBAL_PASSCODE = "";
 
-    if (GLOBAL_STAFF_NAME === "undefined") {
+    if (!GLOBAL_STAFF_NAME || GLOBAL_STAFF_NAME === "undefined" || GLOBAL_STAFF_NAME.trim() === "") {
       GLOBAL_STAFF_NAME = "ゲスト";
     }
   </script>
@@ -159,6 +160,42 @@
     </div>
   </div>
 
+  <div class="modal fade" id="settingsModal" tabindex="-1" aria-hidden="true" style="z-index: 11000;">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0 bg-white">
+        <div class="modal-header border-0 bg-white">
+          <h5 class="modal-title fw-bold text-dark"><i class="bi bi-gear-fill me-2"></i>設定</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <label class="form-label fw-bold small text-secondary mb-2">操作画面の表示形式</label>
+          <div class="d-grid gap-2">
+            <label class="d-flex align-items-center p-3 rounded border" id="setting-view-list"
+              style="cursor:pointer; transition: all 0.2s;" onclick="selectViewMode('リスト')">
+              <input type="radio" name="viewModeSetting" value="リスト" class="form-check-input me-3" id="vm-list">
+              <div>
+                <div class="fw-bold"><i class="bi bi-card-list me-1"></i> リスト形式</div>
+                <div class="text-muted small">プレフィックスごとに入力欄が並ぶ標準レイアウト</div>
+              </div>
+            </label>
+            <label class="d-flex align-items-center p-3 rounded border" id="setting-view-dial"
+              style="cursor:pointer; transition: all 0.2s;" onclick="selectViewMode('ダイヤル')">
+              <input type="radio" name="viewModeSetting" value="ダイヤル" class="form-check-input me-3" id="vm-dial">
+              <div>
+                <div class="fw-bold"><i class="bi bi-vinyl me-1"></i> ダイヤル形式</div>
+                <div class="text-muted small">ロータリー式でプレフィックスを選ぶレイアウト</div>
+              </div>
+            </label>
+          </div>
+          <div id="settings-save-status" class="text-center mt-3 small" style="display:none;"></div>
+          <button class="btn btn-primary w-100 fw-bold py-2 mt-3" onclick="saveSettings()">
+            <i class="bi bi-check-lg me-1"></i> 保存して反映
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="loading-overlay" style="display:none;">
     <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
     <div class="mt-3 fw-bold text-secondary">処理中...</div>
@@ -206,7 +243,10 @@
             <div class="fw-bold text-truncate" id="menu-user-name" style="font-size: 1rem;">ゲスト</div>
             <div class="small text-muted text-truncate" id="menu-user-email" style="font-size: 0.75rem;"></div>
           </div>
-          <button class="btn btn-sm btn-outline-danger ms-2" onclick="doLogout()" title="ログアウト">
+          <button class="btn btn-sm btn-outline-secondary ms-2" onclick="openSettingsModal()" title="設定">
+            <i class="bi bi-gear-fill"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger ms-1" onclick="doLogout()" title="ログアウト">
             <i class="bi bi-box-arrow-right"></i>
           </button>
         </div>
@@ -255,7 +295,7 @@
     style="display:none; position: fixed; top: 70px; left: 5%; width: 90%; z-index: 2000;"></div>
 
   <div id="view-operations" style="display:none;">
-    <?!= include('Part_Operations'); ?>
+    <?!= include(operationsView); ?>
   </div>
   <div id="view-operations-sub" style="display:none;">
     <?!= include('Part_DamageReport'); ?>
@@ -293,6 +333,36 @@
     var offcanvas;
     var loginModal;
 
+    // ■ Safari等のITP（クロスサイトトラッキング防止）によるlocalStorageエラー対策
+    function safelyGetLocal(key) {
+      try { return localStorage.getItem(key); } catch (e) {
+        console.warn("localStorage is blocked:", e); return null;
+      }
+    }
+    function safelySetLocal(key, value) {
+      try { localStorage.setItem(key, value); } catch (e) {
+        console.warn("localStorage is blocked:", e);
+      }
+    }
+    function safelyRemoveLocal(key) {
+      try { localStorage.removeItem(key); } catch (e) {
+        console.warn("localStorage is blocked:", e);
+      }
+    }
+
+    // ■ Safari ITP対策: iframe内からのトップレベルナビゲーション
+    // window.top.location.href はSafariのクロスオリジンiframe内で
+    // SecurityError("The operation is insecure")を発生させるため、
+    // aタグのtarget="_top"クリックで安全に遷移する
+    function safelyNavigateTop(url) {
+      var a = document.createElement('a');
+      a.href = url;
+      a.target = '_top';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+    }
+
     // ■ 管理権限の判定関数
     function isUserAdmin() {
       var currentRole = GLOBAL_USER_ROLE;
@@ -304,14 +374,24 @@
     }
 
     function getCurrentUserPasscode() {
-      if (typeof GLOBAL_PASSCODE !== 'undefined' && GLOBAL_PASSCODE) {
-        return GLOBAL_PASSCODE;
+      // 古い4桁パスコードと新しい6桁の両方に対応
+      var isValid = function (p) { return typeof p === 'string' && /^\d{4,6}$/.test(p.trim()); };
+
+      if (typeof window.GLOBAL_PASSCODE !== 'undefined' && isValid(window.GLOBAL_PASSCODE)) {
+        return window.GLOBAL_PASSCODE.trim();
       }
-      if (typeof USER_PASSCODE !== 'undefined' && USER_PASSCODE) {
-        return USER_PASSCODE;
+      if (typeof window.USER_PASSCODE !== 'undefined' && isValid(window.USER_PASSCODE)) {
+        return window.USER_PASSCODE.trim();
       }
-      var stored = localStorage.getItem('app_user_passcode');
-      if (stored) return stored;
+      var stored = safelyGetLocal('app_user_passcode');
+      if (isValid(stored)) {
+        return stored.trim();
+      }
+
+      // 無効なキャッシュが存在する場合は消去する
+      if (stored) {
+        safelyRemoveLocal('app_user_passcode');
+      }
       return "";
     }
 
@@ -375,7 +455,7 @@
         GLOBAL_PASSCODE = getCurrentUserPasscode();
       }
 
-      var isGoogleAuth = (GLOBAL_STAFF_NAME !== 'ゲスト' && GLOBAL_STAFF_NAME !== 'undefined');
+      var isGoogleAuth = (GLOBAL_STAFF_NAME && GLOBAL_STAFF_NAME !== 'ゲスト' && GLOBAL_STAFF_NAME !== 'undefined' && GLOBAL_STAFF_NAME.trim() !== "");
       var hasPasscode = !!GLOBAL_PASSCODE;
 
       if (isGoogleAuth) {
@@ -396,7 +476,14 @@
     function resolveFinalView() {
       // 権限OK -> 通常の現場アプリ画面を表示
       hideInitialLoader();
-      initAppView('貸出');
+
+      google.script.url.getLocation(function (location) {
+        var action = (location.parameter && location.parameter.action) ? location.parameter.action : "貸出";
+        initAppView(action);
+        if (typeof triggerInitialDataLoad === 'function') {
+          triggerInitialDataLoad(action);
+        }
+      });
     }
 
     function hideInitialLoader() {
@@ -439,33 +526,42 @@
         .withSuccessHandler(function (res) {
           if (!isInitial) showLoading(false);
 
-          if (res.success) {
-            GLOBAL_STAFF_NAME = res.user.name;
-            GLOBAL_USER_ROLE = res.user.role;
-            GLOBAL_PASSCODE = pass;
+          try {
+            if (res.success) {
+              GLOBAL_STAFF_NAME = res.user.name;
+              GLOBAL_USER_ROLE = res.user.role;
+              GLOBAL_PASSCODE = pass;
 
-            // ★追加: 認証成功時にパスコードをブラウザに永続保存する
-            localStorage.setItem('app_user_passcode', pass);
+              // ★追加: 認証成功時にパスコードをブラウザに永続保存する
+              safelySetLocal('app_user_passcode', pass);
 
-            loginModal.hide();
+              // ★ ビューモードをlocalStorageに保存（リダイレクトはしない）
+              var userViewMode = (res.user && res.user.viewMode === 'ダイヤル') ? 'ダイヤル' : 'リスト';
+              safelySetLocal('app_view_mode', userViewMode);
 
-            if (!isInitial) showMessage(GLOBAL_STAFF_NAME + "さん、ログインしました", true);
+              loginModal.hide();
+              if (!isInitial) showMessage(GLOBAL_STAFF_NAME + "さん、ログインしました", true);
+              resolveFinalView();
+            } else {
+              // 失敗時
+              hideInitialLoader(); // Forcefully hide it always if it gets here just in case!
+              if (isInitial) hideInitialLoader();
 
-            // ★再判定して画面決定
-            resolveFinalView();
-
-          } else {
-            // 失敗時
-            if (isInitial) hideInitialLoader();
-
-            errEl.innerText = res.message;
-            errEl.style.display = 'block';
-            document.getElementById('login-passcode').value = '';
-            loginModal.show();
+              errEl.innerText = res.message;
+              errEl.style.display = 'block';
+              document.getElementById('login-passcode').value = '';
+              loginModal.show();
+            }
+          } catch (err) {
+            hideInitialLoader();
+            if (!isInitial) showLoading(false);
+            alert("ログイン処理中にエラーが発生しました: " + err.message);
           }
+
         })
         .withFailureHandler(function (e) {
           if (!isInitial) showLoading(false);
+          hideInitialLoader(); // Forcefully hide just in case
           if (isInitial) hideInitialLoader();
           errEl.innerText = "通信エラー: " + e.message;
           errEl.style.display = 'block';
@@ -480,7 +576,8 @@
 
     function doLogout() {
       if (confirm("ログアウトしてパスコードの記憶を削除しますか？")) {
-        localStorage.removeItem('app_user_passcode');
+        safelyRemoveLocal('app_user_passcode');
+        safelyRemoveLocal('app_view_mode');
         GLOBAL_PASSCODE = "";
         GLOBAL_STAFF_NAME = "ゲスト";
         GLOBAL_USER_ROLE = "";
@@ -489,7 +586,7 @@
         var loader = document.getElementById('initial-loader');
         if (loader) { loader.style.display = 'flex'; loader.style.opacity = '1'; }
         google.script.run
-          .withSuccessHandler(function (url) { window.top.location.href = url; })
+          .withSuccessHandler(function (url) { safelyNavigateTop(url); })
           .getScriptUrl();
       }
     }
@@ -572,6 +669,90 @@
       el.className = isSuccess ? 'alert alert-success shadow-sm' : 'alert alert-danger shadow-sm';
       el.style.display = 'block';
       setTimeout(() => { el.style.display = 'none'; }, 3000);
+    }
+
+    // ■ 設定モーダル
+    var settingsModal;
+    function openSettingsModal() {
+      offcanvas.hide();
+      if (!settingsModal) {
+        settingsModal = new bootstrap.Modal(document.getElementById('settingsModal'));
+      }
+      var currentMode = SERVER_VIEW_MODE || 'リスト';
+      if (currentMode === 'ダイヤル') {
+        document.getElementById('vm-dial').checked = true;
+      } else {
+        document.getElementById('vm-list').checked = true;
+      }
+      updateViewModeHighlight();
+      document.getElementById('settings-save-status').style.display = 'none';
+      settingsModal.show();
+    }
+
+    function selectViewMode(mode) {
+      if (mode === 'ダイヤル') {
+        document.getElementById('vm-dial').checked = true;
+      } else {
+        document.getElementById('vm-list').checked = true;
+      }
+      updateViewModeHighlight();
+    }
+
+    function updateViewModeHighlight() {
+      var listLabel = document.getElementById('setting-view-list');
+      var dialLabel = document.getElementById('setting-view-dial');
+      var isDialChecked = document.getElementById('vm-dial').checked;
+      listLabel.style.borderColor = isDialChecked ? '#dee2e6' : '#0d6efd';
+      listLabel.style.background = isDialChecked ? '#fff' : '#e8f0fe';
+      dialLabel.style.borderColor = isDialChecked ? '#0d6efd' : '#dee2e6';
+      dialLabel.style.background = isDialChecked ? '#e8f0fe' : '#fff';
+    }
+
+    function reloadWithViewMode(viewMode) {
+      if (!viewMode) return;
+      var url = "<?= scriptUrl ?>";
+      var asciiMode = (viewMode === 'ダイヤル') ? 'dial' : 'list';
+      if (asciiMode !== 'list') {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + 'viewMode=' + asciiMode;
+      }
+      safelyNavigateTop(url);
+    }
+
+    function saveSettings() {
+      var selectedMode = document.getElementById('vm-dial').checked ? 'ダイヤル' : 'リスト';
+      var passcode = getCurrentUserPasscode();
+      var hasGoogleName = (typeof window.GLOBAL_STAFF_NAME !== 'undefined' && window.GLOBAL_STAFF_NAME && window.GLOBAL_STAFF_NAME !== 'ゲスト');
+
+      if (!passcode && !hasGoogleName) {
+        alert("認証情報が見つかりません。再ログインしてください。");
+        return;
+      }
+
+      var statusEl = document.getElementById('settings-save-status');
+      statusEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 保存中...';
+      statusEl.className = 'text-center mt-3 small text-muted';
+      statusEl.style.display = 'block';
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (res.success) {
+            statusEl.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i> ' + res.message;
+            statusEl.className = 'text-center mt-3 small text-success fw-bold';
+            safelySetLocal('app_view_mode', selectedMode);
+            setTimeout(function () {
+              settingsModal.hide();
+              reloadWithViewMode(selectedMode);
+            }, 800);
+          } else {
+            statusEl.innerHTML = '<i class="bi bi-exclamation-circle text-danger"></i> ' + res.message;
+            statusEl.className = 'text-center mt-3 small text-danger';
+          }
+        })
+        .withFailureHandler(function (e) {
+          statusEl.innerHTML = '<i class="bi bi-exclamation-circle text-danger"></i> エラー: ' + e.message;
+          statusEl.className = 'text-center mt-3 small text-danger';
+        })
+        .saveViewMode(passcode, selectedMode, typeof window.GLOBAL_STAFF_NAME !== 'undefined' ? window.GLOBAL_STAFF_NAME : "");
     }
   </script>
 </body>

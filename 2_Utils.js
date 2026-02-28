@@ -85,7 +85,7 @@ function getListWithCache(sheetName, durationSec) {
 
 function clearMasterCaches() {
   var cache = CacheService.getScriptCache();
-  cache.removeAll(["list_cache_貸出先リスト", "price_master_data", "repair_options", "order_master_data_v12", "TANK_PREFIXES"]);
+  cache.removeAll(["list_cache_貸出先リスト", "price_master_data", "repair_options", "order_master_data_v12", "TANK_PREFIXES", "RENTED_TANKS_MAP"]);
   return { success: true, message: "マスタデータを最新化しました。" };
 }
 
@@ -103,7 +103,7 @@ function getUserInfo(email, passcode) {
   if (sheet) {
     var lastRow = sheet.getLastRow();
     if (lastRow > 1) {
-      var data = sheet.getRange(2, 1, lastRow - 1, 6).getValues();
+      var data = sheet.getRange(2, 1, lastRow - 1, 7).getValues();
       for (var i = 0; i < data.length; i++) {
         var row = data[i];
         if (row[4] === '停止' || String(row[0]).indexOf('【停止】') === 0) continue;
@@ -118,14 +118,15 @@ function getUserInfo(email, passcode) {
         var isPassMatch = (passcode && dbPass && String(passcode).trim() === String(dbPass).trim());
         var isAdmin = (dbRole.indexOf('管理者') !== -1 || dbRole.indexOf('準管理者') !== -1 || String(dbRole).toLowerCase().indexOf('admin') !== -1);
 
-        // 管理者権限またはパスコード一致で特定
-        if (isPassMatch || (isEmailMatch && isAdmin) || (isEmailMatch && mode === 'GOOGLE')) {
-          return { name: dbName, role: dbRole, rank: dbRank || "レギュラー", email: dbEmail };
+        // パスコード一致、またはメールアドレス一致でアカウント特定
+        if (isPassMatch || isEmailMatch) {
+          var dbViewMode = (row.length > 6) ? String(row[6] || '') : '';
+          return { name: dbName, role: dbRole, rank: dbRank || "レギュラー", email: dbEmail, viewMode: dbViewMode };
         }
       }
     }
   }
-  if (info.name === "ゲスト" && email && mode === 'GOOGLE') {
+  if (info.name === "ゲスト" && email) {
     info.name = email;
   }
   return info;
@@ -329,4 +330,37 @@ function verifyPasscode(inputPass) {
 function isValidDate(d) {
   if (!d) return false;
   return Object.prototype.toString.call(d) === "[object Date]" && !isNaN(d.getTime());
+}
+
+/**
+ * ビューモード保存 (担当者リスト G列)
+ * @param {string} passcode - ユーザーのパスコード
+ * @param {string} viewMode - "リスト" or "ダイヤル"
+ */
+function saveViewMode(passcode, viewMode, optStaffName) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetName = (typeof SHEET_NAMES !== 'undefined' && SHEET_NAMES.STAFF) ? SHEET_NAMES.STAFF : '担当者リスト';
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return { success: false, message: "担当者リストが見つかりません" };
+
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { success: false, message: "担当者データがありません" };
+
+  var data = sheet.getRange(2, 1, lastRow - 1, 7).getValues();
+  for (var i = 0; i < data.length; i++) {
+    var dbName = String(data[i][0]);
+    var dbPass = String(data[i][5]);
+    var stopFlag = data[i][4];
+
+    if (stopFlag === '停止' || String(dbName).indexOf('【停止】') === 0) continue;
+
+    var isNameMatch = (optStaffName && dbName === optStaffName);
+    var isPassMatch = (!optStaffName && passcode && dbPass && String(passcode).trim() === dbPass.trim());
+
+    if (isNameMatch || isPassMatch) {
+      sheet.getRange(i + 2, 7).setValue(viewMode);
+      return { success: true, message: "ビューモードを「" + viewMode + "」に変更しました" };
+    }
+  }
+  return { success: false, message: "ユーザーが見つかりません" };
 }
