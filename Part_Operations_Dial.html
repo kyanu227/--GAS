@@ -55,46 +55,7 @@
       box-shadow: 0 0 0 1px #dc3545;
     }
 
-    .bulk-card {
-      background: #fff;
-      border: 1px solid #dee2e6;
-      border-radius: 8px;
-      padding: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px;
-    }
 
-    .bulk-id {
-      font-size: 1.2rem;
-      font-weight: bold;
-      font-family: monospace;
-      color: #333;
-    }
-
-    .bulk-tag-btn {
-      font-size: 0.8rem;
-      padding: 4px 10px;
-      border: 1px solid #ced4da;
-      background: #fff;
-      color: #6c757d;
-      border-radius: 20px;
-      margin-left: 5px;
-      font-weight: bold;
-    }
-
-    .bulk-tag-btn.active-unused {
-      background: #198754;
-      color: #fff;
-      border-color: #198754;
-    }
-
-    .bulk-tag-btn.active-defect {
-      background: #dc3545;
-      color: #fff;
-      border-color: #dc3545;
-    }
 
     .queue-card {
       background: white;
@@ -254,84 +215,6 @@
     .pop-anim {
       animation: popPulse 0.2s ease-out;
     }
-
-    .swipe-container {
-      position: relative;
-      background: #f8f9fa;
-      border-radius: 12px;
-      padding: 12px 16px 8px;
-    }
-
-    .swipe-labels {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.8rem;
-      font-weight: 700;
-      color: #6c757d;
-      margin-bottom: 6px;
-      pointer-events: none;
-    }
-
-    .swipe-dots-bg {
-      position: absolute;
-      top: 50%;
-      left: 20px;
-      right: 20px;
-      transform: translateY(-50%);
-      display: flex;
-      justify-content: space-between;
-      pointer-events: none;
-      z-index: 1;
-    }
-
-    .swipe-dot {
-      width: 10px;
-      height: 10px;
-      background: #ced4da;
-      border-radius: 50%;
-    }
-
-    .swipe-dot-center {
-      width: 12px;
-      height: 12px;
-      background: #adb5bd;
-      border-radius: 50%;
-      transform: translateY(-1px);
-    }
-
-    .custom-range-slider {
-      appearance: none;
-      -webkit-appearance: none;
-      width: 100%;
-      height: 6px;
-      background: transparent;
-      outline: none;
-      z-index: 2;
-      position: relative;
-    }
-
-    .custom-range-slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: var(--thumb-color, #a8a8a8);
-      cursor: pointer;
-      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
-      border: 3px solid #fff;
-      transition: background 0.2s;
-    }
-
-    .bulk-card.tag-unused {
-      background: #f0fff4 !important;
-      border-left-color: #198754 !important;
-    }
-
-    .bulk-card.tag-defect {
-      background: #fff5f5 !important;
-      border-left-color: #dc3545 !important;
-    }
   </style>
 </head>
 
@@ -363,27 +246,36 @@
         </div>
       </div>
       <div id="op-settings-return" class="op-setting-panel" style="display:none;">
-        <div class="swipe-container">
-          <div class="swipe-labels">
-            <span id="swipe-label-defect" class="text-muted">未充填</span>
-            <span id="swipe-label-normal" class="text-dark fw-bolder">通常</span>
-            <span id="swipe-label-unused" class="text-muted">未使用</span>
+        <div class="selection-panel">
+          <div class="check-unused flex-fill">
+            <input type="checkbox" id="op-check-unused" class="check-card-input" onchange="toggleReturnCheck('unused')">
+            <label for="op-check-unused" class="check-card-label">
+              <i class="bi bi-fuel-pump-fill fs-4 mb-0"></i>
+              <span class="fw-bold small">未使用</span>
+            </label>
           </div>
-          <div class="position-relative" style="height: 30px;">
-            <div class="swipe-dots-bg">
-              <div class="swipe-dot"></div>
-              <div class="swipe-dot-center"></div>
-              <div class="swipe-dot"></div>
-            </div>
-            <input type="range" class="custom-range-slider" min="0" max="2" step="1" id="return-swipe-slider" value="1"
-              oninput="handleReturnSwipe(this.value)" onchange="handleReturnSwipe(this.value)"
-              style="--thumb-color: #6c757d; margin-top: 12px;">
+          <div class="check-defect flex-fill">
+            <input type="checkbox" id="op-check-defect" class="check-card-input" onchange="toggleReturnCheck('defect')">
+            <label for="op-check-defect" class="check-card-label">
+              <i class="bi bi-exclamation-triangle-fill fs-4 mb-0"></i>
+              <span class="fw-bold small">未充填</span>
+            </label>
           </div>
         </div>
       </div>
       <div id="op-settings-fill" class="op-setting-panel" style="display:none;">
         <div class="text-muted small mt-2 mb-1">
           <i class="bi bi-info-circle text-warning"></i> 充填したタンクのIDを入力してください。
+        </div>
+      </div>
+      <div id="op-settings-bulk-return" class="op-setting-panel" style="display:none;">
+        <div class="d-flex justify-content-between align-items-end mb-2">
+          <h6 class="fw-bold text-secondary mb-0"><i class="bi bi-building-down"></i> 自社使用中タンク</h6>
+          <button class="btn btn-sm btn-outline-secondary py-0" style="font-size:0.8rem;"
+            onclick="loadBulkReturnList()"><i class="bi bi-arrow-clockwise"></i> 再取得</button>
+        </div>
+        <div id="bulk-return-list" class="d-grid gap-1 mt-3">
+          <div class="text-center text-muted p-3"><span class="spinner-border spinner-border-sm"></span> 取得中...</div>
         </div>
       </div>
     </div>
@@ -405,10 +297,8 @@
           <div class="text-muted small text-center mt-3">まだキューに追加されていません</div>
         </div>
       </div>
-      <div id="dial-submit-wrap"
-        style="position: absolute; bottom: 0; left: 0; right: 0; height: 80px; background: linear-gradient(180deg, transparent 0%, rgba(228,230,233,0.85) 40%, #e4e6e9 100%); z-index: 140; pointer-events: none;">
-      </div>
-      <button id="dial-submit-btn" class="btn" style="display:none;" onclick="submitOp()">
+      <button id="dial-submit-btn" class="btn w-100 fw-bold fs-5 py-3 mt-3 shadow" style="display:none;"
+        onclick="submitOp()">
         <i class="bi bi-send-fill"></i> <span id="dial-submit-label">送信</span>
       </button>
       <div id="dial-ok-wrapper" style="position: absolute; right: 5px; top: 8px; width: 80px; z-index: 130;">
@@ -432,6 +322,7 @@
     var opMode = '';
     var isSelfUseMode = false;
     var opPrefixes = [];
+    var bulkReturnTanks = [];
     var repairOptionsCache = [];
     window.tankMapCache = null;
 
@@ -440,6 +331,7 @@
       '貸出': ['充填済み', '保管中'],
       '自社利用': ['充填済み', '保管中'],
       '返却': ['貸出中', '未返却', '自社利用中'],
+      '自社一括返却': ['自社利用中'],
       '充填': ['空'],
       '破損報告': [], // Any
       '修理済み': ['破損', '不良', '故障']
@@ -498,6 +390,7 @@
       if (opMode === '貸出') return '#0d6efd';
       if (opMode === '返却') return '#198754';
       if (opMode === '充填') return '#fd7e14';
+      if (opMode === '自社一括') return '#0dcaf0';
       return '#6c757d';
     }
 
@@ -523,10 +416,20 @@
         } else if (mode === '充填') {
           document.getElementById('op-settings-fill').style.display = 'block';
           btnText = '充填完了';
+        } else if (mode === '自社一括') {
+          document.getElementById('op-settings-bulk-return').style.display = 'block';
+          btnText = '一括返却';
+          loadBulkReturnList();
         }
 
         var dialBtn = document.getElementById('dial-submit-btn');
-        var hasItems = (opQueue && opQueue.length > 0);
+        var hasItems = false;
+
+        if (mode === '自社一括') {
+          hasItems = (bulkReturnTanks.length > 0);
+        } else {
+          hasItems = (opQueue && opQueue.length > 0);
+        }
 
         if (dialBtn) {
           dialBtn.style.display = hasItems ? 'block' : 'none';
@@ -542,7 +445,13 @@
           if (el.dataset.mode === mode) el.classList.add('active');
         });
 
-        activateDialMode(color);
+        if (mode === '自社一括') {
+          var dm = document.getElementById('op-dial-mode');
+          if (dm) dm.style.display = 'none';
+          document.body.classList.remove('dial-lock');
+        } else {
+          activateDialMode(color);
+        }
       } catch (e) {
         alert("Error in initOperations: " + e.message);
       }
@@ -605,24 +514,70 @@
         }
       }
     }
-    var currentReturnState = 1; // 0=defect, 1=normal, 2=unused
-
-    function handleReturnSwipe(val) {
-      var v = parseInt(val, 10);
-      currentReturnState = v;
-      document.getElementById('swipe-label-defect').className = (v === 0) ? 'text-danger fw-bolder' : 'text-muted';
-      document.getElementById('swipe-label-normal').className = (v === 1) ? 'text-dark fw-bolder' : 'text-muted';
-      document.getElementById('swipe-label-unused').className = (v === 2) ? 'text-success fw-bolder' : 'text-muted';
-
-      var slider = document.getElementById('return-swipe-slider');
-      if (!slider) return;
-      if (v === 0) slider.style.setProperty('--thumb-color', '#dc3545'); // red
-      else if (v === 2) slider.style.setProperty('--thumb-color', '#198754'); // green
-      else slider.style.setProperty('--thumb-color', '#6c757d'); // gray center
-
-      renderOpQueue();
+    function toggleReturnCheck(type) {
+      var unused = document.getElementById('op-check-unused');
+      var defect = document.getElementById('op-check-defect');
+      if (type === 'unused' && unused.checked) defect.checked = false;
+      else if (type === 'defect' && defect.checked) unused.checked = false;
     }
 
+    function loadBulkReturnList() {
+      var container = document.getElementById('bulk-return-list');
+      if (!container) return;
+      container.innerHTML = '<div class="text-center text-muted p-3"><span class="spinner-border spinner-border-sm"></span> 取得中...</div>';
+
+      google.script.run.withSuccessHandler(function (list) {
+        bulkReturnTanks = list.map(item => ({ id: item.id, statusTag: 'normal', note: '' }));
+        renderBulkReturnList();
+      }).withFailureHandler(function (e) {
+        container.innerHTML = '<div class="alert alert-danger py-2 small">取得エラー: ' + e.message + '</div>';
+      }).getInHouseTanks();
+    }
+
+    function renderBulkReturnList() {
+      var container = document.getElementById('bulk-return-list');
+      if (!container) return;
+      container.innerHTML = '';
+
+      if (bulkReturnTanks.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted p-3 mt-4"><i class="bi bi-check-circle display-1 text-success d-block mb-3"></i><h5>返却するタンクはありません</h5><p class="small">現在自社利用中のタンクは0件です。</p></div>';
+        var dialBtn = document.getElementById('dial-submit-btn');
+        if (dialBtn) dialBtn.style.display = 'none';
+        return;
+      }
+
+      bulkReturnTanks.forEach(function (item, idx) {
+        var unusedCls = (item.statusTag === 'unused') ? 'active-unused' : '';
+        var defectCls = (item.statusTag === 'defect') ? 'active-defect' : '';
+        var tagCls = (item.statusTag === 'unused') ? 'tag-unused' : (item.statusTag === 'defect') ? 'tag-defect' : '';
+
+        var html = `
+          <div class="bulk-card ${tagCls}">
+            <div class="bulk-id">${item.id}</div>
+            <div>
+              <button class="bulk-tag-btn ${unusedCls}" onclick="toggleBulkTag(${idx}, 'unused')">未使用</button>
+              <button class="bulk-tag-btn ${defectCls}" onclick="toggleBulkTag(${idx}, 'defect')">未充填</button>
+            </div>
+          </div>
+        `;
+        container.insertAdjacentHTML('beforeend', html);
+      });
+
+      var dialBtn = document.getElementById('dial-submit-btn');
+      if (dialBtn && opMode === '自社一括') {
+        dialBtn.style.display = 'block';
+        document.getElementById('dial-submit-label').innerText = bulkReturnTanks.length + "件 全て返却";
+      }
+    }
+
+    function toggleBulkTag(idx, tag) {
+      if (bulkReturnTanks[idx].statusTag === tag) {
+        bulkReturnTanks[idx].statusTag = 'normal';
+      } else {
+        bulkReturnTanks[idx].statusTag = tag;
+      }
+      renderBulkReturnList();
+    }
 
     function renderRepairCheckboxes() {
       var container = document.getElementById('repair-options-container');
@@ -747,14 +702,7 @@
             }
           }
 
-          var cardBorder = color;
-          var cardBg = '#fff';
-          if (opMode === '返却' && typeof currentReturnState !== 'undefined') {
-            if (currentReturnState === 2) { cardBorder = '#198754'; cardBg = '#f0fff4'; }
-            else if (currentReturnState === 0) { cardBorder = '#dc3545'; cardBg = '#fff5f5'; }
-          }
-
-          list.innerHTML += `<div class="queue-card p-2 mb-1 shadow-sm" style="border-left-color: ${cardBorder}; background-color: ${cardBg};">
+          list.innerHTML += `<div class="queue-card p-2 mb-1 shadow-sm" style="border-left-color: ${color};">
            <div class="d-flex justify-content-between align-items-center">
              <div>
                <span class="fw-bold fs-5 font-monospace">${item.id}</span>
@@ -789,7 +737,9 @@
 
         _emptyHtml += '</div>';
         list.innerHTML = _emptyHtml;
-        if (dialBtn) dialBtn.style.display = 'none';
+        if (opMode !== '自社一括') {
+          if (dialBtn) dialBtn.style.display = 'none';
+        }
       }
     }
 
@@ -797,6 +747,10 @@
     function clearOpQueue() { opQueue = []; renderOpQueue(); }
 
     function submitOp() {
+      if (opMode === '自社一括') {
+        submitBulkReturn();
+        return;
+      }
 
       if (opMode === '貸出' && !isSelfUseMode) {
         var dest = document.getElementById('op-dest-select').value;
@@ -822,8 +776,8 @@
         action: finalAction,
         items: opQueue,
         destination: finalDest,
-        isUnused: (opMode === '返却' && typeof currentReturnState !== 'undefined' && currentReturnState === 2),
-        isDefect: (opMode === '返却' && typeof currentReturnState !== 'undefined' && currentReturnState === 0),
+        isUnused: document.getElementById('op-check-unused') ? document.getElementById('op-check-unused').checked : false,
+        isDefect: document.getElementById('op-check-defect') ? document.getElementById('op-check-defect').checked : false,
         repairCost: 0,
         repairDetail: "",
         userPasscode: (typeof GLOBAL_PASSCODE !== 'undefined') ? GLOBAL_PASSCODE : ""
@@ -835,11 +789,8 @@
         clearOpQueue();
         if (isSelfUseMode) toggleSelfUse();
         if (opMode === '貸出') document.getElementById('op-dest-select').value = "";
-        var slider = document.getElementById('return-swipe-slider');
-        if (slider) {
-          slider.value = 1;
-          if (typeof handleReturnSwipe === 'function') handleReturnSwipe(1);
-        }
+        if (document.getElementById('op-check-unused')) document.getElementById('op-check-unused').checked = false;
+        if (document.getElementById('op-check-defect')) document.getElementById('op-check-defect').checked = false;
 
         var msg = "【送信結果】\n総数: " + (res.totalCount || 0) + " 本\n----------------\n";
         if (res.successIds && res.successIds.length > 0) msg += "✅ 成功 (" + res.successIds.length + "本):\n" + res.successIds.join(", ") + "\n\n";
@@ -857,6 +808,40 @@
       }).submitOperations(payload);
     }
 
+    function submitBulkReturn() {
+      if (bulkReturnTanks.length === 0) return;
+      if (!confirm(bulkReturnTanks.length + "件の自社タンクを一括送信しますか？\n※未使用・未充填のタグを付けたものはその状態で返却されます。")) return;
+
+      var dialBtn = document.getElementById('dial-submit-btn');
+      var dialLabel = document.getElementById('dial-submit-label');
+      var orgText = dialLabel ? dialLabel.innerText : '送信';
+      if (dialBtn) dialBtn.disabled = true;
+      if (dialLabel) dialLabel.innerText = "送信中...";
+
+      var payload = {
+        action: '自社一括返却',
+        items: bulkReturnTanks,
+        userPasscode: (typeof GLOBAL_PASSCODE !== 'undefined') ? GLOBAL_PASSCODE : ""
+      };
+
+      google.script.run.withSuccessHandler(res => {
+        if (dialBtn) dialBtn.disabled = false;
+        if (dialLabel) dialLabel.innerText = orgText;
+        if (res.success) {
+          bulkReturnTanks = [];
+          renderBulkReturnList();
+          alert(res.message);
+        } else {
+          var msg = "エラー: " + res.message + "\n";
+          if (res.failedItems) res.failedItems.forEach(i => msg += i.id + " : " + i.reason + "\n");
+          alert(msg);
+        }
+      }).withFailureHandler(function (e) {
+        if (dialBtn) dialBtn.disabled = false;
+        if (dialLabel) dialLabel.innerText = orgText;
+        alert("システムエラー: " + e);
+      }).submitOperations(payload);
+    }
 
     // ■■■ ロータリーモード用JS ■■■
     var currentScrollY = 0;

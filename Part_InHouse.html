@@ -28,28 +28,84 @@
       color: #333;
     }
 
-    .bulk-tag-btn {
-      font-size: 0.8rem;
-      padding: 4px 10px;
-      border: 1px solid #ced4da;
+    .bulk-card.tag-unused {
+      background: #f0fff4 !important;
+      border-left: 4px solid #198754 !important;
+    }
+
+    .bulk-card.tag-defect {
+      background: #fff5f5 !important;
+      border-left: 4px solid #dc3545 !important;
+    }
+
+    .swipe-container {
+      position: relative;
       background: #fff;
+      border-radius: 12px;
+      padding: 12px 16px 8px;
+      border: 1px solid #dee2e6;
+      width: 100%;
+    }
+
+    .swipe-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      font-weight: 700;
       color: #6c757d;
-      border-radius: 20px;
-      margin-left: 5px;
-      font-weight: bold;
+      margin-bottom: 6px;
+      pointer-events: none;
+    }
+
+    .swipe-dots-bg {
+      position: absolute;
+      top: 50%;
+      left: 20px;
+      right: 20px;
+      transform: translateY(-50%);
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .swipe-dot {
+      width: 10px;
+      height: 10px;
+      background: #ced4da;
+      border-radius: 50%;
+    }
+
+    .swipe-dot-center {
+      width: 12px;
+      height: 12px;
+      background: #adb5bd;
+      border-radius: 50%;
+      transform: translateY(-1px);
+    }
+
+    .custom-range-slider {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      background: transparent;
+      outline: none;
+      z-index: 2;
+      position: relative;
+    }
+
+    .custom-range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--thumb-color, #6c757d);
       cursor: pointer;
-    }
-
-    .bulk-tag-btn.active-unused {
-      background: #198754;
-      color: #fff;
-      border-color: #198754;
-    }
-
-    .bulk-tag-btn.active-defect {
-      background: #dc3545;
-      color: #fff;
-      border-color: #dc3545;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
+      border: 3px solid #fff;
+      transition: background 0.2s;
     }
 
     .inhouse-prefix-header {
@@ -83,15 +139,6 @@
     .submit-float:disabled {
       opacity: 0.6;
     }
-
-    .bulk-tag-all-btn {
-      flex: 1;
-      padding: 10px 8px;
-      font-size: 0.9rem;
-      font-weight: bold;
-      border-radius: 10px;
-      cursor: pointer;
-    }
   </style>
 </head>
 
@@ -110,17 +157,25 @@
       </button>
     </div>
 
-    <!-- 一括タグパネル -->
-    <div class="d-flex gap-2 mb-3" id="ih-bulk-tag-panel" style="display:none !important;">
-      <button class="bulk-tag-all-btn btn btn-outline-success" id="ih-btn-all-unused" onclick="ihSetBulkTag('unused')">
-        <i class="bi bi-fuel-pump-fill"></i><br>全て未使用
-      </button>
-      <button class="bulk-tag-all-btn btn btn-outline-danger" id="ih-btn-all-defect" onclick="ihSetBulkTag('defect')">
-        <i class="bi bi-exclamation-triangle-fill"></i><br>全て未充填
-      </button>
-      <button class="bulk-tag-all-btn btn btn-outline-secondary" style="flex:0.4;" onclick="ihSetBulkTag('normal')">
-        <i class="bi bi-x-circle"></i><br>リセット
-      </button>
+    <!-- 一括タグパネル（スワイプ） -->
+    <div class="d-flex mb-3" id="ih-bulk-tag-panel" style="display:none !important;">
+      <div class="swipe-container shadow-sm">
+        <div class="swipe-labels">
+          <span id="swipe-label-defect" class="text-muted">全て未充填</span>
+          <span id="swipe-label-normal" class="text-dark fw-bolder">通常</span>
+          <span id="swipe-label-unused" class="text-muted">全て未使用</span>
+        </div>
+        <div class="position-relative" style="height: 30px;">
+          <div class="swipe-dots-bg">
+            <div class="swipe-dot"></div>
+            <div class="swipe-dot-center"></div>
+            <div class="swipe-dot"></div>
+          </div>
+          <input type="range" class="custom-range-slider" min="0" max="2" step="1" id="inhouse-swipe-slider" value="1"
+            oninput="handleInHouseSwipe(this.value)" onchange="handleInHouseSwipe(this.value)"
+            style="--thumb-color: #6c757d; margin-top: 12px;">
+        </div>
+      </div>
     </div>
 
     <!-- タンク一覧 -->
@@ -159,6 +214,11 @@
         inHouseTanks = ihSortTanks(
           list.map(function (item) { return { id: item.id, statusTag: 'normal' }; })
         );
+        var slider = document.getElementById('inhouse-swipe-slider');
+        if (slider) {
+          slider.value = 1;
+          handleInHouseSwipe(1);
+        }
         ihRenderList();
       })
       .withFailureHandler(function (e) {
@@ -196,12 +256,9 @@
     }
 
     // 一括タグパネル・送信ボタンを表示
-    bulkPanel.style.display = 'flex';
+    bulkPanel.style.display = 'block';
     submitBtn.style.display = 'block';
     document.getElementById('ih-submit-label').innerText = inHouseTanks.length + '件 全て返却';
-
-    // 一括タグボタンのハイライト更新
-    ihUpdateBulkBtnState();
 
     // prefixグループ別に描画
     var currentPrefix = null;
@@ -217,48 +274,38 @@
         listEl.appendChild(header);
       }
 
-      var unusedCls = (item.statusTag === 'unused') ? 'active-unused' : '';
-      var defectCls = (item.statusTag === 'defect') ? 'active-defect' : '';
+      var tagCls = '';
+      if (item.statusTag === 'unused') tagCls = 'tag-unused';
+      if (item.statusTag === 'defect') tagCls = 'tag-defect';
 
       var card = document.createElement('div');
-      card.className = 'bulk-card';
-      card.innerHTML =
-        '<div class="bulk-id">' + escapeHtml(item.id) + '</div>' +
-        '<div>' +
-          '<button class="bulk-tag-btn ' + unusedCls + '" onclick="ihToggleTag(' + idx + ', \'unused\')">未使用</button>' +
-          '<button class="bulk-tag-btn ' + defectCls + '" onclick="ihToggleTag(' + idx + ', \'defect\')">未充填</button>' +
-        '</div>';
+      card.className = 'bulk-card ' + tagCls;
+      card.innerHTML = '<div class="bulk-id">' + escapeHtml(item.id) + '</div>';
       listEl.appendChild(card);
     });
   }
 
-  function ihUpdateBulkBtnState() {
-    var btnUnused = document.getElementById('ih-btn-all-unused');
-    var btnDefect = document.getElementById('ih-btn-all-defect');
-    if (!btnUnused || !btnDefect) return;
-
-    var allUnused = inHouseTanks.length > 0 && inHouseTanks.every(function (t) { return t.statusTag === 'unused'; });
-    var allDefect = inHouseTanks.length > 0 && inHouseTanks.every(function (t) { return t.statusTag === 'defect'; });
-
-    btnUnused.className = 'bulk-tag-all-btn btn ' + (allUnused ? 'btn-success' : 'btn-outline-success');
-    btnDefect.className = 'bulk-tag-all-btn btn ' + (allDefect ? 'btn-danger' : 'btn-outline-danger');
-  }
-
-  function ihSetBulkTag(tag) {
+  function handleInHouseSwipe(val) {
     if (inHouseTanks.length === 0) return;
-    var allSame = inHouseTanks.every(function (t) { return t.statusTag === tag; });
-    inHouseTanks.forEach(function (t) {
-      t.statusTag = allSame ? 'normal' : tag;
-    });
-    ihRenderList();
-  }
+    var v = parseInt(val, 10);
+    document.getElementById('swipe-label-defect').className = (v === 0) ? 'text-danger fw-bolder' : 'text-muted';
+    document.getElementById('swipe-label-normal').className = (v === 1) ? 'text-dark fw-bolder' : 'text-muted';
+    document.getElementById('swipe-label-unused').className = (v === 2) ? 'text-success fw-bolder' : 'text-muted';
 
-  function ihToggleTag(idx, tag) {
-    if (inHouseTanks[idx].statusTag === tag) {
-      inHouseTanks[idx].statusTag = 'normal';
-    } else {
-      inHouseTanks[idx].statusTag = tag;
+    var slider = document.getElementById('inhouse-swipe-slider');
+    if (slider) {
+      if (v === 0) slider.style.setProperty('--thumb-color', '#dc3545'); // red
+      else if (v === 2) slider.style.setProperty('--thumb-color', '#198754'); // green
+      else slider.style.setProperty('--thumb-color', '#6c757d'); // gray center
     }
+
+    var tag = 'normal';
+    if (v === 0) tag = 'defect';
+    if (v === 2) tag = 'unused';
+
+    inHouseTanks.forEach(function (t) {
+      t.statusTag = tag;
+    });
     ihRenderList();
   }
 
