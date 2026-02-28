@@ -697,8 +697,8 @@
               return false; // ブロック
             }
           } else {
-            // DBに存在しないIDの場合も警告を出しつつ追加はさせるか検討の余地あり
-            // 現状は未登録でも弾かずに追加（従来通りスプレッドシートで弾く）
+            triggerErrorFeedback('未登録のタンクIDです');
+            return false;
           }
         }
 
