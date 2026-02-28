@@ -13,56 +13,59 @@
     .bulk-card {
       background: #fff;
       border: 1px solid #dee2e6;
-      border-radius: 8px;
-      padding: 10px 8px 8px 8px;
+      border-radius: 12px;
+      padding: 12px 10px;
       display: flex;
-      flex-direction: column;
-      align-items: stretch;
+      flex-direction: row;
+      align-items: center;
       margin-bottom: 8px;
       transition: background-color 0.2s, border-left-color 0.2s;
+      box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.02);
     }
 
     .bulk-id {
-      font-size: 1.2rem;
-      font-weight: bold;
+      font-size: 1.25rem;
+      font-weight: 800;
       font-family: monospace;
-      color: #333;
+      color: #212529;
     }
 
     .bulk-card.tag-unused {
       background: #f0fff4 !important;
-      border-left: 4px solid #198754 !important;
+      border-left: 5px solid #198754 !important;
     }
 
     .bulk-card.tag-defect {
       background: #fff5f5 !important;
-      border-left: 4px solid #dc3545 !important;
+      border-left: 5px solid #dc3545 !important;
     }
 
-    .swipe-container {
-      position: relative;
-      background: #fff;
-      border-radius: 12px;
-      padding: 12px 16px 8px;
-      border: 1px solid #dee2e6;
-      width: 100%;
+    .swipe-container-futuristic {
+      background: linear-gradient(145deg, #ffffff, #f0f0f0);
+      border-radius: 16px;
+      padding: 12px 16px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.05), -4px -4px 10px #ffffff;
     }
 
-    .swipe-labels {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.8rem;
-      font-weight: 700;
-      color: #6c757d;
-      margin-bottom: 6px;
-      pointer-events: none;
-    }
-
-    .swipe-dots-bg {
+    .swipe-track-futuristic {
       position: absolute;
       top: 50%;
-      left: 20px;
-      right: 20px;
+      left: 0;
+      right: 0;
+      height: 8px;
+      background: #2b2e35;
+      border-radius: 10px;
+      transform: translateY(-50%);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6), 0 1px 1px rgba(255, 255, 255, 0.8);
+      z-index: 0;
+    }
+
+    .swipe-dots-futuristic {
+      position: absolute;
+      top: 50%;
+      left: 14px;
+      right: 14px;
       transform: translateY(-50%);
       display: flex;
       justify-content: space-between;
@@ -70,43 +73,45 @@
       z-index: 1;
     }
 
-    .swipe-dot {
-      width: 10px;
-      height: 10px;
-      background: #ced4da;
+    .swipe-dot-f {
+      width: 6px;
+      height: 6px;
+      background: #495057;
       border-radius: 50%;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
     }
 
-    .swipe-dot-center {
-      width: 12px;
-      height: 12px;
-      background: #adb5bd;
-      border-radius: 50%;
-      transform: translateY(-1px);
+    .swipe-dot-f.center {
+      width: 8px;
+      height: 8px;
+      background: #6c757d;
     }
 
-    .custom-range-slider {
+    .custom-slider-futuristic {
       appearance: none;
       -webkit-appearance: none;
       width: 100%;
-      height: 6px;
+      height: 32px;
       background: transparent;
       outline: none;
       z-index: 2;
-      position: relative;
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      margin: 0;
     }
 
-    .custom-range-slider::-webkit-slider-thumb {
+    .custom-slider-futuristic::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
       width: 28px;
       height: 28px;
       border-radius: 50%;
-      background: var(--thumb-color, #6c757d);
+      background: #1a1d24;
       cursor: pointer;
-      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
-      border: 3px solid #fff;
-      transition: background 0.2s;
+      border: 2px solid var(--thumb-color, #6c757d);
+      box-shadow: 0 0 10px var(--thumb-color, #6c757d), inset 0 0 4px var(--thumb-color, #6c757d);
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
 
     .inhouse-prefix-header {
@@ -123,7 +128,7 @@
 
     .submit-float {
       position: fixed;
-      bottom: calc(20px + env(safe-area-inset-bottom));
+      bottom: calc(75px + env(safe-area-inset-bottom));
       left: 5%;
       width: 90%;
       padding: 15px;
@@ -160,21 +165,24 @@
 
     <!-- 一括タグパネル（スワイプ） -->
     <div class="d-flex mb-3" id="ih-bulk-tag-panel" style="display:none !important;">
-      <div class="swipe-container shadow-sm">
-        <div class="swipe-labels">
-          <span id="swipe-label-defect" class="text-muted">全て未充填</span>
-          <span id="swipe-label-normal" class="text-dark fw-bolder">通常</span>
-          <span id="swipe-label-unused" class="text-muted">全て未使用</span>
+      <div class="swipe-container-futuristic w-100">
+        <div class="d-flex justify-content-between small fw-bold mb-2 px-1">
+          <span id="swipe-label-defect" class="text-danger"
+            style="text-shadow: 0 0 5px rgba(220,53,69,0.3);">未充填全て</span>
+          <span id="swipe-label-normal" class="text-dark">通常</span>
+          <span id="swipe-label-unused" class="text-success"
+            style="text-shadow: 0 0 5px rgba(25,135,84,0.3);">未使用全て</span>
         </div>
-        <div class="position-relative" style="height: 30px;">
-          <div class="swipe-dots-bg">
-            <div class="swipe-dot"></div>
-            <div class="swipe-dot-center"></div>
-            <div class="swipe-dot"></div>
+        <div class="position-relative" style="height: 32px;">
+          <div class="swipe-track-futuristic"></div>
+          <div class="swipe-dots-futuristic">
+            <div class="swipe-dot-f"></div>
+            <div class="swipe-dot-f center"></div>
+            <div class="swipe-dot-f"></div>
           </div>
-          <input type="range" class="custom-range-slider" min="0" max="2" step="1" id="inhouse-swipe-slider" value="1"
-            oninput="handleInHouseSwipe(this.value)" onchange="handleInHouseSwipe(this.value)"
-            style="--thumb-color: #6c757d; margin-top: 12px;">
+          <input type="range" class="custom-slider-futuristic" min="0" max="2" step="1" id="inhouse-swipe-slider"
+            value="1" oninput="handleInHouseSwipe(this.value)" onchange="handleInHouseSwipe(this.value)"
+            style="--thumb-color: #6c757d;">
         </div>
       </div>
     </div>
@@ -289,23 +297,26 @@
       card.id = 'ih-card-' + idx;
       card.className = 'bulk-card ' + tagCls;
       card.innerHTML =
-        '<div class="d-flex justify-content-between align-items-center mb-1 w-100 px-1">' +
-        '  <div class="bulk-id">' + escapeHtml(item.id) + '</div>' +
-        '  <div class="d-flex gap-2 small" style="font-size: 0.70rem;">' +
-        '    <span id="card-label-defect-' + idx + '" class="' + defectLabelCls + '">未充填</span>' +
-        '    <span id="card-label-normal-' + idx + '" class="' + normalLabelCls + '">通常</span>' +
-        '    <span id="card-label-unused-' + idx + '" class="' + unusedLabelCls + '">未使用</span>' +
+        '<div class="d-flex w-100 align-items-center">' +
+        '  <div class="d-flex flex-column pe-2" style="width: 85px; flex-shrink: 0;">' +
+        '    <div class="bulk-id mb-1" style="line-height:1.1;">' + escapeHtml(item.id) + '</div>' +
+        '    <div class="d-flex gap-1 fw-bold" style="font-size: 0.65rem;">' +
+        '      <span id="card-label-defect-' + idx + '" class="' + defectLabelCls + '">未充填</span>' +
+        '      <span id="card-label-normal-' + idx + '" class="' + normalLabelCls + '">通常</span>' +
+        '      <span id="card-label-unused-' + idx + '" class="' + unusedLabelCls + '">未使用</span>' +
+        '    </div>' +
         '  </div>' +
-        '</div>' +
-        '<div class="position-relative w-100" style="height: 34px;">' +
-        '  <div class="swipe-dots-bg">' +
-        '    <div class="swipe-dot"></div>' +
-        '    <div class="swipe-dot-center"></div>' +
-        '    <div class="swipe-dot"></div>' +
+        '  <div class="flex-grow-1 position-relative" style="height: 32px;">' +
+        '    <div class="swipe-track-futuristic"></div>' +
+        '    <div class="swipe-dots-futuristic">' +
+        '      <div class="swipe-dot-f"></div>' +
+        '      <div class="swipe-dot-f center"></div>' +
+        '      <div class="swipe-dot-f"></div>' +
+        '    </div>' +
+        '    <input type="range" class="custom-slider-futuristic" min="0" max="2" step="1" id="card-slider-' + idx + '" value="' + val + '" ' +
+        '      oninput="ihCardSwipe(' + idx + ', this.value)" onchange="ihCardSwipe(' + idx + ', this.value)" ' +
+        '      style="--thumb-color: ' + thumbColor + ';">' +
         '  </div>' +
-        '  <input type="range" class="custom-range-slider" min="0" max="2" step="1" id="card-slider-' + idx + '" value="' + val + '" ' +
-        '    oninput="ihCardSwipe(' + idx + ', this.value)" onchange="ihCardSwipe(' + idx + ', this.value)" ' +
-        '    style="--thumb-color: ' + thumbColor + '; margin-top: 14px;">' +
         '</div>';
       listEl.appendChild(card);
     });
