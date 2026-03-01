@@ -654,6 +654,10 @@
         targetEl.classList.remove('view-slide-left', 'view-slide-right');
         void targetEl.offsetWidth; // trigger reflow
         targetEl.classList.add(animClass);
+        // アニメーション完了後にクラスを削除し、iOSのposition:fixedバグ（containing blockの残留）を防ぐ
+        setTimeout(function () {
+          targetEl.classList.remove('view-slide-left', 'view-slide-right');
+        }, 350);
       }
     }
 

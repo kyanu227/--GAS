@@ -168,32 +168,33 @@
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
       border: 1px solid rgba(0, 0, 0, 0.04);
       z-index: 95;
-      display: flex;
-      flex-direction: column;
+      display: block;
       overflow: hidden;
     }
 
     #rotary-queue-display {
-      flex-grow: 1;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       padding: 12px;
-    }
-
-    #dial-submit-wrapper {
-      padding: 10px 12px 14px 12px;
-      background: transparent;
-      border-top: 1px solid rgba(0, 0, 0, 0.05);
-      flex-shrink: 0;
+      padding-bottom: 70px;
+      /* Space for absolute floating button */
     }
 
     #dial-submit-btn {
-      width: 100%;
-      border-radius: 14px;
-      padding: 12px;
+      position: absolute;
+      bottom: 10px;
+      left: 10%;
+      width: 80%;
+      border-radius: 20px;
+      padding: 10px;
       font-size: 1rem;
       font-weight: 800;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
       z-index: 150;
       transition: transform 0.15s, box-shadow 0.15s;
       letter-spacing: 0.02em;
@@ -291,7 +292,9 @@
       style="display:none; position:relative; overflow:hidden; min-height:0; background: linear-gradient(180deg, #f0f2f5 0%, #e4e6e9 100%); border-radius: 16px 16px 0 0;">
       <div id="rotary-queue-wrapper">
         <div id="rotary-queue-display">
-          <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
+          <div
+            class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2 position-sticky top-0 bg-light"
+            style="z-index:10; padding-top:4px;">
             <span class="fw-bold text-dark small">
               <i class="bi bi-list-check"></i> 送信リスト
               <span id="rotary-queue-count" class="badge bg-primary ms-1"
@@ -304,12 +307,9 @@
             <div class="text-muted small text-center mt-3">まだキューに追加されていません</div>
           </div>
         </div>
-        <div id="dial-submit-wrapper">
-          <button id="dial-submit-btn" class="btn w-100 fw-bold fs-5 py-3 shadow" style="display:none;"
-            onclick="submitOp()">
-            <i class="bi bi-send-fill"></i> <span id="dial-submit-label">送信</span>
-          </button>
-        </div>
+        <button id="dial-submit-btn" class="btn fw-bold fs-5 shadow" style="display:none;" onclick="submitOp()">
+          <i class="bi bi-send-fill"></i> <span id="dial-submit-label">送信</span>
+        </button>
       </div>
       <div id="dial-ok-wrapper" style="position: absolute; right: 5px; top: 8px; width: 80px; z-index: 130;">
         <button id="dial-ok-btn" class="btn fw-bold px-2 py-2 w-100" onclick="submitActiveOk()"

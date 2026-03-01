@@ -171,15 +171,24 @@
 
     var el = document.getElementById(idx === 'global' ? 'inhouse-swipe-slider' : 'card-slider-' + idx);
     var currentV = el ? parseInt(el.value, 10) : 1;
-
     var endX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
-    var rect = e.currentTarget.getBoundingClientRect();
-    var touchX = endX - rect.left;
-    var w = rect.width;
+    var newV = currentV;
+    var diffX = swipeStartX !== null ? (endX - swipeStartX) : 0;
 
-    var newV = 1;
-    if (touchX < w * 0.33) newV = 0;
-    else if (touchX > w * 0.66) newV = 2;
+    if (e.type === 'click') {
+      var rect = e.currentTarget.getBoundingClientRect();
+      var touchX = endX - rect.left;
+      var w = rect.width;
+      if (touchX < w * 0.33) newV = 0;
+      else if (touchX > w * 0.66) newV = 2;
+      else newV = 1;
+    } else {
+      if (diffX >= 30) {
+        newV = Math.min(2, currentV + 1);
+      } else if (diffX <= -30) {
+        newV = Math.max(0, currentV - 1);
+      }
+    }
 
     if (newV !== currentV && el) {
       el.value = newV;

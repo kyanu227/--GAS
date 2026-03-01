@@ -213,9 +213,10 @@
     <!-- Input area (standard mode) -->
     <div id="op-inputs"></div>
 
-    <!-- Standard queue box -->
-    <div id="op-queue-box" class="mt-2" style="display:none;">
-      <div class="d-flex justify-content-between align-items-end mb-2">
+    <div id="op-queue-box" class="mt-2 flex-grow-1 position-relative"
+      style="display:none; overflow-y: auto; padding-bottom: 70px;">
+      <div class="d-flex justify-content-between align-items-end mb-2 position-sticky top-0 bg-light"
+        style="z-index: 10; padding: 5px 0;">
         <span class="fw-bold text-dark small"><i class="bi bi-list-check"></i> 送信リスト (<span
             id="op-queue-count">0</span>)</span>
         <button class="btn btn-sm btn-outline-secondary py-0" style="font-size:0.8rem;"
@@ -223,8 +224,9 @@
       </div>
       <div id="op-queue-list" class="d-grid gap-2 mb-3"></div>
 
-      <button id="op-submit-btn" class="btn w-100 fw-bold py-3 shadow-sm mb-4"
-        style="display:none; border-radius: 12px; color: #fff;" onclick="submitOp()">
+      <button id="op-submit-btn" class="btn fw-bold shadow position-absolute start-50 translate-middle-x"
+        style="display:none; bottom: 15px; width: 85%; padding: 10px; border-radius: 20px; color: #fff; z-index: 100;"
+        onclick="submitOp()">
         <i class="bi bi-send-fill"></i> <span id="op-submit-label">送信</span>
       </button>
     </div>
