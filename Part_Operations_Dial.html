@@ -244,10 +244,9 @@
     <!-- 共同作業者選択ドロップダウン（非表示） -->
     <div id="coworker-picker-wrap" style="display:none;" class="mb-2 flex-shrink-0">
       <div class="d-flex gap-2 align-items-center">
-        <select id="coworker-select" class="form-select form-select-sm flex-grow-1">
+        <select id="coworker-select" class="form-select form-select-sm flex-grow-1" onchange="addSelectedCoworker()">
           <option value="" disabled selected>👤 共同作業者を選択...</option>
         </select>
-        <button class="btn btn-sm btn-primary" onclick="addSelectedCoworker()">追加</button>
         <button class="btn btn-sm btn-outline-secondary" onclick="hideCoworkerPicker()">✕</button>
       </div>
     </div>
