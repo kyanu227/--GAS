@@ -1,263 +1,915 @@
-<!DOCTYPE html>
-<html>
+<style>
+    /* ========================================
+       DAMAGE REPORT - DIAL-STYLE REDESIGN
+       ======================================== */
 
-<head>
-    <base target="_top">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
-    <style>
-        body {
-            background-color: #f8f9fa;
-            padding-bottom: 180px;
-        }
+    #dmg-container {
+        height: calc(100dvh - 120px - env(safe-area-inset-bottom));
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
 
-        .queue-card {
-            background: white;
-            border-left: 6px solid #6c757d;
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 8px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-        }
+    /* --- Top bar --- */
+    .dmg-top-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        flex-shrink: 0;
+    }
 
-        .queue-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 5px;
-        }
+    .dmg-mode-badge {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: linear-gradient(135deg, #dc3545, #b91c2c);
+        color: #fff;
+        padding: 6px 16px;
+        border-radius: 24px;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        box-shadow: 0 3px 12px rgba(220, 53, 69, 0.35);
+    }
 
-        .queue-id {
-            font-size: 1.2rem;
-            font-weight: bold;
-            font-family: monospace;
-        }
+    .dmg-mode-badge i {
+        font-size: 0.9rem;
+    }
 
-        .quick-note-btn {
-            font-size: 0.7rem;
-            padding: 3px 8px;
-            margin-right: 4px;
-            margin-top: 4px;
-            border: 1px solid #dc3545;
-            color: #dc3545;
-            background: white;
-            border-radius: 15px;
-        }
+    .dmg-refresh-btn {
+        background: rgba(0, 0, 0, 0.05);
+        border: none;
+        border-radius: 20px;
+        padding: 5px 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #6c757d;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
 
-        .quick-note-btn:active {
-            background: #dc3545;
-            color: white;
-        }
+    .dmg-refresh-btn:active {
+        transform: scale(0.95);
+        background: rgba(0, 0, 0, 0.1);
+    }
 
-        .submit-float {
-            position: fixed;
-            bottom: calc(90px + env(safe-area-inset-bottom));
-            left: 5%;
-            width: 90%;
-            padding: 15px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            border-radius: 50px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            z-index: 1000;
-            transition: transform 0.1s;
-            border: none;
-            color: white;
-        }
+    /* --- Dial area --- */
+    .dmg-dial-area {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+        min-height: 0;
+        background: linear-gradient(180deg, #fef2f2 0%, #fee2e2 40%, #fecaca 100%);
+        border-radius: 16px 16px 0 0;
+        margin: 0 4px;
+    }
 
-        .submit-float:active {
-            transform: scale(0.98);
-        }
-    </style>
-</head>
+    /* --- Queue panel (left) --- */
+    .dmg-queue-wrapper {
+        position: absolute;
+        left: 8px;
+        top: 8px;
+        bottom: 10px;
+        right: 100px;
+        background: rgba(255, 255, 255, 0.88);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+        border: 1px solid rgba(0, 0, 0, 0.04);
+        z-index: 95;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
 
-<body>
+    .dmg-queue-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 12px 8px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        flex-shrink: 0;
+    }
 
-    <div id="opsub-container" class="container-fluid mt-3">
-        <div class="d-flex justify-content-end mb-2">
-            <button id="btn-refresh-sub" class="btn btn-sm btn-outline-secondary border-0"
-                onclick="refreshMasterDataSub()">
-                <i class="bi bi-arrow-clockwise"></i> リスト更新
+    .dmg-queue-title {
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: #333;
+    }
+
+    .dmg-queue-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #dc3545;
+        color: #fff;
+        font-size: 0.78rem;
+        font-weight: 800;
+        min-width: 22px;
+        height: 22px;
+        border-radius: 11px;
+        padding: 0 6px;
+        margin-left: 6px;
+    }
+
+    .dmg-queue-clear {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: #6c757d;
+        background: rgba(0, 0, 0, 0.05);
+        border: none;
+        border-radius: 12px;
+        padding: 3px 10px;
+        cursor: pointer;
+    }
+
+    .dmg-queue-clear:active {
+        background: rgba(0, 0, 0, 0.1);
+    }
+
+    .dmg-queue-scroll {
+        flex: 1;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 8px 10px;
+        padding-bottom: 80px;
+    }
+
+    .dmg-queue-scroll::-webkit-scrollbar {
+        width: 3px;
+    }
+
+    .dmg-queue-scroll::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 2px;
+    }
+
+    .dmg-queue-empty {
+        text-align: center;
+        padding: 40px 16px;
+        color: #999;
+        font-size: 0.8rem;
+    }
+
+    .dmg-queue-empty i {
+        font-size: 2rem;
+        display: block;
+        margin-bottom: 8px;
+        opacity: 0.25;
+    }
+
+    /* --- Queue card --- */
+    .dmg-q-card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 10px 12px;
+        margin-bottom: 8px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+        border-left: 4px solid #dc3545;
+        transition: transform 0.15s;
+    }
+
+    .dmg-q-card:active {
+        transform: scale(0.98);
+    }
+
+    .dmg-q-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+    }
+
+    .dmg-q-id {
+        font-family: 'Inter', monospace;
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: #1a1a2e;
+        letter-spacing: -0.5px;
+    }
+
+    .dmg-q-delete {
+        background: none;
+        border: none;
+        color: #aaa;
+        font-size: 1rem;
+        padding: 2px 4px;
+        cursor: pointer;
+        transition: color 0.15s;
+    }
+
+    .dmg-q-delete:active {
+        color: #dc3545;
+    }
+
+    .dmg-q-input {
+        width: 100%;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 0.78rem;
+        background: #fafafa;
+        color: #333;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+
+    .dmg-q-input:focus {
+        border-color: #dc3545;
+        background: #fff;
+    }
+
+    .dmg-q-input::placeholder {
+        color: #bbb;
+    }
+
+    .dmg-q-notes {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 6px;
+    }
+
+    .dmg-q-note-btn {
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 3px 10px;
+        border-radius: 14px;
+        border: 1px solid rgba(220, 53, 69, 0.3);
+        background: rgba(220, 53, 69, 0.04);
+        color: #dc3545;
+        cursor: pointer;
+        transition: all 0.15s;
+        white-space: nowrap;
+    }
+
+    .dmg-q-note-btn:active {
+        background: #dc3545;
+        color: #fff;
+        border-color: #dc3545;
+    }
+
+    /* --- Rotary wheel (right side) --- */
+    .dmg-rotary-container {
+        position: absolute;
+        right: 0;
+        top: 60px;
+        bottom: 5px;
+        width: 90px;
+        pointer-events: none;
+        z-index: 100;
+        overflow: hidden;
+    }
+
+    .dmg-rotary-item {
+        position: absolute;
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(240, 242, 245, 0.95));
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        color: #444;
+        font-size: 1.3rem;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        left: 22px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+        user-select: none;
+        cursor: pointer;
+        pointer-events: auto;
+        letter-spacing: -0.02em;
+    }
+
+    .dmg-rotary-item.active {
+        transform: scale(1.35);
+        box-shadow: 0 8px 24px rgba(220, 53, 69, 0.5), 0 0 0 3px rgba(255, 255, 255, 0.7);
+        border-color: transparent;
+        z-index: 110;
+        font-weight: 900;
+        background: linear-gradient(135deg, #dc3545, #b91c2c);
+        color: #fff;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 100%);
+    }
+
+    .dmg-rotary-touch {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        right: 0;
+        z-index: 80;
+        touch-action: none !important;
+        -webkit-touch-callout: none;
+        overscroll-behavior: none;
+    }
+
+    /* --- OK button (right top) --- */
+    .dmg-ok-wrapper {
+        position: absolute;
+        right: 5px;
+        top: 8px;
+        width: 90px;
+        z-index: 130;
+    }
+
+    .dmg-ok-btn {
+        width: 100%;
+        font-size: 1.1rem;
+        font-weight: 800;
+        border-radius: 12px;
+        color: #fff;
+        background: linear-gradient(135deg, #dc3545, #b91c2c);
+        border: none;
+        padding: 10px 4px;
+        box-shadow: 0 3px 12px rgba(220, 53, 69, 0.3);
+        line-height: 1.3;
+        transition: transform 0.15s, box-shadow 0.15s;
+        cursor: pointer;
+    }
+
+    .dmg-ok-btn:active {
+        transform: scale(0.95);
+        box-shadow: 0 2px 6px rgba(220, 53, 69, 0.2);
+    }
+
+    /* --- Submit button (floating in queue) --- */
+    .dmg-submit-btn {
+        position: absolute;
+        bottom: 10px;
+        left: 10%;
+        width: 80%;
+        border-radius: 20px;
+        padding: 11px;
+        font-size: 1rem;
+        font-weight: 800;
+        box-shadow: 0 4px 15px rgba(220, 53, 69, 0.35);
+        z-index: 150;
+        transition: transform 0.15s, box-shadow 0.15s;
+        letter-spacing: 0.02em;
+        border: 2px solid #dc3545;
+        background: rgba(255, 255, 255, 0.95);
+        color: #dc3545;
+        cursor: pointer;
+        display: none;
+    }
+
+    .dmg-submit-btn:active {
+        transform: scale(0.96);
+        box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
+    }
+
+    /* --- Hidden input for number entry --- */
+    .dmg-hidden-input {
+        position: absolute;
+        top: -1000px;
+        left: -1000px;
+        opacity: 0;
+    }
+
+    /* --- Animations --- */
+    @keyframes dmgPopPulse {
+        0%   { transform: scale(1); }
+        50%  { transform: scale(1.08); }
+        100% { transform: scale(1); }
+    }
+
+    .dmg-pop-anim {
+        animation: dmgPopPulse 0.2s ease-out;
+    }
+
+    @keyframes dmgFlashSuccess {
+        0%   { background-color: transparent; }
+        30%  { background-color: rgba(220, 53, 69, 0.06); }
+        100% { background-color: transparent; }
+    }
+
+    .dmg-flash-success {
+        animation: dmgFlashSuccess 0.4s ease;
+    }
+
+    /* --- Dial lock (prevent body scroll) --- */
+    body.dmg-dial-lock {
+        overflow: hidden !important;
+        position: fixed !important;
+        width: 100% !important;
+        overscroll-behavior-y: none !important;
+    }
+</style>
+
+<div id="dmg-container" class="container-fluid">
+    <!-- Top bar -->
+    <div class="dmg-top-bar">
+        <div class="dmg-mode-badge">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            破損報告
+        </div>
+        <button id="dmg-btn-refresh" class="dmg-refresh-btn" onclick="refreshMasterDataSub()">
+            <i class="bi bi-arrow-clockwise"></i> リスト更新
+        </button>
+    </div>
+
+    <!-- Dial area (fills remaining space) -->
+    <div id="dmg-dial-area" class="dmg-dial-area">
+        <!-- Queue panel -->
+        <div class="dmg-queue-wrapper">
+            <div class="dmg-queue-header">
+                <span class="dmg-queue-title">
+                    <i class="bi bi-list-check"></i> 報告リスト
+                    <span class="dmg-queue-count" id="dmg-queue-count">0</span>
+                </span>
+                <button class="dmg-queue-clear" onclick="clearOpSubQueue()">全消去</button>
+            </div>
+            <div class="dmg-queue-scroll" id="dmg-queue-scroll">
+                <div id="dmg-queue-list">
+                    <div class="dmg-queue-empty">
+                        <i class="bi bi-shield-exclamation"></i>
+                        右のダイヤルからタンクを追加
+                    </div>
+                </div>
+            </div>
+            <button id="dmg-submit-btn" class="dmg-submit-btn" onclick="submitOpSub()">
+                <i class="bi bi-send-fill"></i> 報告送信
             </button>
         </div>
 
-        <div class="card p-3 mb-3 border-0 shadow-sm" style="background:#fff;">
-            <div id="opsub-settings-damage" class="op-setting-panel" style="display:block;">
-                <div class="alert alert-danger py-2 text-center mb-0"
-                    style="background-color:#f8d7da; color:#842029; border:1px solid #f5c2c7; border-radius: 8px;">
-                    <i class="bi bi-exclamation-triangle-fill fs-5 d-inline-block me-1"></i>
-                    <span class="fw-bold small">破損・不備として記録</span>
-                </div>
-            </div>
+        <!-- OK button -->
+        <div class="dmg-ok-wrapper">
+            <button id="dmg-ok-btn" class="dmg-ok-btn" onclick="submitDmgActiveOk()">
+                <span id="dmg-ok-label">OK入力</span>
+            </button>
         </div>
 
-        <div id="opsub-inputs"></div>
+        <!-- Hidden numeric input -->
+        <input type="tel" id="dmg-hidden-input" class="dmg-hidden-input" maxlength="2" oninput="checkDmgRotaryInput(this)">
 
-        <div id="opsub-queue-box" class="mt-4" style="display:none;">
-            <div class="d-flex justify-content-between align-items-end mb-2">
-                <span class="fw-bold text-dark small"><i class="bi bi-list-check"></i> 送信リスト (<span
-                        id="opsub-queue-count">0</span>)</span>
-                <button class="btn btn-sm btn-outline-secondary py-0" style="font-size:0.8rem;"
-                    onclick="clearOpSubQueue()">全消去</button>
-            </div>
-            <div id="opsub-queue-list" class="d-grid gap-2"></div>
+        <!-- Touch area -->
+        <div id="dmg-touch-area" class="dmg-rotary-touch"></div>
+
+        <!-- Rotary wheel -->
+        <div id="dmg-rotary-container" class="dmg-rotary-container">
+            <div id="dmg-dial-wheel"></div>
         </div>
     </div>
+</div>
 
-    <button id="opsub-submit-btn" class="submit-float" style="display:none; background-color: #dc3545;"
-        onclick="submitOpSub()">
-        <i class="bi bi-send-fill"></i> <span id="opsub-submit-label">報告送信</span>
-    </button>
+<script>
+    var opSubQueue = [];
+    var opPrefixesSub = [];
 
-    <script>
-        var opSubQueue = [];
-        var opPrefixesSub = [];
+    // Dial state
+    var dmgCurrentScrollY = 0;
+    var DMG_ITEM_HEIGHT = 46;
+    var dmgActivePrefix = '';
+    var dmgDialItemsCount = 0;
+    var dmgIsDragging = false;
+    var dmgLastDragY = 0;
+    var dmgTouchRegistered = false;
+    var dmgCurrentActiveIndex = 0;
+    var dmgDialVelocity = 0;
+    var dmgMomentumRaf = null;
+    var dmgTouchHistory = [];
+    var _dmgOkResetTimer = null;
 
-        function initOperationsSub() {
-            opSubQueue = [];
-            renderOpSubQueue();
+    function initOperationsSub() {
+        opSubQueue = [];
+        renderDmgQueue();
 
-            var btn = document.getElementById('opsub-submit-btn');
-            if (btn) {
-                btn.style.backgroundColor = '#dc3545';
-                document.getElementById('opsub-submit-label').innerText = '報告送信';
-            }
-            renderOpSubInputs('#dc3545');
-
-            if (opPrefixesSub.length === 0) {
-                loadAllMasterDataSub();
-            }
+        if (opPrefixesSub.length === 0) {
+            loadAllMasterDataSub();
+        } else {
+            activateDmgDialMode();
         }
+    }
 
-        function loadAllMasterDataSub() {
-            google.script.run.withSuccessHandler(function (data) {
-                if (data.prefixes && data.prefixes.length > 0) {
-                    opPrefixesSub = data.prefixes;
-                    renderOpSubInputs('#dc3545');
+    function loadAllMasterDataSub() {
+        google.script.run.withSuccessHandler(function (data) {
+            if (data.prefixes && data.prefixes.length > 0) {
+                opPrefixesSub = data.prefixes;
+                activateDmgDialMode();
+            }
+        }).getOperationsInitData();
+    }
+
+    function refreshMasterDataSub() {
+        if (!confirm("最新のリストを取得しますか？")) return;
+        var btn = document.getElementById('dmg-btn-refresh');
+        var orgHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 更新中';
+        google.script.run.withSuccessHandler(function (res) {
+            loadAllMasterDataSub(); btn.disabled = false; btn.innerHTML = orgHtml;
+        }).withFailureHandler(function (e) {
+            alert("更新エラー: " + e.message); btn.disabled = false; btn.innerHTML = orgHtml;
+        }).clearMasterCaches();
+    }
+
+    /* ===== DIAL MODE ===== */
+    function activateDmgDialMode() {
+        var scrollPos = window.pageYOffset || document.documentElement.scrollTop;
+        document.body.classList.add('dmg-dial-lock');
+        document.body.style.top = '-' + scrollPos + 'px';
+        document.body.dataset.dmgScrollPos = scrollPos;
+
+        if (!window._dmgTouchBlocker) {
+            window._dmgTouchBlocker = function (e) {
+                if (!document.body.classList.contains('dmg-dial-lock')) return;
+                var target = e.target;
+                while (target && target !== document.body) {
+                    if (target.id === 'dmg-queue-scroll') return;
+                    if (target.id === 'offcanvasMenu') return;
+                    target = target.parentElement;
                 }
-            }).getOperationsInitData();
+                if (e.cancelable) e.preventDefault();
+            };
+            document.addEventListener('touchmove', window._dmgTouchBlocker, { passive: false });
         }
 
-        function refreshMasterDataSub() {
-            if (!confirm("最新のリストを取得しますか？")) return;
-            var btn = document.getElementById('btn-refresh-sub');
-            var orgHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 更新中';
-            google.script.run.withSuccessHandler(function (res) {
-                loadAllMasterDataSub(); btn.disabled = false; btn.innerHTML = orgHtml;
-            }).withFailureHandler(function (e) {
-                alert("更新エラー: " + e.message); btn.disabled = false; btn.innerHTML = orgHtml;
-            }).clearMasterCaches();
-        }
+        registerDmgDialTouch();
+        renderDmgDialWheel();
+    }
 
-        function renderOpSubInputs(color) {
-            var div = document.getElementById('opsub-inputs');
-            if (!div) return;
-            div.innerHTML = '';
-            div.style.display = 'block';
-            if (opPrefixesSub.length === 0) {
-                div.innerHTML = '<div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm"></span> タンクIDリスト読み込み中...</div>';
+    function renderDmgDialWheel() {
+        var wheel = document.getElementById('dmg-dial-wheel');
+        if (!wheel) return;
+        wheel.innerHTML = '';
+        dmgDialItemsCount = opPrefixesSub.length;
+        if (dmgDialItemsCount === 0) return;
+
+        opPrefixesSub.forEach(function (p, i) {
+            var el = document.createElement('div');
+            el.className = 'dmg-rotary-item shadow-sm';
+            el.id = 'dmg-dial-item-' + i;
+            el.innerText = p;
+            el.dataset.prefix = p;
+            el.dataset.index = i;
+
+            el.onclick = function () {
+                dmgCurrentActiveIndex = i;
+                dmgSnapToItem(i);
+                var inp = document.getElementById('dmg-hidden-input');
+                if (inp) inp.focus();
+            };
+            wheel.appendChild(el);
+        });
+
+        dmgCurrentScrollY = 0;
+        dmgCurrentActiveIndex = 0;
+        dmgIsDragging = false;
+        updateDmgDialPositions();
+    }
+
+    function updateDmgDialPositions() {
+        var wheel = document.getElementById('dmg-dial-wheel');
+        var container = document.getElementById('dmg-rotary-container');
+        if (!wheel || !container) return;
+        var items = wheel.getElementsByClassName('dmg-rotary-item');
+        if (items.length === 0) return;
+
+        var containerHeight = container.offsetHeight;
+        if (containerHeight <= 0) return;
+
+        var activeSlotY = containerHeight - 80;
+        var remainingHeight = activeSlotY - 8;
+        var slotHeight = Math.max(26, remainingHeight / Math.max(1, dmgDialItemsCount - 1));
+
+        for (var i = 0; i < items.length; i++) {
+            var el = items[i];
+            var idx = parseInt(el.dataset.index);
+
+            if (idx === dmgCurrentActiveIndex) {
+                el.style.top = activeSlotY + 'px';
+                el.style.opacity = '1';
+                el.classList.add('active');
+                el.style.transform = 'scale(1.35)';
+                el.style.zIndex = '110';
+
+                if (dmgActivePrefix !== el.dataset.prefix) {
+                    dmgActivePrefix = el.dataset.prefix;
+                    var hiddenInput = document.getElementById('dmg-hidden-input');
+                    if (hiddenInput) hiddenInput.value = '';
+                    if (_dmgOkResetTimer) { clearTimeout(_dmgOkResetTimer); _dmgOkResetTimer = null; }
+                    var label = document.getElementById('dmg-ok-label');
+                    if (label) {
+                        label.innerText = el.dataset.prefix + '-OK';
+                        var okBtn = document.getElementById('dmg-ok-btn');
+                        if (okBtn) {
+                            okBtn.classList.remove('dmg-pop-anim');
+                            void okBtn.offsetWidth;
+                            okBtn.classList.add('dmg-pop-anim');
+                        }
+                    }
+                }
+            } else {
+                var stepsBack = (dmgCurrentActiveIndex - idx + dmgDialItemsCount) % dmgDialItemsCount;
+                var slotY = activeSlotY - stepsBack * slotHeight;
+
+                el.style.top = slotY + 'px';
+                el.classList.remove('active');
+                el.style.transform = 'scale(0.85)';
+                el.style.zIndex = '100';
+
+                if (slotY < 15) {
+                    el.style.opacity = Math.max(0, (slotY + 20) / 35).toString();
+                } else {
+                    el.style.opacity = '0.8';
+                }
+            }
+        }
+    }
+
+    function registerDmgDialTouch() {
+        if (dmgTouchRegistered) return;
+        var touchArea = document.getElementById('dmg-container');
+        if (!touchArea) return;
+
+        touchArea.addEventListener('touchstart', function (e) {
+            var touch = e.touches[0];
+            if (touch.clientX < window.innerWidth * 2 / 3) {
+                dmgIsDragging = false;
                 return;
             }
-            opPrefixesSub.forEach(p => {
-                div.innerHTML += `<div class="input-row-card d-flex gap-2 mb-2 align-items-center p-2 bg-white rounded shadow-sm" style="border-left: 5px solid ${color};">
-     <span class="fs-4 fw-bold" style="width:30px; text-align:center;">${p}</span>
-     <input type="tel" class="form-control fw-bold text-center fs-5" maxlength="2" placeholder="--" oninput="checkOpSubInput('${p}', this)">
-     <button class="btn text-white fw-bold" style="background:${color};" onclick="addOpSubQueue('${p}-OK')">OK</button></div>`;
-            });
-        }
+            dmgIsDragging = true;
+            dmgLastDragY = touch.clientY;
+            dmgDialVelocity = 0;
+            dmgTouchHistory = [];
+            if (dmgMomentumRaf) { cancelAnimationFrame(dmgMomentumRaf); dmgMomentumRaf = null; }
+            dmgTouchHistory.push({ y: touch.clientY, t: Date.now() });
+        }, { passive: true });
 
-        function checkOpSubInput(prefix, el) {
-            var val = el.value.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
-            el.value = val;
-            if (val.length >= 2) { addOpSubQueue(prefix + '-' + val); el.value = ''; }
-        }
+        touchArea.addEventListener('touchmove', function (e) {
+            if (!dmgIsDragging) return;
+            if (e.cancelable && document.body.classList.contains('dmg-dial-lock')) {
+                e.preventDefault();
+            }
 
-        function addOpSubQueue(id) {
-            if (!opSubQueue.some(item => item.id === id)) { opSubQueue.push({ id: id, note: '' }); renderOpSubQueue(); }
-        }
+            var touch = e.touches[0];
+            var diffY = touch.clientY - dmgLastDragY;
+            dmgLastDragY = touch.clientY;
 
-        function updateSubItemNote(index, text) { opSubQueue[index].note = text; }
+            var totalScrollRange = dmgDialItemsCount * DMG_ITEM_HEIGHT;
+            dmgCurrentScrollY -= diffY * (DMG_ITEM_HEIGHT / 70);
+            if (dmgCurrentScrollY < 0) dmgCurrentScrollY += totalScrollRange;
+            dmgCurrentScrollY = dmgCurrentScrollY % totalScrollRange;
+            dmgCurrentActiveIndex = Math.round(dmgCurrentScrollY / DMG_ITEM_HEIGHT) % dmgDialItemsCount;
+            updateDmgDialPositions();
 
-        function appendSubQuickNote(index, text) {
-            var current = opSubQueue[index].note;
-            if (current) text = current + ", " + text;
-            opSubQueue[index].note = text;
-            document.getElementById('note-input-sub-' + index).value = text;
-        }
+            var now = Date.now();
+            dmgTouchHistory.push({ y: touch.clientY, t: now });
+            while (dmgTouchHistory.length > 1 && now - dmgTouchHistory[0].t > 100) {
+                dmgTouchHistory.shift();
+            }
+        }, { passive: false });
 
-        function renderOpSubQueue() {
-            var list = document.getElementById('opsub-queue-list');
-            if (!list) return;
-            list.innerHTML = '';
-            document.getElementById('opsub-queue-count').innerText = opSubQueue.length;
-            var box = document.getElementById('opsub-queue-box');
-            var btn = document.getElementById('opsub-submit-btn');
-            var color = '#dc3545';
-
-            if (opSubQueue.length > 0) {
-                box.style.display = 'block';
-                btn.style.display = 'block';
-                opSubQueue.slice().reverse().forEach((item, revIndex) => {
-                    var index = opSubQueue.length - 1 - revIndex;
-                    var quickBtns = `<div class="mt-1">
-         <button class="btn quick-note-btn" onclick="appendSubQuickNote(${index}, 'バルブ固・歪み')">バルブ固・歪み</button>
-         <button class="btn quick-note-btn" onclick="appendSubQuickNote(${index}, 'エア漏れ')">エア漏れ</button>
-         <button class="btn quick-note-btn" onclick="appendSubQuickNote(${index}, 'Oリング')">Oリング</button>
-       </div>`;
-                    var ph = '破損内容';
-                    list.innerHTML += `<div class="queue-card" style="border-left-color: ${color};">
-       <div class="queue-card-header"><span class="queue-id">${item.id}</span>
-         <button class="btn btn-link text-secondary p-0" onclick="removeOpSubQueue(${index})"><i class="bi bi-trash3-fill"></i></button></div>
-       <div><input type="text" id="note-input-sub-${index}" class="form-control form-control-sm" placeholder="${ph}" value="${item.note}" oninput="updateSubItemNote(${index}, this.value)">${quickBtns}</div></div>`;
-                });
+        touchArea.addEventListener('touchend', function (e) {
+            dmgIsDragging = false;
+            if (dmgTouchHistory.length >= 2) {
+                var first = dmgTouchHistory[0];
+                var last = dmgTouchHistory[dmgTouchHistory.length - 1];
+                var dt = last.t - first.t;
+                if (dt > 0 && dt < 300) {
+                    dmgDialVelocity = -(last.y - first.y) / dt * 16 * (DMG_ITEM_HEIGHT / 70);
+                } else {
+                    dmgDialVelocity = 0;
+                }
             } else {
-                box.style.display = 'none';
-                btn.style.display = 'none';
+                dmgDialVelocity = 0;
+            }
+
+            if (Math.abs(dmgDialVelocity) > 0.5) {
+                dmgStartMomentum();
+            } else {
+                dmgSnapToNearest();
+            }
+        }, { passive: true });
+
+        dmgTouchRegistered = true;
+    }
+
+    function dmgStartMomentum() {
+        var stepsToMove = Math.round(dmgDialVelocity / DMG_ITEM_HEIGHT * 1.2);
+        stepsToMove = Math.max(-3, Math.min(3, stepsToMove));
+        if (stepsToMove === 0) { dmgSnapToNearest(); return; }
+        var targetIdx = (dmgCurrentActiveIndex + stepsToMove) % dmgDialItemsCount;
+        if (targetIdx < 0) targetIdx += dmgDialItemsCount;
+        dmgCurrentActiveIndex = targetIdx;
+        dmgSnapToItem(targetIdx);
+    }
+
+    function dmgSnapToNearest() {
+        var nearestIdx = Math.round(dmgCurrentScrollY / DMG_ITEM_HEIGHT) % dmgDialItemsCount;
+        if (nearestIdx < 0) nearestIdx += dmgDialItemsCount;
+        dmgCurrentActiveIndex = nearestIdx;
+        dmgSnapToItem(nearestIdx);
+    }
+
+    function dmgSnapToItem(idx) {
+        var totalScrollRange = dmgDialItemsCount * DMG_ITEM_HEIGHT;
+        var targetScrollY = idx * DMG_ITEM_HEIGHT;
+        var diff = targetScrollY - dmgCurrentScrollY;
+        if (diff > totalScrollRange / 2) diff -= totalScrollRange;
+        if (diff < -totalScrollRange / 2) diff += totalScrollRange;
+        dmgAnimateRotation(dmgCurrentScrollY + diff);
+    }
+
+    function dmgAnimateRotation(targetScroll) {
+        if (dmgMomentumRaf) { cancelAnimationFrame(dmgMomentumRaf); dmgMomentumRaf = null; }
+        var startScroll = dmgCurrentScrollY;
+        var diff = targetScroll - startScroll;
+        if (Math.abs(diff) < 0.5) {
+            dmgCurrentScrollY = targetScroll;
+            var totalScrollRange = dmgDialItemsCount * DMG_ITEM_HEIGHT;
+            if (dmgCurrentScrollY < 0) dmgCurrentScrollY += totalScrollRange;
+            dmgCurrentScrollY = dmgCurrentScrollY % totalScrollRange;
+            updateDmgDialPositions();
+            return;
+        }
+        var startTime = performance.now();
+        var duration = 450;
+        function tick(now) {
+            var elapsed = now - startTime;
+            var t = Math.min(1, elapsed / duration);
+            var ease = 1 - Math.pow(1 - t, 3);
+            dmgCurrentScrollY = startScroll + diff * ease;
+            var totalScrollRange = dmgDialItemsCount * DMG_ITEM_HEIGHT;
+            if (dmgCurrentScrollY < 0) dmgCurrentScrollY += totalScrollRange;
+            dmgCurrentScrollY = dmgCurrentScrollY % totalScrollRange;
+            updateDmgDialPositions();
+            if (t < 1) {
+                dmgMomentumRaf = requestAnimationFrame(tick);
+            } else {
+                dmgCurrentScrollY = targetScroll;
+                if (dmgCurrentScrollY < 0) dmgCurrentScrollY += totalScrollRange;
+                dmgCurrentScrollY = dmgCurrentScrollY % totalScrollRange;
+                updateDmgDialPositions();
+                dmgMomentumRaf = null;
+            }
+        }
+        dmgMomentumRaf = requestAnimationFrame(tick);
+    }
+
+    /* ===== OK / INPUT ===== */
+    function submitDmgActiveOk() {
+        if (dmgActivePrefix) {
+            addOpSubQueue(dmgActivePrefix + '-OK');
+        }
+    }
+
+    function checkDmgRotaryInput(el) {
+        var val = el.value.replace(/[０-９]/g, function (s) { return String.fromCharCode(s.charCodeAt(0) - 0xFEE0); });
+        val = val.replace(/[^0-9]/g, '');
+        el.value = val;
+
+        if (_dmgOkResetTimer) { clearTimeout(_dmgOkResetTimer); _dmgOkResetTimer = null; }
+
+        var label = document.getElementById('dmg-ok-label');
+        if (label) {
+            if (val.length === 0) {
+                label.innerText = dmgActivePrefix ? dmgActivePrefix + '-OK' : 'OK入力';
+            } else if (val.length === 1) {
+                label.innerText = (dmgActivePrefix ? dmgActivePrefix + '-' : '') + val + '_';
+            } else {
+                label.innerText = (dmgActivePrefix ? dmgActivePrefix + '-' : '') + val;
             }
         }
 
-        function removeOpSubQueue(index) { opSubQueue.splice(index, 1); renderOpSubQueue(); }
-        function clearOpSubQueue() { opSubQueue = []; renderOpSubQueue(); }
-
-        function submitOpSub() {
-            var confirmMsg = opSubQueue.length + '件 送信しますか？';
-            if (!confirm(confirmMsg)) return;
-
-            var btn = document.getElementById('opsub-submit-btn');
-            var orgText = document.getElementById('opsub-submit-label').innerText;
-            btn.disabled = true; document.getElementById('opsub-submit-label').innerText = "送信中...";
-
-            var payload = {
-                action: '破損報告',
-                items: opSubQueue,
-                destination: "",
-                isUnused: false,
-                isDefect: false,
-                repairCost: 0,
-                repairDetail: "",
-                userPasscode: (typeof GLOBAL_PASSCODE !== 'undefined') ? GLOBAL_PASSCODE : ""
-            };
-
-            google.script.run.withSuccessHandler(res => {
-                btn.disabled = false; document.getElementById('opsub-submit-label').innerText = orgText;
-                clearOpSubQueue();
-
-                var msg = "【送信結果】\\n総数: " + (res.totalCount || 0) + " 本\\n----------------\\n";
-                if (res.successIds && res.successIds.length > 0) msg += "✅ 成功 (" + res.successIds.length + "本):\\n" + res.successIds.join(", ") + "\\n\\n";
-                else msg += "✅ 成功: なし\\n\\n";
-                if (res.failedItems && res.failedItems.length > 0) {
-                    msg += "❌ 失敗 (" + res.failedItems.length + "本):\\n";
-                    res.failedItems.forEach(item => msg += "・" + item.id + " : " + item.reason + "\\n");
-                }
-                alert(msg);
-
-            }).withFailureHandler(function (e) {
-                btn.disabled = false; document.getElementById('opsub-submit-label').innerText = orgText;
-                alert("システムエラー: " + e);
-            }).submitOperations(payload);
+        if (val.length >= 2) {
+            var confirmedId = (dmgActivePrefix ? dmgActivePrefix + '-' : '') + val;
+            addOpSubQueue(dmgActivePrefix + '-' + val);
+            el.value = '';
+            if (label) {
+                label.innerText = confirmedId;
+                var _prefix = dmgActivePrefix;
+                _dmgOkResetTimer = setTimeout(function () {
+                    _dmgOkResetTimer = null;
+                    var l = document.getElementById('dmg-ok-label');
+                    if (l) l.innerText = _prefix ? _prefix + '-OK' : 'OK入力';
+                }, 500);
+            }
         }
-    </script>
-</body>
+    }
 
-</html>
+    /* ===== QUEUE ===== */
+    function addOpSubQueue(id) {
+        if (!opSubQueue.some(function (item) { return item.id === id; })) {
+            opSubQueue.push({ id: id, note: '' });
+            renderDmgQueue();
+            // Flash feedback
+            var list = document.getElementById('dmg-queue-list');
+            if (list) {
+                list.classList.remove('dmg-flash-success');
+                void list.offsetWidth;
+                list.classList.add('dmg-flash-success');
+            }
+        }
+    }
+
+    function updateSubItemNote(index, text) {
+        opSubQueue[index].note = text;
+    }
+
+    function appendSubQuickNote(index, text) {
+        var current = opSubQueue[index].note;
+        if (current) text = current + ", " + text;
+        opSubQueue[index].note = text;
+        var inp = document.getElementById('dmg-note-' + index);
+        if (inp) inp.value = text;
+    }
+
+    function removeOpSubQueue(index) {
+        opSubQueue.splice(index, 1);
+        renderDmgQueue();
+    }
+
+    function clearOpSubQueue() {
+        opSubQueue = [];
+        renderDmgQueue();
+    }
+
+    function renderDmgQueue() {
+        var list = document.getElementById('dmg-queue-list');
+        if (!list) return;
+        list.innerHTML = '';
+
+        var countEl = document.getElementById('dmg-queue-count');
+        if (countEl) countEl.innerText = opSubQueue.length;
+
+        var submitBtn = document.getElementById('dmg-submit-btn');
+
+        if (opSubQueue.length === 0) {
+            list.innerHTML = '<div class="dmg-queue-empty"><i class="bi bi-shield-exclamation"></i>右のダイヤルからタンクを追加</div>';
+            if (submitBtn) submitBtn.style.display = 'none';
+            return;
+        }
+
+        if (submitBtn) submitBtn.style.display = 'block';
+
+        opSubQueue.slice().reverse().forEach(function (item, revIndex) {
+            var index = opSubQueue.length - 1 - revIndex;
+
+            var html = '<div class="dmg-q-card">'
+                + '<div class="dmg-q-top">'
+                + '<span class="dmg-q-id">' + item.id + '</span>'
+                + '<button class="dmg-q-delete" onclick="removeOpSubQueue(' + index + ')"><i class="bi bi-trash3-fill"></i></button>'
+                + '</div>'
+                + '<input type="text" id="dmg-note-' + index + '" class="dmg-q-input" placeholder="破損内容を入力..." value="' + (item.note || '') + '" oninput="updateSubItemNote(' + index + ', this.value)">'
+                + '<div class="dmg-q-notes">'
+                + '<button class="dmg-q-note-btn" onclick="appendSubQuickNote(' + index + ', \'バルブ固・歪み\')">バルブ固・歪み</button>'
+                + '<button class="dmg-q-note-btn" onclick="appendSubQuickNote(' + index + ', \'エア漏れ\')">エア漏れ</button>'
+                + '<button class="dmg-q-note-btn" onclick="appendSubQuickNote(' + index + ', \'Oリング\')">Oリング</button>'
+                + '<button class="dmg-q-note-btn" onclick="appendSubQuickNote(' + index + ', \'塗装剥がれ\')">塗装剥がれ</button>'
+                + '</div>'
+                + '</div>';
+
+            list.insertAdjacentHTML('beforeend', html);
+        });
+    }
+
+    /* ===== SUBMIT ===== */
+    function submitOpSub() {
+        if (opSubQueue.length === 0) return;
+        if (!confirm(opSubQueue.length + '件 送信しますか？')) return;
+
+        var btn = document.getElementById('dmg-submit-btn');
+        var orgText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 送信中...';
+
+        var payload = {
+            action: '破損報告',
+            items: opSubQueue,
+            destination: "",
+            isUnused: false,
+            isDefect: false,
+            repairCost: 0,
+            repairDetail: "",
+            userPasscode: (typeof GLOBAL_PASSCODE !== 'undefined') ? GLOBAL_PASSCODE : ""
+        };
+
+        google.script.run.withSuccessHandler(function (res) {
+            btn.disabled = false;
+            btn.innerHTML = orgText;
+            clearOpSubQueue();
+
+            var msg = "【送信結果】\n総数: " + (res.totalCount || 0) + " 本\n----------------\n";
+            if (res.successIds && res.successIds.length > 0) msg += "成功 (" + res.successIds.length + "本):\n" + res.successIds.join(", ") + "\n\n";
+            else msg += "成功: なし\n\n";
+            if (res.failedItems && res.failedItems.length > 0) {
+                msg += "失敗 (" + res.failedItems.length + "本):\n";
+                res.failedItems.forEach(function (item) { msg += item.id + " : " + item.reason + "\n"; });
+            }
+            alert(msg);
+        }).withFailureHandler(function (e) {
+            btn.disabled = false;
+            btn.innerHTML = orgText;
+            alert("システムエラー: " + e);
+        }).submitOperations(payload);
+    }
+</script>
