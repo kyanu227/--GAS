@@ -11,7 +11,7 @@ function getYearlySheet(ss, baseName, dateObj) {
   var year = dateObj.getFullYear();
   var sheetName = baseName + year;
   var sheet = ss.getSheetByName(sheetName);
-  
+
   if (!sheet) {
     sheet = ss.insertSheet(sheetName);
     if (baseName === MONEY_CONFIG.SHEET_LOG) {
@@ -31,7 +31,7 @@ function getRepairOptions() {
   var ss = getMoneySS();
   var sheetName = (MONEY_CONFIG && MONEY_CONFIG.SHEET_REPAIR) ? MONEY_CONFIG.SHEET_REPAIR : "M_設定_修理項目";
   var sheet = ss.getSheetByName(sheetName);
-  
+
   if (!sheet) {
     return [{ name: "バルブ交換", price: 0 }, { name: "再塗装", price: 0 }];
   }
@@ -56,7 +56,7 @@ function getPriceMasterWithCache() {
   var sheet = ss.getSheetByName(MONEY_CONFIG.SHEET_PRICE);
   var data = [];
   if (sheet) data = sheet.getDataRange().getValues();
-  
+
   if (data.length > 0) {
     cache.put("price_master_data", JSON.stringify(data), 43200);
   }
@@ -93,12 +93,12 @@ function calculateRewardInMemory(action, rankName, priceData) {
   }
 
   var result = { basePrice: 0, score: 0, rankAdd: 0, total: 0 };
-  
-  if (!targetRow) return result; 
+
+  if (!targetRow) return result;
 
   result.basePrice = Number(targetRow[1]) || 0;
-  result.score     = Number(targetRow[2]) || 0;
-  
+  result.score = Number(targetRow[2]) || 0;
+
   var rankColIndex = 7;
   if (rankName === 'プラチナ') rankColIndex = 3;
   else if (rankName === 'ゴールド') rankColIndex = 4;
@@ -108,7 +108,7 @@ function calculateRewardInMemory(action, rankName, priceData) {
   if (targetRow.length > rankColIndex) {
     result.rankAdd = Number(targetRow[rankColIndex]) || 0;
   }
-  
+
   result.total = result.basePrice + result.rankAdd;
   return result;
 }
@@ -121,7 +121,7 @@ function recordMoneyLog(logDataList) {
 
   var logsByYear = {};
 
-  logDataList.forEach(function(d) {
+  logDataList.forEach(function (d) {
     var dateObj = new Date(d.date);
     var year = dateObj.getFullYear();
     if (!logsByYear[year]) logsByYear[year] = [];
@@ -130,8 +130,14 @@ function recordMoneyLog(logDataList) {
     var rawId = String(d.tankId);
     var formattedId = (typeof formatDisplayId === 'function') ? formatDisplayId(rawId) : rawId;
 
-    var reward = calculateRewardInMemory(d.action, d.rank, priceData);
-    
+    var reward = { score: 0, total: 0 };
+    // scoreOverrideが所ている場合（共同作業者分割済み）はそれを使用
+    if (typeof d.scoreOverride === 'number') {
+      reward.score = d.scoreOverride;
+    } else {
+      reward = calculateRewardInMemory(d.action, d.rank, priceData);
+    }
+
     logsByYear[year].push([
       d.uuid,
       d.date,
@@ -145,11 +151,11 @@ function recordMoneyLog(logDataList) {
     ]);
   });
 
-  Object.keys(logsByYear).forEach(function(year) {
+  Object.keys(logsByYear).forEach(function (year) {
     var dummyDate = new Date(year, 0, 1);
     var sheet = getYearlySheet(ss, MONEY_CONFIG.SHEET_LOG, dummyDate);
     var rows = logsByYear[year];
-    
+
     if (rows.length > 0) {
       var lastRow = sheet.getLastRow();
       sheet.getRange(lastRow + 1, 1, rows.length, rows[0].length).setValues(rows);

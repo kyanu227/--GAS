@@ -47,11 +47,28 @@ function getOperationsInitData() {
   // 3. 全タンクの現在の状態と場所（入力時の事前チェック用）
   var tankMap = getAllTankStatusesWithCache(false);
 
+  // 4. スタッフリスト（共同作業者選択用）
+  var staffList = [];
+  try {
+    var ss2 = SpreadsheetApp.getActiveSpreadsheet();
+    var staffSheetName = (typeof SHEET_NAMES !== 'undefined' && SHEET_NAMES.STAFF) ? SHEET_NAMES.STAFF : '担当者リスト';
+    var staffSheet = ss2.getSheetByName(staffSheetName);
+    if (staffSheet && staffSheet.getLastRow() > 1) {
+      var staffData = staffSheet.getRange(2, 1, staffSheet.getLastRow() - 1, 7).getValues();
+      for (var si = 0; si < staffData.length; si++) {
+        var sRow = staffData[si];
+        if (!sRow[0] || sRow[4] === '停止' || String(sRow[0]).indexOf('《停止》') === 0) continue;
+        staffList.push({ name: String(sRow[0]), rank: String(sRow[3] || 'レギュラー') });
+      }
+    }
+  } catch (e) { console.error('スタッフリスト取得エラー', e); }
+
   return {
     destList: activeDestList,
     repairOptions: repairOpts,
     prefixes: prefixes,
-    tankMap: tankMap
+    tankMap: tankMap,
+    staffList: staffList
   };
 }
 
@@ -231,6 +248,11 @@ function submitOperations(data) {
         var successMap = {};
         writeResult.successIds.forEach(function (sid) { successMap[sid] = true; });
 
+        // 共同作業者リスト：本人 + coworkers配列
+        var coworkers = (data.coworkers && Array.isArray(data.coworkers)) ? data.coworkers : [];
+        var allWorkers = [{ name: identifiedStaffName, rank: userInfo.rank }].concat(coworkers);
+        var numWorkers = allWorkers.length;
+
         validItems.forEach(function (item) {
           if (successMap[item.id]) {
             var moneyLogAction = action;
@@ -239,16 +261,23 @@ function submitOperations(data) {
               moneyLogAction = '自社返却';
             }
 
-            moneyLogs.push({
-              uuid: Utilities.getUuid(),
-              date: now,
-              staff: identifiedStaffName,
-              rank: userInfo.rank,
-              action: moneyLogAction,
-              tankId: formatDisplayId(item.id),
-              note: item.note,
-              repairCost: (action === '修理済み') ? data.repairCost : 0,
-              repairDetail: (action === '修理済み') ? data.repairDetail : ""
+            // 全員分のログを生成（各自のランク報酬を人数で割る）
+            allWorkers.forEach(function (worker) {
+              var priceData = getPriceMasterWithCache();
+              var reward = calculateRewardInMemory(moneyLogAction, worker.rank, priceData);
+              moneyLogs.push({
+                uuid: Utilities.getUuid(),
+                date: now,
+                staff: worker.name,
+                rank: worker.rank,
+                action: moneyLogAction,
+                tankId: formatDisplayId(item.id),
+                note: item.note,
+                repairCost: (action === '修理済み') ? data.repairCost : 0,
+                repairDetail: (action === '修理済み') ? data.repairDetail : "",
+                scoreOverride: Math.floor(reward.score / numWorkers),
+                totalOverride: Math.floor(reward.total / numWorkers)
+              });
             });
           }
         });

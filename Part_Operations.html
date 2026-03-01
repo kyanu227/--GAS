@@ -162,7 +162,13 @@
   <!-- op-container: flexbox column filling available height -->
   <div id="op-container" class="container-fluid mt-3 d-flex flex-column"
     style="height: calc(100dvh - 120px - env(safe-area-inset-bottom));">
-    <div class="d-flex justify-content-end align-items-center mb-2 flex-shrink-0">
+    <div class="d-flex align-items-center mb-2 flex-shrink-0 gap-1">
+      <!-- 共同作業者チップ表示エリア (左側) -->
+      <div id="coworker-chips" class="d-flex flex-wrap gap-1 flex-grow-1 align-items-center"></div>
+      <button id="btn-add-coworker" class="btn btn-sm btn-outline-secondary border-0" onclick="showCoworkerPicker()"
+        title="共同作業者を追加">
+        <i class="bi bi-person-fill-add"></i>
+      </button>
       <button id="btn-refresh" class="btn btn-sm btn-outline-secondary border-0" onclick="refreshMasterData()">
         <i class="bi bi-arrow-clockwise"></i> リスト更新
       </button>
@@ -237,6 +243,8 @@
     var opMode = '';
     var isSelfUseMode = false;
     var opPrefixes = [];
+    var coworkerList = []; // 共同作業者リスト [{name, rank}]
+    var staffListCache = []; // GASから取得した全スタッフ
 
     // Initialization is now managed by initAppView in index.html
     function triggerInitialDataLoad(action) {
@@ -271,7 +279,42 @@
           var currentColor = btn ? btn.style.backgroundColor : '#6c757d';
           renderOpInputs(currentColor || '#6c757d');
         }
+
+        // 共同作業者選択用スタッフリストをキャッシュ
+        if (data.staffList) {
+          staffListCache = data.staffList;
+        }
       }).getOperationsInitData();
+    }
+
+    // === 共同作業者機能 ===
+    function showCoworkerPicker() {
+      var available = staffListCache.filter(function (s) {
+        return !coworkerList.some(function (c) { return c.name === s.name; });
+      });
+      if (available.length === 0) { alert('追加できるスタッフがいません。'); return; }
+      var names = available.map(function (s) { return s.name; });
+      var picked = prompt('共同作業者を選んでください:\n' + names.join(', '));
+      if (!picked) return;
+      var trimmed = picked.trim();
+      var match = available.find(function (s) { return s.name === trimmed; });
+      if (!match) { alert('\u300c' + trimmed + '\u300dはリストに見つかりません。'); return; }
+      coworkerList.push(match);
+      renderCoworkerChips();
+    }
+    function removeCoworker(name) {
+      coworkerList = coworkerList.filter(function (c) { return c.name !== name; });
+      renderCoworkerChips();
+    }
+    function renderCoworkerChips() {
+      var el = document.getElementById('coworker-chips');
+      if (!el) return;
+      el.innerHTML = coworkerList.map(function (c) {
+        return '<span class="badge text-bg-secondary fw-normal me-1" style="font-size:0.75rem;">'
+          + '<i class="bi bi-person-fill"></i> ' + c.name
+          + ' <a href="#" onclick="removeCoworker(\'' + c.name + '\'); return false;" class="text-white ms-1">&times;</a>'
+          + '</span>';
+      }).join('');
     }
 
     function initOperations(mode) {
@@ -503,6 +546,7 @@
         isDefect: document.getElementById('op-check-defect') ? document.getElementById('op-check-defect').checked : false,
         repairCost: 0,
         repairDetail: "",
+        coworkers: coworkerList,
         userPasscode: (typeof GLOBAL_PASSCODE !== 'undefined') ? GLOBAL_PASSCODE : ""
       };
 
