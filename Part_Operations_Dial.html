@@ -1005,6 +1005,10 @@
           var targetLabel = document.getElementById('dial-ok-label');
           if (activePrefix !== el.dataset.prefix) {
             activePrefix = el.dataset.prefix;
+            // プレフィックスが変わったら入力途中の数字とタイマーをリセット
+            var hiddenInput = document.getElementById('rotary-hidden-input');
+            if (hiddenInput) hiddenInput.value = '';
+            if (_okResetTimer) { clearTimeout(_okResetTimer); _okResetTimer = null; }
             if (targetLabel) {
               targetLabel.innerText = el.dataset.prefix + '-OK';
               var okBtn = document.getElementById('dial-ok-btn');
