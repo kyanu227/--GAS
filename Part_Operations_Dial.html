@@ -927,6 +927,7 @@
     var currentScrollY = 0;
     var ITEM_HEIGHT = 46;
     var activePrefix = '';
+    var _okResetTimer = null; // OKボタンリセットタイマーID
     var isOkMode = false;
     var dialItemsCount = 0;
     var isDraggingDial = false;
@@ -1205,6 +1206,9 @@
       val = val.replace(/[^0-9]/g, '');
       el.value = val;
 
+      // 前のリセットタイマーをキャンセル（次入力による上書き防止）
+      if (_okResetTimer) { clearTimeout(_okResetTimer); _okResetTimer = null; }
+
       // OKボタンに入力中の桁をリアルタイム表示
       var label = document.getElementById('dial-ok-label');
       if (label) {
@@ -1221,11 +1225,12 @@
         var confirmedId = (activePrefix ? activePrefix + '-' : '') + val;
         var added = addOpQueue(activePrefix + '-' + val);
         el.value = '';
-        // 確定IDを一瞬表示してからリセット
+        // 確定IDを一瞬表示してからリセット（次入力が来たらキャンセルされる）
         if (label) {
           label.innerText = confirmedId;
           var _prefix = activePrefix;
-          setTimeout(function () {
+          _okResetTimer = setTimeout(function () {
+            _okResetTimer = null;
             var l = document.getElementById('dial-ok-label');
             if (l) l.innerText = _prefix ? _prefix + '-OK' : 'OK入力';
           }, 500);
