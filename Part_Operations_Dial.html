@@ -230,16 +230,26 @@
   <div id="op-container" class="container-fluid mt-3 d-flex flex-column"
     style="height: calc(100dvh - 120px - env(safe-area-inset-bottom));">
     <div class="d-flex align-items-center mb-2 flex-shrink-0 gap-1">
-      <!-- 共同作業者チップ表示エリア (左側) -->
-      <div id="coworker-chips" class="d-flex flex-wrap gap-1 flex-grow-1 align-items-center"></div>
-      <!-- 共同作業者追加ボタン -->
+      <!-- 共同作業者追加ボタン (左側) -->
       <button id="btn-add-coworker" class="btn btn-sm btn-outline-secondary border-0" onclick="showCoworkerPicker()"
         title="共同作業者を追加">
         <i class="bi bi-person-fill-add"></i>
       </button>
+      <!-- 共同作業者チップ表示エリア -->
+      <div id="coworker-chips" class="d-flex flex-wrap gap-1 flex-grow-1 align-items-center"></div>
       <button id="btn-refresh" class="btn btn-sm btn-outline-secondary border-0" onclick="refreshMasterData()">
         <i class="bi bi-arrow-clockwise"></i> リスト更新
       </button>
+    </div>
+    <!-- 共同作業者選択ドロップダウン（非表示） -->
+    <div id="coworker-picker-wrap" style="display:none;" class="mb-2 flex-shrink-0">
+      <div class="d-flex gap-2 align-items-center">
+        <select id="coworker-select" class="form-select form-select-sm flex-grow-1">
+          <option value="" disabled selected>👤 共同作業者を選択...</option>
+        </select>
+        <button class="btn btn-sm btn-primary" onclick="addSelectedCoworker()">追加</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="hideCoworkerPicker()">✕</button>
+      </div>
     </div>
 
     <!-- Settings panels -->
@@ -419,14 +429,23 @@
         alert('追加できるスタッフがいません。');
         return;
       }
-      var names = available.map(function (s) { return s.name; });
-      var picked = prompt('共同作業者を選んでください:\n' + names.join(', '));
-      if (!picked) return;
-      var trimmed = picked.trim();
-      var match = available.find(function (s) { return s.name === trimmed; });
-      if (!match) { alert('\u300c' + trimmed + '\u300dはリストに見つかりません。'); return; }
-      coworkerList.push(match);
-      renderCoworkerChips();
+      var sel = document.getElementById('coworker-select');
+      sel.innerHTML = '<option value="" disabled selected>👤 共同作業者を選択...</option>';
+      available.forEach(function (s) { sel.appendChild(new Option(s.name, s.name)); });
+      document.getElementById('coworker-picker-wrap').style.display = 'block';
+    }
+
+    function hideCoworkerPicker() {
+      document.getElementById('coworker-picker-wrap').style.display = 'none';
+    }
+
+    function addSelectedCoworker() {
+      var sel = document.getElementById('coworker-select');
+      var name = sel.value;
+      if (!name) return;
+      var match = staffListCache.find(function (s) { return s.name === name; });
+      if (match) { coworkerList.push(match); renderCoworkerChips(); }
+      hideCoworkerPicker();
     }
 
     function removeCoworker(name) {
@@ -438,9 +457,9 @@
       var el = document.getElementById('coworker-chips');
       if (!el) return;
       el.innerHTML = coworkerList.map(function (c) {
-        return '<span class="badge text-bg-secondary fw-normal me-1" style="font-size:0.75rem;">'
+        return '<span class="badge fw-normal me-1" style="font-size:0.75rem; background:#e8f0fe; color:#1a56c4; border:1px solid #bcd4ff;">'
           + '<i class="bi bi-person-fill"></i> ' + c.name
-          + ' <a href="#" onclick="removeCoworker(\'' + c.name + '\'); return false;" class="text-white ms-1">&times;</a>'
+          + ' <a href="#" onclick="removeCoworker(\'' + c.name + '\'); return false;" style="color:#1a56c4;" class="ms-1">&times;</a>'
           + '</span>';
       }).join('');
     }
