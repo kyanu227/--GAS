@@ -3,238 +3,647 @@
     rel="stylesheet">
 
 <div id="dashboard-container" class="dashboard-wrapper theme-default">
-    <div class="pt-4 px-3 pb-3">
+    <div class="pt-3 px-3 pb-3">
         <div class="container-fluid" style="max-width: 600px;">
 
-            <div class="d-flex align-items-center justify-content-between mb-3 px-1">
-                <h5 class="fw-bold m-0 text-main d-flex align-items-center text-shadow-sm">
-                    <i class="bi bi-speedometer2 me-2 accent-color"></i>ダッシュボード
-                </h5>
-
-                <div id="dashboard-edit-controls" class="d-flex gap-2" style="display:none;">
-                    <div id="dashboard-action-buttons" style="display:none;" class="fade-in-right">
-                        <button class="btn btn-danger btn-sm rounded-pill fw-bold px-3 shadow-sm"
-                            onclick="executeDashboardDelete()">
-                            <i class="bi bi-trash-fill me-1"></i> 削除
-                        </button>
-                        <button class="glass-btn btn-sm rounded-circle d-flex align-items-center justify-content-center"
-                            style="width:32px;height:32px;padding:0;" onclick="toggleDashboardEditMode()">
-                            <i class="bi bi-x fs-5"></i>
-                        </button>
+            <!-- ========== DATE HEADER ========== -->
+            <div class="db-date-header mb-3">
+                <div class="db-date-inner">
+                    <div class="db-date-left">
+                        <span class="db-date-label">TODAY</span>
+                        <span id="db-date-text" class="db-date-main"></span>
                     </div>
-                    <button id="btn-dashboard-edit-mode"
-                        class="glass-btn btn-sm border-0 rounded-pill px-3 fw-bold shadow-sm"
-                        onclick="toggleDashboardEditMode()">
-                        編集
-                    </button>
+                    <div class="db-date-day-badge" id="db-day-badge"></div>
                 </div>
             </div>
 
-            <div id="dashboard-log-panel-container" class="card border-0 shadow-lg rounded-4 overflow-hidden log-panel"
-                style="min-height: 400px; margin-bottom: 80px;">
-
-                <div class="card-header border-bottom border-theme p-3"
-                    style="background-color: var(--tab-inactive-bg);">
-                    <ul class="nav nav-pills nav-fill p-1 rounded-3 border border-theme shadow-sm"
-                        style="background-color: var(--log-bg);">
-                        <li class="nav-item">
-                            <button id="nav-btn-db-summary" class="nav-link fw-bold small text-main active"
-                                onclick="switchDashboardTab('summary')">
-                                <i class="bi bi-pie-chart-fill me-1"></i> 集計
-                            </button>
-                        </li>
-                        <li class="nav-item">
-                            <button id="nav-btn-db-today" class="nav-link fw-bold small text-main"
-                                onclick="switchDashboardTab('today')">
-                                <i class="bi bi-list-ul me-1"></i> 本日詳細
-                            </button>
-                        </li>
-                        <li class="nav-item">
-                            <button id="nav-btn-db-weekly" class="nav-link fw-bold small text-main"
-                                onclick="switchDashboardTab('weekly')">
-                                <i class="bi bi-calendar-week me-1"></i> 週間履歴
-                            </button>
-                        </li>
-                    </ul>
+            <!-- ========== TANK INVENTORY ========== -->
+            <div class="db-section mb-3">
+                <div class="db-section-title">
+                    <i class="bi bi-database-fill"></i> タンク在庫
                 </div>
-
-                <div class="card-body p-0 tab-content custom-scroll"
-                    style="height: 60vh; min-height: 400px; overflow-y: auto; background-color: var(--log-bg);">
-
-                    <div class="tab-pane fade show active" id="pane-db-summary">
-                        <div class="p-3">
-                            <div id="db-summary-container" class="d-flex flex-column gap-3">
-                                <div class="text-center py-5">
-                                    <div class="spinner-border accent-color" role="status"></div>
-                                </div>
-                            </div>
-                        </div>
+                <div id="db-inventory-card" class="db-inventory-card">
+                    <div class="text-center py-4">
+                        <div class="spinner-border spinner-border-sm" style="color: var(--db-accent);" role="status"></div>
                     </div>
-
-                    <div class="tab-pane fade" id="pane-db-today">
-                        <div class="sticky-top border-bottom border-theme p-2 d-flex gap-2 overflow-auto no-scrollbar"
-                            style="background-color: var(--log-bg); z-index: 5;">
-                            <button class="chip-filter active" data-filter="ALL"
-                                onclick="setDashboardOpFilter('ALL')">すべて</button>
-                            <button class="chip-filter" data-filter="貸出"
-                                onclick="setDashboardOpFilter('貸出')">貸出</button>
-                            <button class="chip-filter" data-filter="返却"
-                                onclick="setDashboardOpFilter('返却')">返却</button>
-                            <button class="chip-filter" data-filter="充填"
-                                onclick="setDashboardOpFilter('充填')">充填</button>
-                        </div>
-                        <div id="list-db-today" class="list-group list-group-flush pb-3"></div>
-                    </div>
-
-                    <div class="tab-pane fade" id="pane-db-weekly">
-                        <div id="db-weekly-date-bar"
-                            class="sticky-top border-bottom border-theme p-2 d-flex gap-2 overflow-auto no-scrollbar"
-                            style="background-color: var(--log-bg); z-index: 5;">
-                        </div>
-                        <div id="list-db-weekly" class="list-group list-group-flush pb-3"></div>
-                    </div>
-
                 </div>
             </div>
+
+            <!-- ========== TODAY'S ACTIVITY ========== -->
+            <div class="db-section mb-3">
+                <div class="db-section-title">
+                    <i class="bi bi-lightning-charge-fill"></i> 本日のアクティビティ
+                </div>
+                <div id="db-activity-container">
+                    <div class="text-center py-4">
+                        <div class="spinner-border spinner-border-sm" style="color: var(--db-accent);" role="status"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== DETAIL LOG (collapsible) ========== -->
+            <div class="db-section" style="margin-bottom: 100px;">
+                <div class="db-section-title db-section-toggle" onclick="toggleDetailLog()">
+                    <i class="bi bi-clock-history"></i> 詳細ログ
+                    <i id="db-detail-chevron" class="bi bi-chevron-down db-chevron"></i>
+                </div>
+                <div id="db-detail-panel" class="db-detail-panel" style="display:none;">
+                    <!-- edit controls -->
+                    <div id="dashboard-edit-controls" class="db-edit-bar" style="display:none;">
+                        <div id="dashboard-action-buttons" style="display:none;" class="fade-in-right d-flex gap-2 align-items-center">
+                            <button class="btn btn-danger btn-sm rounded-pill fw-bold px-3 shadow-sm"
+                                onclick="executeDashboardDelete()">
+                                <i class="bi bi-trash-fill me-1"></i> 削除
+                            </button>
+                            <button class="db-icon-btn" onclick="toggleDashboardEditMode()">
+                                <i class="bi bi-x fs-5"></i>
+                            </button>
+                        </div>
+                        <button id="btn-dashboard-edit-mode"
+                            class="db-edit-btn"
+                            onclick="toggleDashboardEditMode()">
+                            編集
+                        </button>
+                    </div>
+                    <!-- filter chips -->
+                    <div class="db-filter-bar">
+                        <button class="db-chip active" data-filter="ALL"
+                            onclick="setDashboardOpFilter('ALL')">すべて</button>
+                        <button class="db-chip" data-filter="貸出"
+                            onclick="setDashboardOpFilter('貸出')">貸出</button>
+                        <button class="db-chip" data-filter="返却"
+                            onclick="setDashboardOpFilter('返却')">返却</button>
+                        <button class="db-chip" data-filter="充填"
+                            onclick="setDashboardOpFilter('充填')">充填</button>
+                        <button class="db-chip" data-filter="破損報告"
+                            onclick="setDashboardOpFilter('破損報告')">破損</button>
+                    </div>
+                    <!-- log list -->
+                    <div id="list-db-today" class="db-log-list"></div>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
 
 <style>
-    /* --- 基本設定 --- */
+    /* ========================================
+       DASHBOARD - STYLISH REDESIGN
+       ======================================== */
+
     .dashboard-wrapper {
         min-height: 100vh;
         display: flex;
         flex-direction: column;
-        background-color: #f3f4f6;
     }
 
-    .font-num {
+    /* --- CSS VARIABLES --- */
+    .theme-default {
+        --db-bg: #f0f2f5;
+        --db-surface: #ffffff;
+        --db-surface-alt: #f8f9fb;
+        --db-accent: #3b82f6;
+        --db-accent-light: rgba(59, 130, 246, 0.08);
+        --db-text: #1a1a2e;
+        --db-text-sub: #6b7280;
+        --db-border: rgba(0, 0, 0, 0.06);
+        --db-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+        --db-shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.08);
+        --db-radius: 16px;
+        --db-radius-sm: 10px;
+        --db-lend: #3b82f6;
+        --db-return: #10b981;
+        --db-fill: #f59e0b;
+        --db-damage: #ef4444;
+        --db-inhouse: #8b5cf6;
+        --db-inspect: #06b6d4;
+    }
+
+    /* --- DATE HEADER --- */
+    .db-date-header {
+        background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+        border-radius: var(--db-radius);
+        padding: 20px 22px;
+        box-shadow: var(--db-shadow-lg);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .db-date-header::before {
+        content: '';
+        position: absolute;
+        top: -30px;
+        right: -30px;
+        width: 120px;
+        height: 120px;
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 50%;
+    }
+
+    .db-date-header::after {
+        content: '';
+        position: absolute;
+        bottom: -20px;
+        left: 40%;
+        width: 80px;
+        height: 80px;
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 50%;
+    }
+
+    .db-date-inner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+        z-index: 1;
+    }
+
+    .db-date-left {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .db-date-label {
         font-family: 'Inter', sans-serif;
-        font-feature-settings: "tnum";
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 2.5px;
+        color: rgba(255, 255, 255, 0.5);
+        text-transform: uppercase;
+    }
+
+    .db-date-main {
+        font-family: 'Inter', 'Noto Sans JP', sans-serif;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: -0.3px;
+    }
+
+    .db-date-day-badge {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #fff;
+        font-family: 'Noto Sans JP', sans-serif;
+        font-size: 0.95rem;
+        font-weight: 800;
+        padding: 6px 16px;
+        border-radius: 24px;
+        letter-spacing: 1px;
+    }
+
+    /* --- SECTIONS --- */
+    .db-section-title {
+        font-family: 'Noto Sans JP', sans-serif;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--db-text-sub);
+        margin-bottom: 8px;
+        padding-left: 2px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        letter-spacing: 0.3px;
+    }
+
+    .db-section-title i {
+        font-size: 0.85rem;
+        color: var(--db-accent);
+    }
+
+    .db-section-toggle {
+        cursor: pointer;
+        user-select: none;
+        transition: opacity 0.2s;
+    }
+
+    .db-section-toggle:active {
+        opacity: 0.6;
+    }
+
+    .db-chevron {
+        margin-left: auto;
+        font-size: 0.75rem;
+        transition: transform 0.3s ease;
+        color: var(--db-text-sub);
+    }
+
+    .db-chevron.open {
+        transform: rotate(180deg);
+    }
+
+    /* --- INVENTORY CARD --- */
+    .db-inventory-card {
+        background: var(--db-surface);
+        border-radius: var(--db-radius);
+        box-shadow: var(--db-shadow);
+        overflow: hidden;
+    }
+
+    .db-inv-total {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 18px 20px 14px;
+        border-bottom: 1px solid var(--db-border);
+    }
+
+    .db-inv-total-num {
+        font-family: 'Inter', sans-serif;
+        font-size: 2.4rem;
+        font-weight: 900;
+        color: var(--db-text);
+        line-height: 1;
+        letter-spacing: -2px;
+    }
+
+    .db-inv-total-unit {
+        font-family: 'Noto Sans JP', sans-serif;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--db-text-sub);
+        margin-top: 6px;
+    }
+
+    .db-inv-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0;
+    }
+
+    .db-inv-cell {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 14px 6px;
+        border-right: 1px solid var(--db-border);
+        border-bottom: 1px solid var(--db-border);
+        transition: background 0.15s;
+    }
+
+    .db-inv-cell:nth-child(3n) {
+        border-right: none;
+    }
+
+    .db-inv-cell:nth-last-child(-n+3) {
+        border-bottom: none;
+    }
+
+    .db-inv-cell:nth-last-child(-n+2):nth-child(3n+2) {
+        border-bottom: none;
+    }
+
+    .db-inv-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-bottom: 6px;
+    }
+
+    .db-inv-count {
+        font-family: 'Inter', sans-serif;
+        font-size: 1.3rem;
+        font-weight: 800;
+        color: var(--db-text);
+        line-height: 1;
+        letter-spacing: -1px;
+    }
+
+    .db-inv-label {
+        font-family: 'Noto Sans JP', sans-serif;
+        font-size: 0.65rem;
+        font-weight: 600;
+        color: var(--db-text-sub);
+        margin-top: 4px;
+        letter-spacing: 0.2px;
+    }
+
+    /* --- ACTIVITY CARDS --- */
+    .db-activity-empty {
+        background: var(--db-surface);
+        border-radius: var(--db-radius);
+        box-shadow: var(--db-shadow);
+        text-align: center;
+        padding: 32px 20px;
+        color: var(--db-text-sub);
+        font-size: 0.85rem;
+    }
+
+    .db-activity-empty i {
+        font-size: 1.8rem;
+        display: block;
+        margin-bottom: 8px;
+        opacity: 0.3;
+    }
+
+    .db-act-card {
+        background: var(--db-surface);
+        border-radius: var(--db-radius);
+        box-shadow: var(--db-shadow);
+        overflow: hidden;
+        margin-bottom: 10px;
+    }
+
+    .db-act-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--db-border);
+    }
+
+    .db-act-header-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .db-act-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        color: #fff;
+        flex-shrink: 0;
+    }
+
+    .db-act-title {
+        font-family: 'Noto Sans JP', sans-serif;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--db-text);
+    }
+
+    .db-act-badge {
+        font-family: 'Inter', sans-serif;
+        font-size: 1.1rem;
+        font-weight: 800;
         letter-spacing: -0.5px;
     }
 
-    .text-shadow-sm {
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    .db-act-badge-unit {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--db-text-sub);
+        margin-left: 2px;
     }
 
-    .no-scrollbar::-webkit-scrollbar {
+    .db-act-body {
+        padding: 0;
+    }
+
+    .db-act-row {
+        display: flex;
+        align-items: center;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--db-border);
+        gap: 10px;
+    }
+
+    .db-act-row:last-child {
+        border-bottom: none;
+    }
+
+    .db-act-staff {
+        font-family: 'Noto Sans JP', sans-serif;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--db-text);
+        min-width: 56px;
+        flex-shrink: 0;
+    }
+
+    .db-act-detail {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .db-act-loc-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 2px 0;
+    }
+
+    .db-act-loc-name {
+        font-size: 0.75rem;
+        color: var(--db-text-sub);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 140px;
+    }
+
+    .db-act-loc-count {
+        font-family: 'Inter', sans-serif;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--db-text);
+    }
+
+    .db-act-total {
+        font-family: 'Inter', sans-serif;
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--db-text);
+        min-width: 40px;
+        text-align: right;
+        flex-shrink: 0;
+    }
+
+    .db-act-total-unit {
+        font-size: 0.65rem;
+        font-weight: 600;
+        color: var(--db-text-sub);
+    }
+
+    /* --- DETAIL LOG PANEL --- */
+    .db-detail-panel {
+        background: var(--db-surface);
+        border-radius: var(--db-radius);
+        box-shadow: var(--db-shadow);
+        overflow: hidden;
+    }
+
+    .db-edit-bar {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--db-border);
+        gap: 8px;
+    }
+
+    .db-edit-btn {
+        font-family: 'Noto Sans JP', sans-serif;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--db-accent);
+        background: var(--db-accent-light);
+        border: none;
+        border-radius: 20px;
+        padding: 5px 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .db-edit-btn:active {
+        transform: scale(0.95);
+    }
+
+    .db-icon-btn {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(0,0,0,0.05);
+        color: var(--db-text-sub);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+
+    .db-filter-bar {
+        display: flex;
+        gap: 6px;
+        padding: 10px 12px;
+        overflow-x: auto;
+        border-bottom: 1px solid var(--db-border);
+    }
+
+    .db-filter-bar::-webkit-scrollbar {
         display: none;
     }
 
-    .custom-scroll::-webkit-scrollbar {
-        width: 4px;
+    .db-chip {
+        font-family: 'Noto Sans JP', sans-serif;
+        padding: 5px 14px;
+        border-radius: 20px;
+        border: 1px solid var(--db-border);
+        background: var(--db-surface-alt);
+        color: var(--db-text-sub);
+        font-size: 0.72rem;
+        font-weight: 700;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: all 0.2s;
     }
 
-    .custom-scroll::-webkit-scrollbar-thumb {
-        background-color: rgba(128, 128, 128, 0.3);
+    .db-chip.active {
+        background: var(--db-accent);
+        color: #fff;
+        border-color: var(--db-accent);
+        box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+    }
+
+    .db-chip:active {
+        transform: scale(0.95);
+    }
+
+    .db-log-list {
+        max-height: 50vh;
+        overflow-y: auto;
+    }
+
+    .db-log-list::-webkit-scrollbar {
+        width: 3px;
+    }
+
+    .db-log-list::-webkit-scrollbar-thumb {
+        background-color: rgba(128, 128, 128, 0.2);
         border-radius: 2px;
     }
 
-    /* テーマカラー定義 */
-    .theme-default {
-        --app-bg: #f3f4f6;
-        --log-bg: #fff;
-        --text-main: #333;
-        --text-card: #fff;
-        --accent: #3b82f6;
-        --border: rgba(0, 0, 0, 0.1);
-        --glass-bg: rgba(0, 0, 0, 0.05);
-        --glass-active: rgba(0, 0, 0, 0.1);
-        --tab-inactive-bg: #f8f9fa;
-    }
-
-    .text-main {
-        color: var(--text-main);
-    }
-
-    .accent-color {
-        color: var(--accent);
-    }
-
-    .border-theme {
-        border-color: var(--border) !important;
-    }
-
-    /* ログパネル・リスト */
-    .log-panel {
-        background: var(--log-bg);
-        border: 1px solid var(--border);
-        transition: background 0.5s ease;
-    }
-
-    .glass-btn {
-        background: var(--glass-bg);
-        color: var(--text-main);
-        border: 1px solid var(--border);
-        transition: all 0.2s;
-    }
-
-    .glass-btn:hover {
-        background: var(--glass-active);
-    }
-
-    .nav-pills .nav-link {
-        color: var(--text-main);
-        opacity: 0.6;
-        background: transparent;
-        border-radius: 6px;
-        transition: all 0.2s;
-    }
-
-    .nav-pills .nav-link:hover {
-        background-color: var(--glass-bg);
-    }
-
-    .nav-pills .nav-link.active {
-        background-color: var(--glass-active);
-        color: var(--accent);
-        font-weight: 800;
-        opacity: 1;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        border: 1px solid var(--border);
-    }
-
-    .chip-filter {
-        padding: 6px 14px;
-        border-radius: 20px;
-        border: 1px solid var(--border);
-        background: var(--tab-inactive-bg);
-        color: var(--text-main);
-        font-size: 0.8rem;
-        font-weight: 600;
-        white-space: nowrap;
-        transition: all 0.2s;
-        opacity: 0.8;
-    }
-
-    .chip-filter:hover {
-        opacity: 1;
-        transform: translateY(-1px);
-    }
-
-    .chip-filter.active {
-        background: var(--accent);
-        color: #fff;
-        border-color: var(--accent);
-        opacity: 1;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    }
-
-    .list-group-item {
-        background-color: transparent !important;
-        border: none;
-        border-bottom: 1px solid var(--border);
-        padding: 12px 16px;
+    .db-log-item {
         display: flex;
         align-items: center;
-        color: var(--text-main);
+        padding: 11px 14px;
+        border-bottom: 1px solid var(--db-border);
         transition: background 0.1s;
+        cursor: pointer;
     }
 
-    .list-group-item:last-child {
+    .db-log-item:last-child {
         border-bottom: none;
+    }
+
+    .db-log-time {
+        font-family: 'Inter', sans-serif;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--db-text-sub);
+        min-width: 42px;
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    .db-log-body {
+        flex: 1;
+        min-width: 0;
+        margin-left: 10px;
+    }
+
+    .db-log-top {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 2px;
+    }
+
+    .db-log-action-badge {
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 4px;
+        color: #fff;
+        letter-spacing: 0.3px;
+    }
+
+    .db-log-tank {
+        font-family: 'Inter', monospace;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--db-text);
+        background: var(--db-surface-alt);
+        padding: 1px 6px;
+        border-radius: 4px;
+        border: 1px solid var(--db-border);
+    }
+
+    .db-log-bottom {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .db-log-loc {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--db-text-sub);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 130px;
+    }
+
+    .db-log-staff {
+        font-size: 0.68rem;
+        font-weight: 600;
+        color: var(--db-accent);
+        background: var(--db-accent-light);
+        padding: 1px 6px;
+        border-radius: 10px;
+        white-space: nowrap;
     }
 
     .check-wrapper {
@@ -246,249 +655,287 @@
     }
 
     .mode-edit .check-wrapper {
-        width: 36px;
+        width: 32px;
         margin-right: 4px;
     }
 
     .custom-check {
-        width: 20px;
-        height: 20px;
+        width: 18px;
+        height: 18px;
         cursor: pointer;
-        accent-color: #dc3545;
+        accent-color: #ef4444;
     }
 
-    .tank-badge-mini {
-        font-family: monospace;
-        font-weight: 700;
+    .db-log-empty {
+        text-align: center;
+        padding: 28px 20px;
+        color: var(--db-text-sub);
         font-size: 0.8rem;
-        background: var(--tab-inactive-bg);
-        padding: 2px 6px;
-        border-radius: 4px;
-        color: var(--text-main);
-        border: 1px solid var(--border);
     }
 
     .fade-in-right {
         animation: fadeInRight 0.3s ease;
     }
+
+    @keyframes fadeInRight {
+        from { opacity: 0; transform: translateX(10px); }
+        to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* color helpers */
+    .bg-db-lend { background: var(--db-lend); }
+    .bg-db-return { background: var(--db-return); }
+    .bg-db-fill { background: var(--db-fill); }
+    .bg-db-damage { background: var(--db-damage); }
+    .bg-db-inhouse { background: var(--db-inhouse); }
+    .text-db-lend { color: var(--db-lend); }
+    .text-db-return { color: var(--db-return); }
+    .text-db-fill { color: var(--db-fill); }
+    .text-db-damage { color: var(--db-damage); }
 </style>
 
 <script>
-    var dbCache = { today: [], weekly: [], all: [] };
+    var dbCache = { todayLogs: [], dashData: null };
     var dbCurrentFilter = 'ALL';
-    var dbCurrentTabId = 'summary';
-    var dbSelectedDate = 'ALL';
     var dbIsEditMode = false;
+    var dbDetailOpen = false;
 
     function loadDashboardData(passcode) {
-        var pass = passcode || ((typeof window.GLOBAL_PASSCODE !== 'undefined') ? window.GLOBAL_PASSCODE : "");
-
-        // マイページのデータを借用してダッシュボードに描画する
         google.script.run
             .withSuccessHandler(renderDashboard)
-            .withFailureHandler(e => alert("読み込みエラー: " + e.message))
-            .getMyStats(pass);
+            .withFailureHandler(function (e) { console.error("Dashboard load error:", e); })
+            .getDashboardData();
     }
 
     function renderDashboard(data) {
         if (!data) return;
+        dbCache.dashData = data;
+        dbCache.todayLogs = data.todayLogs || [];
 
-        dbCache.today = data.todayLog || [];
-        dbCache.weekly = data.weeklyLog || [];
+        // Date header
+        document.getElementById('db-date-text').textContent = data.todayDate || '';
+        document.getElementById('db-day-badge').textContent = (data.todayDayOfWeek || '') + '曜日';
 
-        renderDashboardDateBar();
-        switchDashboardTab(dbCurrentTabId);
+        renderInventory(data.statusSummary, data.statusDetails);
+        renderActivity(data);
+
+        // Show edit controls if admin
+        try {
+            var role = (typeof window.GLOBAL_USER_INFO !== 'undefined' && window.GLOBAL_USER_INFO)
+                ? window.GLOBAL_USER_INFO.role : '';
+            if (role.indexOf('管理者') !== -1) {
+                var ec = document.getElementById('dashboard-edit-controls');
+                if (ec) ec.style.display = 'flex';
+            }
+        } catch (e) {}
     }
 
-    function switchDashboardTab(tabId) {
-        dbCurrentTabId = tabId;
+    /* ---- INVENTORY ---- */
+    function renderInventory(summary, details) {
+        var c = document.getElementById('db-inventory-card');
+        if (!summary) { c.innerHTML = '<div class="db-log-empty">データなし</div>'; return; }
 
-        if (dbIsEditMode) toggleDashboardEditMode();
+        var cells = [
+            { label: '充填済み', count: summary.filled, color: '#10b981' },
+            { label: '空', count: summary.empty, color: '#6b7280' },
+            { label: '貸出中', count: summary.onLoan, color: '#3b82f6' },
+            { label: '自社利用中', count: summary.inHouse, color: '#8b5cf6' },
+            { label: '破損・故障', count: summary.damaged, color: '#ef4444' },
+            { label: '耐圧検査', count: summary.inspection, color: '#06b6d4' }
+        ];
 
-        document.querySelectorAll('#dashboard-log-panel-container .nav-link').forEach(btn => btn.classList.remove('active'));
-        var activeBtn = document.getElementById('nav-btn-db-' + tabId);
-        if (activeBtn) activeBtn.classList.add('active');
+        var html = '<div class="db-inv-total">'
+            + '<span class="db-inv-total-num">' + summary.total + '</span>'
+            + '<span class="db-inv-total-unit">本 / 総数</span>'
+            + '</div>';
 
-        document.querySelectorAll('#dashboard-log-panel-container .tab-pane').forEach(p => p.classList.remove('active', 'show'));
-        var activePane = document.getElementById('pane-db-' + tabId);
-        if (activePane) activePane.classList.add('active', 'show');
+        html += '<div class="db-inv-grid">';
+        cells.forEach(function (item) {
+            html += '<div class="db-inv-cell">'
+                + '<div class="db-inv-dot" style="background:' + item.color + ';"></div>'
+                + '<div class="db-inv-count">' + item.count + '</div>'
+                + '<div class="db-inv-label">' + item.label + '</div>'
+                + '</div>';
+        });
+        html += '</div>';
 
-        var controls = document.getElementById('dashboard-edit-controls');
-        if (tabId === 'summary') {
-            controls.style.display = 'none';
-        } else {
-            controls.style.display = 'flex';
+        c.innerHTML = html;
+    }
+
+    /* ---- ACTIVITY ---- */
+    function renderActivity(data) {
+        var c = document.getElementById('db-activity-container');
+
+        var totalLend = 0, totalReturn = 0, totalFill = 0;
+        Object.keys(data.lendSummary || {}).forEach(function (k) { totalLend += data.lendSummary[k].total; });
+        Object.keys(data.returnSummary || {}).forEach(function (k) { totalReturn += data.returnSummary[k].total; });
+        Object.keys(data.fillSummary || {}).forEach(function (k) { totalFill += data.fillSummary[k]; });
+
+        if (totalLend === 0 && totalReturn === 0 && totalFill === 0) {
+            c.innerHTML = '<div class="db-activity-empty"><i class="bi bi-moon-stars"></i>本日のアクティビティはまだありません</div>';
+            return;
         }
 
-        refreshDashboardLists();
+        var html = '';
+
+        // Lend card
+        if (totalLend > 0) {
+            html += buildActivityCard('貸出', 'bi-box-arrow-up', 'var(--db-lend)', totalLend,
+                data.lendSummary, 'locations');
+        }
+
+        // Return card
+        if (totalReturn > 0) {
+            html += buildActivityCard('返却', 'bi-box-arrow-in-down', 'var(--db-return)', totalReturn,
+                data.returnSummary, 'sources');
+        }
+
+        // Fill card
+        if (totalFill > 0) {
+            html += '<div class="db-act-card">'
+                + '<div class="db-act-header">'
+                + '<div class="db-act-header-left">'
+                + '<div class="db-act-icon" style="background:var(--db-fill);"><i class="bi bi-fuel-pump-fill"></i></div>'
+                + '<div class="db-act-title">充填</div>'
+                + '</div>'
+                + '<div class="db-act-badge" style="color:var(--db-fill);">' + totalFill + '<span class="db-act-badge-unit">本</span></div>'
+                + '</div>'
+                + '<div class="db-act-body">';
+            Object.keys(data.fillSummary).forEach(function (staff) {
+                html += '<div class="db-act-row">'
+                    + '<div class="db-act-staff">' + staff + '</div>'
+                    + '<div class="db-act-detail"></div>'
+                    + '<div class="db-act-total">' + data.fillSummary[staff] + '<span class="db-act-total-unit"> 本</span></div>'
+                    + '</div>';
+            });
+            html += '</div></div>';
+        }
+
+        c.innerHTML = html;
     }
 
-    function setDashboardOpFilter(mode, btn) {
-        dbCurrentFilter = mode;
-        document.querySelectorAll('#pane-db-today .chip-filter[data-filter]').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll(`#pane-db-today .chip-filter[data-filter="${mode}"]`).forEach(b => b.classList.add('active'));
-        refreshDashboardLists();
-    }
+    function buildActivityCard(title, icon, color, total, summaryData, detailKey) {
+        var html = '<div class="db-act-card">'
+            + '<div class="db-act-header">'
+            + '<div class="db-act-header-left">'
+            + '<div class="db-act-icon" style="background:' + color + ';"><i class="bi ' + icon + '"></i></div>'
+            + '<div class="db-act-title">' + title + '</div>'
+            + '</div>'
+            + '<div class="db-act-badge" style="color:' + color + ';">' + total + '<span class="db-act-badge-unit">本</span></div>'
+            + '</div>'
+            + '<div class="db-act-body">';
 
-    function renderDashboardDateBar() {
-        var bar = document.getElementById('db-weekly-date-bar');
-        bar.innerHTML = '<button class="chip-filter active" data-date="ALL" onclick="setDashboardDateFilter(\'ALL\')">すべて</button>';
-        var dates = [...new Set(dbCache.weekly.map(item => item.dateDisplay))];
-        dates.forEach(d => {
-            bar.insertAdjacentHTML('beforeend', `<button class="chip-filter" data-date="${d}" onclick="setDashboardDateFilter('${d}')">${d}</button>`);
+        Object.keys(summaryData).forEach(function (staff) {
+            var entry = summaryData[staff];
+            var details = entry[detailKey] || {};
+            var keys = Object.keys(details);
+
+            html += '<div class="db-act-row">'
+                + '<div class="db-act-staff">' + staff + '</div>'
+                + '<div class="db-act-detail">';
+
+            keys.forEach(function (loc) {
+                html += '<div class="db-act-loc-row">'
+                    + '<span class="db-act-loc-name">' + loc + '</span>'
+                    + '<span class="db-act-loc-count">' + details[loc] + '本</span>'
+                    + '</div>';
+            });
+
+            html += '</div>'
+                + '<div class="db-act-total">' + entry.total + '<span class="db-act-total-unit"> 本</span></div>'
+                + '</div>';
         });
+
+        html += '</div></div>';
+        return html;
     }
 
-    function setDashboardDateFilter(date) {
-        dbSelectedDate = date;
-        document.querySelectorAll('#db-weekly-date-bar .chip-filter').forEach(b => b.classList.remove('active'));
-        var btn = document.querySelector(`#db-weekly-date-bar .chip-filter[data-date="${date}"]`);
-        if (btn) btn.classList.add('active');
+    /* ---- DETAIL LOG ---- */
+    function toggleDetailLog() {
+        dbDetailOpen = !dbDetailOpen;
+        var panel = document.getElementById('db-detail-panel');
+        var chevron = document.getElementById('db-detail-chevron');
+
+        if (dbDetailOpen) {
+            panel.style.display = 'block';
+            chevron.classList.add('open');
+            refreshDashboardLists();
+        } else {
+            panel.style.display = 'none';
+            chevron.classList.remove('open');
+            if (dbIsEditMode) toggleDashboardEditMode();
+        }
+    }
+
+    function setDashboardOpFilter(mode) {
+        dbCurrentFilter = mode;
+        document.querySelectorAll('.db-filter-bar .db-chip').forEach(function (b) { b.classList.remove('active'); });
+        document.querySelectorAll('.db-filter-bar .db-chip[data-filter="' + mode + '"]').forEach(function (b) { b.classList.add('active'); });
         refreshDashboardLists();
     }
 
     function refreshDashboardLists() {
-        if (dbCurrentTabId === 'summary') {
-            renderDashboardSummary();
-        } else if (dbCurrentTabId === 'today') {
-            renderDashboardLogList('list-db-today', filterDashboardLogs(dbCache.today));
-        } else if (dbCurrentTabId === 'weekly') {
-            var logs = filterDashboardLogs(dbCache.weekly);
-            if (dbSelectedDate !== 'ALL') logs = logs.filter(l => l.dateDisplay === dbSelectedDate);
-            renderDashboardLogList('list-db-weekly', logs);
+        var logs = dbCache.todayLogs || [];
+        if (dbCurrentFilter !== 'ALL') {
+            logs = logs.filter(function (l) { return l.action.indexOf(dbCurrentFilter) !== -1; });
         }
-    }
-
-    function filterDashboardLogs(logs) {
-        if (dbCurrentFilter === 'ALL') return logs;
-        return logs.filter(l => l.action.indexOf(dbCurrentFilter) !== -1);
-    }
-
-    function renderDashboardSummary() {
-        var container = document.getElementById('db-summary-container');
-        container.innerHTML = '';
-        var logs = dbCache.today;
-
-        if (logs.length === 0) {
-            container.innerHTML = '<div class="text-center py-5 opacity-75 small text-main">本日のデータがありません</div>';
-            return;
-        }
-
-        var data = {
-            '貸出': { count: 0, details: {} },
-            '返却': { count: 0, details: {} },
-            '充填': { count: 0, details: {} },
-            '破損': { count: 0, details: {} },
-            '修理': { count: 0, details: {} }
-        };
-
-        logs.forEach(l => {
-            var action = l.action;
-            var type = null;
-            if (action.includes('貸出')) type = '貸出';
-            else if (action.includes('返却')) type = '返却';
-            else if (action.includes('充填')) type = '充填';
-            else if (action.includes('破損')) type = '破損';
-            else if (action.includes('修理')) type = '修理';
-
-            if (type) {
-                data[type].count++;
-                var loc = l.loc || '場所不明';
-                if (type === '返却' && l.note) {
-                    loc = l.note.replace(/[()]/g, '').replace('より返却', '').trim();
-                }
-                if (type === '貸出' || type === '返却') {
-                    data[type].details[loc] = (data[type].details[loc] || 0) + 1;
-                }
-            }
-        });
-
-        function createSection(title, icon, colorClass, info) {
-            if (info.count === 0) return '';
-            var html = `<div class="mb-2 border rounded-3 overflow-hidden" style="background:var(--tab-inactive-bg); border-color:var(--border)!important;">
-       <div class="p-2 px-3 d-flex justify-content-between align-items-center bg-white border-bottom border-theme">
-          <div class="fw-bold ${colorClass}"><i class="bi ${icon} me-2"></i>${title}</div>
-          <div class="fw-900 font-num">${info.count} <span class="small fw-normal opacity-75">本</span></div>
-       </div>
-       <div class="bg-white">`;
-            var details = info.details;
-            var keys = Object.keys(details);
-            if (keys.length > 0) {
-                keys.forEach(k => {
-                    html += `<div class="d-flex justify-content-between px-3 py-2 border-bottom border-theme last-no-border small">
-            <span class="text-main opacity-75">${k}</span>
-            <span class="font-num fw-bold">${details[k]}</span>
-          </div>`;
-                });
-            } else {
-                html += `<div class="px-3 py-2 small text-muted text-end">合計 ${info.count} 本</div>`;
-            }
-            html += `</div></div>`;
-            return html;
-        }
-
-        var html = '';
-        html += createSection('貸出', 'bi-box-arrow-up', 'text-primary', data['貸出']);
-        html += createSection('返却', 'bi-box-arrow-in-down', 'text-success', data['返却']);
-        html += createSection('充填', 'bi-fuel-pump-fill', 'text-warning', data['充填']);
-        html += createSection('破損', 'bi-exclamation-triangle-fill', 'text-danger', data['破損']);
-        html += createSection('修理', 'bi-tools', 'text-info', data['修理']);
-        container.innerHTML = html;
+        renderDashboardLogList('list-db-today', logs);
     }
 
     function renderDashboardLogList(elementId, logs) {
         var container = document.getElementById(elementId);
-        container.innerHTML = logs.length ? '' : '<div class="text-center py-5 opacity-75 small text-main">データなし</div>';
+        if (!logs.length) {
+            container.innerHTML = '<div class="db-log-empty">データなし</div>';
+            return;
+        }
 
-        logs.forEach(item => {
-            var color = 'secondary';
-            if (item.action.indexOf('貸出') !== -1) color = 'primary';
-            else if (item.action.indexOf('返却') !== -1) color = 'success';
-            else if (item.action.indexOf('充填') !== -1) color = 'warning';
-            var locText = item.loc;
+        var html = '';
+        logs.forEach(function (item) {
+            var colorClass = 'background:#6b7280;';
+            if (item.action.indexOf('貸出') !== -1) colorClass = 'background:var(--db-lend);';
+            else if (item.action.indexOf('返却') !== -1) colorClass = 'background:var(--db-return);';
+            else if (item.action.indexOf('充填') !== -1) colorClass = 'background:var(--db-fill);';
+            else if (item.action.indexOf('破損') !== -1) colorClass = 'background:var(--db-damage);';
+
+            var locText = item.loc || '';
             if (item.action.indexOf('返却') !== -1 && item.note) locText = item.note;
 
-            container.insertAdjacentHTML('beforeend', `
-       <label class="list-group-item" style="cursor:pointer;">
-         <div class="check-wrapper">
-           <input type="checkbox" class="custom-check dashboard-delete-check" value="${item.uuid}">
-         </div>
-         <div class="d-flex align-items-center w-100">
-           <div class="me-3 text-center opacity-75" style="min-width:40px;">
-             <div class="font-num fw-bold text-main" style="font-size:0.85rem; line-height:1;">${item.time}</div>
-           </div>
-           <div class="flex-grow-1">
-             <div class="d-flex align-items-center mb-1">
-               <span class="badge bg-${color} me-2" style="font-size:0.7rem;">${item.action}</span>
-               <span class="tank-badge-mini font-num">${item.tankId}</span>
-             </div>
-             <div class="small fw-bold text-main text-truncate" style="max-width:180px;">
-               ${locText || '-'}
-             </div>
-           </div>
-         </div>
-       </label>
-     `);
+            html += '<label class="db-log-item">'
+                + '<div class="check-wrapper">'
+                + '<input type="checkbox" class="custom-check dashboard-delete-check" value="' + item.uuid + '">'
+                + '</div>'
+                + '<div class="db-log-time">' + item.time + '</div>'
+                + '<div class="db-log-body">'
+                + '<div class="db-log-top">'
+                + '<span class="db-log-action-badge" style="' + colorClass + '">' + item.action + '</span>'
+                + '<span class="db-log-tank">' + item.tankId + '</span>'
+                + '</div>'
+                + '<div class="db-log-bottom">'
+                + '<span class="db-log-loc">' + (locText || '-') + '</span>'
+                + '<span class="db-log-staff">' + (item.staff || '') + '</span>'
+                + '</div>'
+                + '</div>'
+                + '</label>';
         });
+        container.innerHTML = html;
     }
 
+    /* ---- EDIT MODE ---- */
     function toggleDashboardEditMode() {
         dbIsEditMode = !dbIsEditMode;
         var actions = document.getElementById('dashboard-action-buttons');
         var btn = document.getElementById('btn-dashboard-edit-mode');
-        var panel = document.getElementById('dashboard-log-panel-container');
+        var panel = document.getElementById('db-detail-panel');
 
         if (dbIsEditMode) {
             actions.style.display = 'flex';
-            btn.classList.add('glass-active');
-            btn.innerText = '完了';
+            btn.style.display = 'none';
             panel.classList.add('mode-edit');
         } else {
             actions.style.display = 'none';
-            btn.classList.remove('glass-active');
-            btn.innerText = '編集';
+            btn.style.display = 'inline-block';
             panel.classList.remove('mode-edit');
-            document.querySelectorAll('.dashboard-delete-check').forEach(c => c.checked = false);
+            document.querySelectorAll('.dashboard-delete-check').forEach(function (c) { c.checked = false; });
         }
     }
 
@@ -497,12 +944,12 @@
         if (checks.length === 0) return;
         if (!confirm('選択した ' + checks.length + ' 件の履歴を削除しますか？\n(在庫ステータスは戻りません)')) return;
 
-        var uuids = Array.from(checks).map(c => c.value);
+        var uuids = Array.from(checks).map(function (c) { return c.value; });
         var pass = (typeof window.GLOBAL_PASSCODE !== 'undefined') ? window.GLOBAL_PASSCODE : "";
 
         var btn = document.querySelector('#dashboard-action-buttons button.btn-danger');
         var originalText = btn.innerHTML;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 削除中...';
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> 削除中...';
         btn.disabled = true;
 
         google.script.run
@@ -511,7 +958,7 @@
                 btn.innerHTML = originalText;
                 btn.disabled = false;
                 toggleDashboardEditMode();
-                loadDashboardData(pass);
+                loadDashboardData();
             })
             .withFailureHandler(function (e) {
                 alert("削除エラー: " + e.message);
