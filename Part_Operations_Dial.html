@@ -1211,17 +1211,25 @@
         if (val.length === 0) {
           label.innerText = activePrefix ? activePrefix + '-OK' : 'OK入力';
         } else if (val.length === 1) {
-          label.innerText = val + ' _';
+          label.innerText = (activePrefix ? activePrefix + '-' : '') + val + '_';
         } else {
-          label.innerText = val;
+          label.innerText = (activePrefix ? activePrefix + '-' : '') + val;
         }
       }
 
       if (val.length >= 2) {
+        var confirmedId = (activePrefix ? activePrefix + '-' : '') + val;
         var added = addOpQueue(activePrefix + '-' + val);
         el.value = '';
-        // ラベルをリセット
-        if (label) label.innerText = activePrefix ? activePrefix + '-OK' : 'OK入力';
+        // 確定IDを一瞬表示してからリセット
+        if (label) {
+          label.innerText = confirmedId;
+          var _prefix = activePrefix;
+          setTimeout(function () {
+            var l = document.getElementById('dial-ok-label');
+            if (l) l.innerText = _prefix ? _prefix + '-OK' : 'OK入力';
+          }, 500);
+        }
         if (added) triggerSuccessFeedback(activePrefix);
       }
     }
