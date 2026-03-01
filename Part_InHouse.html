@@ -83,7 +83,7 @@
 
     .submit-float {
       position: fixed;
-      bottom: calc(15px + env(safe-area-inset-bottom));
+      bottom: calc(75px + env(safe-area-inset-bottom));
       left: 5%;
       width: 90%;
       padding: 15px;
@@ -162,33 +162,29 @@
   }
 
   function sEnd(e, idx) {
-    var endX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
-    var diffX = swipeStartX !== null ? (endX - swipeStartX) : 0;
-
-    if (e.type === 'touchend' && Math.abs(diffX) < 10) {
-      swipeStartX = null;
-      return;
+    if (e.type === 'touchend' && swipeStartX !== null) {
+      if (Math.abs(e.changedTouches[0].clientX - swipeStartX) < 10) {
+        swipeStartX = null;
+        return;
+      }
     }
 
     var el = document.getElementById(idx === 'global' ? 'inhouse-swipe-slider' : 'card-slider-' + idx);
     var currentV = el ? parseInt(el.value, 10) : 1;
-    var newV = currentV;
 
-    if (Math.abs(diffX) >= 30) {
-      newV = diffX > 0 ? 2 : 0;
-    } else if (e.type === 'click') {
-      var rect = e.currentTarget.getBoundingClientRect();
-      var clickX = endX - rect.left;
-      var w = rect.width;
-      if (clickX < w * 0.33) newV = 0;
-      else if (clickX > w * 0.66) newV = 2;
-      else newV = 1;
-    }
+    var endX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+    var rect = e.currentTarget.getBoundingClientRect();
+    var touchX = endX - rect.left;
+    var w = rect.width;
+
+    var newV = 1;
+    if (touchX < w * 0.33) newV = 0;
+    else if (touchX > w * 0.66) newV = 2;
 
     if (newV !== currentV && el) {
       el.value = newV;
       if (idx === 'global') handleInHouseSwipe(newV);
-      else ihCardSwipe(idx, newV);
+      else ihCardSwipe(idx, newV, false);
     }
     swipeStartX = null;
   }

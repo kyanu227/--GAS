@@ -221,14 +221,14 @@
         <button class="btn btn-sm btn-outline-secondary py-0" style="font-size:0.8rem;"
           onclick="clearOpQueue()">全消去</button>
       </div>
-      <div id="op-queue-list" class="d-grid gap-2"></div>
+      <div id="op-queue-list" class="d-grid gap-2 mb-3"></div>
+
+      <button id="op-submit-btn" class="btn w-100 fw-bold py-3 shadow-sm mb-4"
+        style="display:none; border-radius: 12px; color: #fff;" onclick="submitOp()">
+        <i class="bi bi-send-fill"></i> <span id="op-submit-label">送信</span>
+      </button>
     </div>
   </div>
-
-  <button id="op-submit-btn" class="submit-float" style="display:none;" onclick="submitOp()">
-    <i class="bi bi-send-fill"></i> <span id="op-submit-label">送信</span>
-  </button>
-
 
   <script>
     var opQueue = [];
