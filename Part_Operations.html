@@ -571,6 +571,7 @@
       google.script.run.withSuccessHandler(res => {
         btn.disabled = false; document.getElementById('op-submit-label').innerText = orgText;
         clearOpQueue();
+        if (res.successIds && res.successIds.length > 0) loadAllMasterData();
         if (isSelfUseMode) toggleSelfUse();
         if (opMode === '貸出') document.getElementById('op-dest-select').value = "";
         if (document.getElementById('op-check-unused')) document.getElementById('op-check-unused').checked = false;
