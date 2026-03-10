@@ -192,66 +192,63 @@
           <select id="op-dest-select" class="form-select form-select-sm fw-bold flex-grow-1">
             <option value="" disabled selected>読み込み中...</option>
           </select>
-          <button id="btn-self-use" class="btn btn-sm btn-outline-secondary" onclick="toggleSelfUse()"
+          <button id="btn-self-use" class="btn btn-sm btn-outline-info" onclick="goToInHouse()"
             style="white-space: nowrap;">
             <i class="bi bi-building"></i> 自社
           </button>
         </div>
-        <div id="self-use-badge" class="mt-2 text-end" style="display:none;">
-          <span class="badge bg-info text-dark"><i class="bi bi-check-circle-fill"></i> 自社利用として記録</span>
-        </div>
       </div>
-      <div id="op-settings-return" class="op-setting-panel" style="display:none;">
-        <div class="selection-panel">
-          <div class="check-unused flex-fill">
-            <input type="checkbox" id="op-check-unused" class="check-card-input" onchange="toggleReturnCheck('unused')">
-            <label for="op-check-unused" class="check-card-label">
-              <i class="bi bi-fuel-pump-fill fs-4 mb-0"></i>
-              <span class="fw-bold small">未使用</span>
-            </label>
-          </div>
-          <div class="check-defect flex-fill">
-            <input type="checkbox" id="op-check-defect" class="check-card-input" onchange="toggleReturnCheck('defect')">
-            <label for="op-check-defect" class="check-card-label">
-              <i class="bi bi-exclamation-triangle-fill fs-4 mb-0"></i>
-              <span class="fw-bold small">未充填</span>
-            </label>
-          </div>
+    </div>
+    <div id="op-settings-return" class="op-setting-panel" style="display:none;">
+      <div class="selection-panel">
+        <div class="check-unused flex-fill">
+          <input type="checkbox" id="op-check-unused" class="check-card-input" onchange="toggleReturnCheck('unused')">
+          <label for="op-check-unused" class="check-card-label">
+            <i class="bi bi-fuel-pump-fill fs-4 mb-0"></i>
+            <span class="fw-bold small">未使用</span>
+          </label>
         </div>
-      </div>
-      <div id="op-settings-fill" class="op-setting-panel" style="display:none;">
-        <div class="text-muted small mt-2 mb-1">
-          <i class="bi bi-info-circle text-warning"></i> 充填したタンクのIDを入力してください。
+        <div class="check-defect flex-fill">
+          <input type="checkbox" id="op-check-defect" class="check-card-input" onchange="toggleReturnCheck('defect')">
+          <label for="op-check-defect" class="check-card-label">
+            <i class="bi bi-exclamation-triangle-fill fs-4 mb-0"></i>
+            <span class="fw-bold small">未充填</span>
+          </label>
         </div>
       </div>
     </div>
-
-    <!-- Input area (standard mode) -->
-    <div id="op-inputs"></div>
-
-    <div id="op-queue-box" class="mt-2 flex-grow-1 position-relative"
-      style="display:none; overflow-y: auto; padding-bottom: 70px;">
-      <div class="d-flex justify-content-between align-items-end mb-2 position-sticky top-0 bg-light"
-        style="z-index: 10; padding: 5px 0;">
-        <span class="fw-bold text-dark small"><i class="bi bi-list-check"></i> 送信リスト (<span
-            id="op-queue-count">0</span>)</span>
-        <button class="btn btn-sm btn-outline-secondary py-0" style="font-size:0.8rem;"
-          onclick="clearOpQueue()">全消去</button>
+    <div id="op-settings-fill" class="op-setting-panel" style="display:none;">
+      <div class="text-muted small mt-2 mb-1">
+        <i class="bi bi-info-circle text-warning"></i> 充填したタンクのIDを入力してください。
       </div>
-      <div id="op-queue-list" class="d-grid gap-2 mb-3"></div>
-
-      <button id="op-submit-btn" class="btn fw-bold shadow position-absolute start-50 translate-middle-x"
-        style="display:none; bottom: 15px; width: 85%; padding: 10px; border-radius: 20px; color: #fff; z-index: 100;"
-        onclick="submitOp()">
-        <i class="bi bi-send-fill"></i> <span id="op-submit-label">送信</span>
-      </button>
     </div>
+  </div>
+
+  <!-- Input area (standard mode) -->
+  <div id="op-inputs"></div>
+
+  <div id="op-queue-box" class="mt-2 flex-grow-1 position-relative"
+    style="display:none; overflow-y: auto; padding-bottom: 70px;">
+    <div class="d-flex justify-content-between align-items-end mb-2 position-sticky top-0 bg-light"
+      style="z-index: 10; padding: 5px 0;">
+      <span class="fw-bold text-dark small"><i class="bi bi-list-check"></i> 送信リスト (<span
+          id="op-queue-count">0</span>)</span>
+      <button class="btn btn-sm btn-outline-secondary py-0" style="font-size:0.8rem;"
+        onclick="clearOpQueue()">全消去</button>
+    </div>
+    <div id="op-queue-list" class="d-grid gap-2 mb-3"></div>
+
+    <button id="op-submit-btn" class="btn fw-bold shadow position-absolute start-50 translate-middle-x"
+      style="display:none; bottom: 15px; width: 85%; padding: 10px; border-radius: 20px; color: #fff; z-index: 100;"
+      onclick="submitOp()">
+      <i class="bi bi-send-fill"></i> <span id="op-submit-label">送信</span>
+    </button>
+  </div>
   </div>
 
   <script>
     var opQueue = [];
     var opMode = '';
-    var isSelfUseMode = false;
     var opPrefixes = [];
     var coworkerList = []; // 共同作業者リスト [{name, rank}]
     var staffListCache = []; // GASから取得した全スタッフ
@@ -340,8 +337,7 @@
       renderOpQueue();
       var panels = document.getElementsByClassName('op-setting-panel');
       for (var i = 0; i < panels.length; i++) panels[i].style.display = 'none';
-      isSelfUseMode = false;
-      updateSelfUseUI();
+
 
       var color = '#6c757d';
       var btnText = '送信';
@@ -388,20 +384,14 @@
       }).clearMasterCaches();
     }
 
-    function toggleSelfUse() { isSelfUseMode = !isSelfUseMode; updateSelfUseUI(); renderOpQueue(); }
-    function updateSelfUseUI() {
-      var sel = document.getElementById('op-dest-select');
-      var btn = document.getElementById('btn-self-use');
-      var badge = document.getElementById('self-use-badge');
-      if (sel && btn && badge) {
-        if (isSelfUseMode) {
-          sel.disabled = true; btn.className = 'btn btn-info text-dark fw-bold'; badge.style.display = 'block';
-          document.getElementById('op-submit-label').innerText = '利用開始';
-        } else {
-          sel.disabled = false; btn.className = 'btn btn-outline-secondary'; badge.style.display = 'none';
-          document.getElementById('op-submit-label').innerText = '貸出実行';
-        }
+    // 自社ボタン: 入力済みIDを引き継いで自社管理画面へ遷移
+    function goToInHouse() {
+      if (opQueue.length > 0) {
+        window._pendingInHouseIds = opQueue.slice();
+        opQueue = [];
+        renderOpQueue();
       }
+      switchMode('自社管理');
     }
     function toggleReturnCheck(type) {
       var unused = document.getElementById('op-check-unused');
@@ -537,13 +527,12 @@
 
     function submitOp() {
 
-      if (opMode === '貸出' && !isSelfUseMode) {
+      if (opMode === '貸出') {
         var dest = document.getElementById('op-dest-select').value;
         if (!dest || dest === "") { alert("⚠️ 貸出先が選択されていません。"); return; }
       }
       var confirmMsg = opQueue.length + '件 送信しますか？';
-      if (opMode === '貸出' && isSelfUseMode) confirmMsg += '\n（自社利用として記録されます）';
-      else if (opMode === '貸出') confirmMsg += '\n貸出先: ' + document.getElementById('op-dest-select').value;
+      if (opMode === '貸出') confirmMsg += '\n貸出先: ' + document.getElementById('op-dest-select').value;
 
       if (!confirm(confirmMsg)) return;
 
@@ -553,7 +542,6 @@
 
       var finalDest = document.getElementById('op-dest-select') ? document.getElementById('op-dest-select').value : "";
       var finalAction = opMode;
-      if (opMode === '貸出' && isSelfUseMode) { finalDest = "自社利用"; finalAction = "自社利用"; }
 
       var payload = {
         action: finalAction,
@@ -571,7 +559,6 @@
         btn.disabled = false; document.getElementById('op-submit-label').innerText = orgText;
         clearOpQueue();
         if (res.successIds && res.successIds.length > 0) loadAllMasterData();
-        if (isSelfUseMode) toggleSelfUse();
         if (opMode === '貸出') document.getElementById('op-dest-select').value = "";
         if (document.getElementById('op-check-unused')) document.getElementById('op-check-unused').checked = false;
         if (document.getElementById('op-check-defect')) document.getElementById('op-check-defect').checked = false;

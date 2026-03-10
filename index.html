@@ -219,9 +219,9 @@
         </div>
       </div>
       <div class="ms-auto">
-        <button id="header-bulk-return-btn" class="btn btn-sm btn-outline-info py-1 px-3"
-          style="display:none; font-size:0.85rem; font-weight:bold;" onclick="switchMode('自社管理')">
-          <i class="bi bi-building-down"></i> 自社返却
+        <button id="header-bulk-return-btn" class="btn btn-sm btn-outline-success py-1 px-3"
+          style="display:none; font-size:0.85rem; font-weight:bold;" onclick="switchMode('一括返却')">
+          <i class="bi bi-arrow-return-left"></i> 一括返却
         </button>
       </div>
     </div>
@@ -312,6 +312,9 @@
   </div>
   <div id="view-dashboard" style="display:none;">
     <?!= include('Part_Dashboard'); ?>
+  </div>
+  <div id="view-bulk-return" style="display:none;">
+    <?!= include('Part_BulkReturn'); ?>
   </div>
 
   <div class="bottom-nav">
@@ -608,7 +611,7 @@
 
       currentView = mode; // 現在のビューを記憶（スワイプ用）
 
-      ['view-operations', 'view-operations-sub', 'view-maintenance', 'view-mypage', 'view-order', 'view-inhouse', 'view-dashboard'].forEach(id => {
+      ['view-operations', 'view-operations-sub', 'view-maintenance', 'view-mypage', 'view-order', 'view-inhouse', 'view-dashboard', 'view-bulk-return'].forEach(id => {
         var el = document.getElementById(id);
         if (el) el.style.display = 'none';
       });
@@ -647,6 +650,10 @@
       else if (mode === 'ダッシュボード') {
         targetEl = document.getElementById('view-dashboard');
         if (typeof loadDashboardData === 'function') loadDashboardData(GLOBAL_PASSCODE);
+      }
+      else if (mode === '一括返却') {
+        targetEl = document.getElementById('view-bulk-return');
+        if (typeof initBulkReturn === 'function') initBulkReturn();
       }
 
       if (targetEl) {

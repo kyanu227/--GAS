@@ -5,6 +5,8 @@ const OP_RULES = {
   '貸出': { allowedPrev: ['充填済み', '保管中'], nextStatus: '貸出中' },
   '自社利用': { allowedPrev: ['充填済み', '保管中'], nextStatus: '自社利用中' },
   '返却': { allowedPrev: ['貸出中', '未返却', '自社利用中'], nextStatus: '空' },
+  '一括返却': { allowedPrev: ['貸出中', '未返却'], nextStatus: '空' },
+  '自社事後報告': { allowedPrev: ['充填済み', '保管中'], nextStatus: '自社利用中' },
   '充填': { allowedPrev: ['空'], nextStatus: '充填済み' },
   '破損報告': { allowedPrev: [], nextStatus: '破損' },
   '修理済み': { allowedPrev: ['破損', '不良', '故障'], nextStatus: '空' }
@@ -112,7 +114,7 @@ function getAllTankStatusesWithCache(forceRefresh) {
 }
 
 function getTankPrefixesWithCache() {
-  var cacheKey = "TANK_PREFIXES";
+  var cacheKey = "TANK_PREFIXES_V2";
   var cache = CacheService.getScriptCache();
   var cached = cache.get(cacheKey);
   if (cached) return JSON.parse(cached);
@@ -129,10 +131,13 @@ function getTankPrefixesWithCache() {
         var data = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
         var prefixSet = {};
         for (var i = 0; i < data.length; i++) {
-          var id = String(data[i][0]);
+          var id = String(data[i][0]).toUpperCase();
           if (!id) continue;
-          var match = id.match(/^([A-Z]+)/);
-          if (match) prefixSet[match[1]] = true;
+
+          var match = id.match(/^[A-Z]/);
+          if (match) {
+            prefixSet[match[0]] = true;
+          }
         }
         list = Object.keys(prefixSet).sort();
       }
@@ -200,9 +205,11 @@ function submitOperations(data) {
       };
     }
 
-    // 操作実行者の特定 (Google優先 -> パスコード)
     var userInfo = getUserInfo(getSafeUserEmail(), userPasscode);
     var identifiedStaffName = userInfo.name;
+
+    var coworkers = (data.coworkers && Array.isArray(data.coworkers)) ? data.coworkers : [];
+    var coworkersStr = coworkers.map(function (c) { return c.name; }).join(", ");
 
     var prevStatusMap = {};
     validItems.forEach(function (item) {
@@ -220,7 +227,8 @@ function submitOperations(data) {
       isUnused: data.isUnused,
       isDefect: data.isDefect,
       repairCost: data.repairCost,
-      repairDetail: data.repairDetail
+      repairDetail: data.repairDetail,
+      coworkersStr: coworkersStr
     };
 
     // writeToSheetに特定された担当者名を渡す
@@ -228,6 +236,9 @@ function submitOperations(data) {
     switch (action) {
       case '貸出': writeResult = processLend(processData, preLoadedData, identifiedStaffName); break;
       case '自社利用': writeResult = processCompanyUse(processData, preLoadedData, identifiedStaffName); break;
+      case '自社一括返却': writeResult = processCompanyBulkReturn(processData, preLoadedData, identifiedStaffName); break;
+      case '一括返却': writeResult = processBulkReturn(processData, preLoadedData, identifiedStaffName); break;
+      case '自社事後報告': writeResult = processCompanyRetroReport(processData, preLoadedData, identifiedStaffName); break;
       case '返却': writeResult = processReturn(processData, preLoadedData, identifiedStaffName); break;
       case '充填': writeResult = processFill(processData, preLoadedData, identifiedStaffName); break;
       case '破損報告': writeResult = processDamageReport(processData, preLoadedData, identifiedStaffName); break;
@@ -248,8 +259,6 @@ function submitOperations(data) {
         var successMap = {};
         writeResult.successIds.forEach(function (sid) { successMap[sid] = true; });
 
-        // 共同作業者リスト：本人 + coworkers配列
-        var coworkers = (data.coworkers && Array.isArray(data.coworkers)) ? data.coworkers : [];
         var allWorkers = [{ name: identifiedStaffName, rank: userInfo.rank }].concat(coworkers);
         var numWorkers = allWorkers.length;
 
@@ -276,7 +285,8 @@ function submitOperations(data) {
                 repairCost: (action === '修理済み') ? data.repairCost : 0,
                 repairDetail: (action === '修理済み') ? data.repairDetail : "",
                 scoreOverride: Math.floor(reward.score / numWorkers),
-                totalOverride: Math.floor(reward.total / numWorkers)
+                totalOverride: Math.floor(reward.total / numWorkers),
+                numWorkers: numWorkers
               });
             });
           }
@@ -287,7 +297,7 @@ function submitOperations(data) {
       }
 
       // 場所やステータスが変更された可能性があるため、キャッシュを破棄
-      if (['貸出', '自社利用', '返却', '充填', '破損報告', '修理済み'].indexOf(action) !== -1) {
+      if (['貸出', '自社利用', '自社一括返却', '一括返却', '自社事後報告', '返却', '充填', '破損報告', '修理済み'].indexOf(action) !== -1) {
         CacheService.getScriptCache().remove("ALL_TANK_STATUS_MAP");
       }
     }
@@ -350,7 +360,11 @@ function validateOperations(items, action, preLoadedData) {
 
 function processLend(data, preLoadedData, staffName) {
   if (!data.destination) return { success: false, message: "貸出先未選択", failedItems: [], successIds: [] };
-  return writeToSheet(data.items, '貸出中', data.destination, '貸出', preLoadedData, staffName, data.destination);
+  return writeToSheet(data.items, '貸出中', data.destination, '貸出', preLoadedData, staffName, data.destination, data.coworkersStr);
+}
+
+function processCompanyUse(data, preLoadedData, staffName) {
+  return writeToSheet(data.items, '自社利用中', '自社', '自社利用', preLoadedData, staffName, '自社', data.coworkersStr);
 }
 
 function processReturn(data, preLoadedData, staffName) {
@@ -362,14 +376,18 @@ function processReturn(data, preLoadedData, staffName) {
     newStatus = '充填済み';
     logAction = '未使用返却';
   }
-  return writeToSheet(data.items, newStatus, '倉庫', logAction, preLoadedData, staffName, null);
+  return writeToSheet(data.items, newStatus, '倉庫', logAction, preLoadedData, staffName, null, data.coworkersStr);
 }
 
 function processFill(data, preLoadedData, staffName) {
-  return writeToSheet(data.items, '充填済み', '倉庫', '充填', preLoadedData, staffName, null);
+  return writeToSheet(data.items, '充填済み', '倉庫', '充填', preLoadedData, staffName, null, data.coworkersStr);
+}
+
+function processDamageReport(data, preLoadedData, staffName) {
+  return writeToSheet(data.items, '破損', '倉庫', '破損報告', preLoadedData, staffName, null, data.coworkersStr);
 }
 
 function processRepair(data, preLoadedData, staffName) {
-  return writeToSheet(data.items, '空', '倉庫', '修理済み', preLoadedData, staffName, null);
+  return writeToSheet(data.items, '空', '倉庫', '修理済み', preLoadedData, staffName, null, data.coworkersStr);
 }
 

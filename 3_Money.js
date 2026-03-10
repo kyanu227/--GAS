@@ -15,7 +15,7 @@ function getYearlySheet(ss, baseName, dateObj) {
   if (!sheet) {
     sheet = ss.insertSheet(sheetName);
     if (baseName === MONEY_CONFIG.SHEET_LOG) {
-      sheet.appendRow(["UUID", "日時", "担当者", "作業", "タンクID", "スコア", "立替金", "立替詳細", "備考"]);
+      sheet.appendRow(["UUID", "日時", "担当者", "作業", "タンクID", "スコア", "立替金", "立替詳細", "備考", "作業人数"]);
     } else if (baseName === MONEY_CONFIG.SHEET_ORDER) {
       sheet.appendRow(["UUID", "日時", "担当者", "品名", "数量", "単価(目安)", "合計(目安)", "ステータス", "備考"]);
     }
@@ -94,21 +94,32 @@ function calculateRewardInMemory(action, rankName, priceData) {
 
   var result = { basePrice: 0, score: 0, rankAdd: 0, total: 0 };
 
+  // 「未充填と報告された場合 (返却(未充填))」は報酬・スコアともに0とする
+  if (searchAction === "返却(未充填)" || searchAction === "未充填") {
+    return result;
+  }
+
   if (!targetRow) return result;
 
   result.basePrice = Number(targetRow[1]) || 0;
   result.score = Number(targetRow[2]) || 0;
 
-  var rankColIndex = 7;
-  if (rankName === 'プラチナ') rankColIndex = 3;
-  else if (rankName === 'ゴールド') rankColIndex = 4;
-  else if (rankName === 'シルバー') rankColIndex = 5;
-  else if (rankName === 'ブロンズ') rankColIndex = 6;
+  var rankTargetIndex = 7;
+  if (rankName === 'プラチナ') rankTargetIndex = 3;
+  else if (rankName === 'ゴールド') rankTargetIndex = 4;
+  else if (rankName === 'シルバー') rankTargetIndex = 5;
+  else if (rankName === 'ブロンズ') rankTargetIndex = 6;
+  else if (rankName === 'レギュラー') rankTargetIndex = 7;
 
-  if (targetRow.length > rankColIndex) {
-    result.rankAdd = Number(targetRow[rankColIndex]) || 0;
+  // レギュラー(7)から指定ランク(rankTargetIndex)までのすべての加算額を合計する
+  var sumAdd = 0;
+  for (var c = 7; c >= rankTargetIndex; c--) {
+    if (targetRow.length > c) {
+      sumAdd += Number(targetRow[c]) || 0;
+    }
   }
 
+  result.rankAdd = sumAdd;
   result.total = result.basePrice + result.rankAdd;
   return result;
 }
@@ -144,10 +155,11 @@ function recordMoneyLog(logDataList) {
       d.staff,
       d.action,
       formattedId,
-      reward.score,
+      "", // ★動的集計に変更したため、ここは空欄とする
       d.repairCost || 0,
       d.repairDetail || "",
-      d.note || ""
+      d.note || "",
+      d.numWorkers || 1
     ]);
   });
 

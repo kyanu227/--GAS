@@ -63,51 +63,16 @@ function getMyStats(passcode) {
     ranks.sort((a, b) => a.score - b.score);
   }
 
-  // --- 4. 単価マスタ読み込み (文字揺れ吸収強化版) ---
-  var priceSheet = ssMoney.getSheetByName(MONEY_CONFIG.SHEET_PRICE);
-  var priceMap = {};
-
-  if (priceSheet) {
-    var priceData = priceSheet.getDataRange().getValues();
-    if (priceData.length > 0) {
-      var headers = priceData[0]; // 1行目ヘッダー
-
-      // 基本単価の列を探す (B列想定だがヘッダーで探す)
-      var baseColIdx = 1; // デフォルトB列
-      // 現在のランクの加算額列を探す
-      var rankAddColIdx = -1;
-
-      for (var c = 0; c < headers.length; c++) {
-        var hVal = String(headers[c]);
-        // 基本単価
-        if (hVal.indexOf("基本") !== -1 || hVal.indexOf("単価") !== -1) {
-          if (baseColIdx === 1) baseColIdx = c;
-        }
-        // ランク加算列
-        if (hVal.indexOf(currentRank) !== -1) {
-          rankAddColIdx = c;
-        }
-      }
-
-      // データ行を走査
-      for (var i = 1; i < priceData.length; i++) {
-        // 余分な空白を除去してキーにする
-        var rawName = String(priceData[i][0]);
-        var actionName = rawName.replace(/\s+/g, '').trim();
-        if (!actionName) continue;
-
-        var basePrice = Number(priceData[i][baseColIdx]) || 0;
-        var addPrice = 0;
-        if (rankAddColIdx !== -1) {
-          addPrice = Number(priceData[i][rankAddColIdx]) || 0;
-        }
-
-        // 合計単価を登録
-        priceMap[actionName] = basePrice + addPrice;
-        // 元の名前でも登録(念のため)
-        if (rawName !== actionName) priceMap[rawName] = basePrice + addPrice;
-      }
+  // --- 4. 単価マスタ読み込み ---
+  // キャッシュを使うと単価やスコアの変更がリアルタイムに反映されないため、毎回シートから取得する
+  var priceData = [];
+  try {
+    var priceSheetObj = ssMoney.getSheetByName(MONEY_CONFIG.SHEET_PRICE);
+    if (priceSheetObj) {
+      priceData = priceSheetObj.getDataRange().getValues();
     }
+  } catch (e) {
+    console.error("単価マスタ取得エラー", e);
   }
 
   // --- 5. 金銭ログ集計 (獲得額計算) ---
@@ -131,13 +96,16 @@ function getMyStats(passcode) {
     historyMap[key] = { label: (d.getMonth() + 1) + "月", amount: 0 };
   }
 
+  var thisMonthLogs = [];
+  var dynamicScore = 0;
+
   for (var i = 0; i < allMoneyData.length; i++) {
     var row = allMoneyData[i];
     var d = new Date(row[1]);
     var staff = String(row[2]); // ★文字列化
     var rawAction = String(row[3]);
-    var actionKey = rawAction.replace(/\s+/g, '').trim();
-    var score = Number(row[5]) || 0;
+    var numWorkers = (row.length > 9 && Number(row[9])) ? Number(row[9]) : 1;
+    var isUncharged = (rawAction === "返却(未充填)" || rawAction === "未充填");
 
     // ★重要修正: 名前の比較時に trim() を行い、確実に一致させる
     if (staff.trim() === name.trim()) {
@@ -145,39 +113,29 @@ function getMyStats(passcode) {
         var logYear = parseInt(Utilities.formatDate(d, timeZone, "yyyy"));
         var logMonth = parseInt(Utilities.formatDate(d, timeZone, "M")) - 1;
 
-        // 今月のデータなら計算
+        // 今月のデータなら一旦配列に保存し、スコアだけ先に計算する
         if (logYear === thisYear && logMonth === thisMonth) {
-          stats.currentScore += score;
+          thisMonthLogs.push({
+            rawAction: rawAction,
+            numWorkers: numWorkers,
+            isUncharged: isUncharged
+          });
 
-          // 単価マスタから金額を取得して加算
-          var unitPrice = 0;
-          if (actionKey.indexOf("自社") === -1 && rawAction.indexOf("自社") === -1) {
-            if (priceMap.hasOwnProperty(actionKey)) unitPrice = priceMap[actionKey];
-            else if (priceMap.hasOwnProperty(rawAction)) unitPrice = priceMap[rawAction];
+          if (!isUncharged && rawAction.indexOf("自社") === -1) {
+            // スコアにはランク依存がないため固定で取得
+            var pInfo = calculateRewardInMemory(rawAction, "レギュラー", priceData);
+            dynamicScore += Math.floor(pInfo.score / numWorkers);
           }
-
-          stats.estimatedMoney += unitPrice;
-
-          var key = rawAction;
-          if (key.indexOf('修理') !== -1) key = '修理';
-          else if (key.indexOf('返却') !== -1) key = '返却';
-          else if (key.indexOf('貸出') !== -1) key = '貸出';
-          else if (key.indexOf('充填') !== -1) key = '充填';
-          else key = 'その他';
-
-          if (stats.chartWork[key] !== undefined) stats.chartWork[key]++;
-          else stats.chartWork['その他']++;
         }
 
         // 履歴グラフ用
         var logKey = Utilities.formatDate(d, timeZone, "yyyy-MM");
         if (historyMap[logKey]) {
-          var histPrice = 0;
-          if (actionKey.indexOf("自社") === -1 && rawAction.indexOf("自社") === -1) {
-            if (priceMap.hasOwnProperty(actionKey)) histPrice = priceMap[actionKey];
-            else if (priceMap.hasOwnProperty(rawAction)) histPrice = priceMap[rawAction];
+          var histReward = { total: 0, score: 0 };
+          if (!isUncharged && rawAction.indexOf("自社") === -1) {
+            histReward = calculateRewardInMemory(rawAction, currentRank, priceData);
           }
-          historyMap[logKey].amount += histPrice;
+          historyMap[logKey].amount += Math.floor(histReward.total / numWorkers);
         }
       }
     }
@@ -189,22 +147,46 @@ function getMyStats(passcode) {
   });
 
   // --- 6. リアルタイムランク再判定 ---
+  var dynamicRank = currentRank;
   if (ranks.length > 0) {
-    var newRank = stats.rank;
+    dynamicRank = "レギュラー"; // デフォルトから再評価
     for (var k = 0; k < ranks.length; k++) {
-      if (stats.currentScore >= ranks[k].score) {
-        newRank = ranks[k].name;
+      if (dynamicScore >= ranks[k].score) {
+        dynamicRank = ranks[k].name;
       }
     }
-    stats.rank = newRank;
+  }
+  stats.rank = dynamicRank;
+  stats.currentScore = dynamicScore;
 
+  if (ranks.length > 0) {
     stats.nextRankScore = 0;
     for (var k = 0; k < ranks.length; k++) {
-      if (ranks[k].score > stats.currentScore) {
+      if (ranks[k].score > dynamicScore) {
         stats.nextRankScore = ranks[k].score;
         break;
       }
     }
+  }
+
+  // --- 6.1. 確定した現在ランクを使って今月の報酬を計算 ---
+  for (var j = 0; j < thisMonthLogs.length; j++) {
+    var mLog = thisMonthLogs[j];
+    var rewardCalc = { total: 0 };
+    if (!mLog.isUncharged && mLog.rawAction.indexOf("自社") === -1) {
+      rewardCalc = calculateRewardInMemory(mLog.rawAction, dynamicRank, priceData);
+    }
+    stats.estimatedMoney += Math.floor(rewardCalc.total / mLog.numWorkers);
+
+    var key = mLog.rawAction;
+    if (key.indexOf('修理') !== -1) key = '修理';
+    else if (key.indexOf('返却') !== -1) key = '返却';
+    else if (key.indexOf('貸出') !== -1) key = '貸出';
+    else if (key.indexOf('充填') !== -1) key = '充填';
+    else key = 'その他';
+
+    if (stats.chartWork[key] !== undefined) stats.chartWork[key]++;
+    else stats.chartWork['その他']++;
   }
 
   // --- 7. 作業詳細ログ取得 (表示用リスト) ---

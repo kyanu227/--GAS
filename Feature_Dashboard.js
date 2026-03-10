@@ -42,11 +42,34 @@ function getDashboardData() {
     }
   }
 
-  // --- 2. 本日のログ取得 (全ユーザー) ---
+  // --- 2. 過去7日間のログ取得 (全ユーザー) ---
+  var DAYS_BACK = 7;
+  var dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+
+  // 7日分の日付リスト生成
+  var dateList = [];
+  var targetDates = {};
+  for (var d = 0; d < DAYS_BACK; d++) {
+    var dt = new Date(today.getTime() - d * 86400000);
+    var ds = Utilities.formatDate(dt, timeZone, 'yyyy/MM/dd');
+    var m = dt.getMonth() + 1;
+    var day = dt.getDate();
+    var dow = dayNames[dt.getDay()];
+    dateList.push({
+      dateStr: ds,
+      label: m + '/' + day + '(' + dow + ')' + (d === 0 ? ' 今日' : ''),
+      dayOfWeek: dow,
+      isToday: d === 0
+    });
+    targetDates[ds] = true;
+  }
+
   var logSheetNames = [SHEET_NAMES.LOG + thisYear, SHEET_NAMES.LOG + (thisYear + 1), SHEET_NAMES.LOG];
   logSheetNames = logSheetNames.filter(function (x, i, self) { return self.indexOf(x) === i; });
 
-  var todayLogs = [];
+  var logsByDate = {};  // { 'yyyy/MM/dd': [ logObj, ... ] }
+  dateList.forEach(function (item) { logsByDate[item.dateStr] = []; });
+
   logSheetNames.forEach(function (sName) {
     var sheet = ss.getSheetByName(sName);
     if (sheet) {
@@ -56,7 +79,7 @@ function getDashboardData() {
         var logDate = new Date(row[1]);
         if (isNaN(logDate.getTime())) continue;
         var logDateStr = Utilities.formatDate(logDate, timeZone, 'yyyy/MM/dd');
-        if (logDateStr !== todayStr) continue;
+        if (!targetDates[logDateStr]) continue;
 
         var displayTime = "";
         var timeVal = row[2];
@@ -67,7 +90,7 @@ function getDashboardData() {
           if (displayTime.length > 5) displayTime = "";
         }
 
-        todayLogs.push({
+        logsByDate[logDateStr].push({
           uuid: row[0],
           time: displayTime,
           tankId: row[3] || '-',
@@ -76,22 +99,35 @@ function getDashboardData() {
           note: row[6] || '',
           staff: String(row[7] || '').trim(),
           prevLoc: row[8] || '',
-          timestamp: logDate.getTime()
+          coworkers: String(row[10] || '').trim(),
+          timestamp: logDate.getTime(),
+          dateStr: logDateStr
         });
       }
     }
   });
 
-  todayLogs.sort(function (a, b) { return b.timestamp - a.timestamp; });
+  // 各日付のログを時刻降順ソート
+  Object.keys(logsByDate).forEach(function (key) {
+    logsByDate[key].sort(function (a, b) { return b.timestamp - a.timestamp; });
+  });
 
-  // --- 3. 担当者別・場所別サマリ集計 ---
-  var lendSummary = {};   // { staffName: { locations: { locName: count }, total: n } }
-  var returnSummary = {}; // { staffName: { sources: { srcName: count }, total: n } }
-  var fillSummary = {};   // { staffName: count }
-  var otherSummary = {};  // { staffName: { actions: { actionName: count }, total: n } }
+  var todayLogs = logsByDate[todayStr] || [];
+
+  // --- 3. 担当者別・場所別サマリ集計 (本日分のみ) ---
+  var lendSummary = {};
+  var returnSummary = {};
+  var fillSummary = {};
+  var otherSummary = {};
 
   todayLogs.forEach(function (log) {
-    var staff = log.staff || '不明';
+    var sender = log.staff || '不明';
+    var staff = sender;
+    if (log.coworkers) {
+      var allMembers = [sender].concat(log.coworkers.split(',').map(function (s) { return s.trim(); }).filter(function (s) { return s; }));
+      staff = allMembers.join('・') + ' (' + allMembers.length + '名作業)';
+    }
+
     var action = log.action;
 
     if (action.indexOf('貸出') !== -1) {
@@ -120,66 +156,15 @@ function getDashboardData() {
     statusSummary: statusSummary,
     statusDetails: statusDetails,
     todayLogs: todayLogs,
+    logsByDate: logsByDate,
+    dateList: dateList,
     lendSummary: lendSummary,
     returnSummary: returnSummary,
     fillSummary: fillSummary,
     otherSummary: otherSummary,
     todayDate: Utilities.formatDate(today, timeZone, 'yyyy年M月d日'),
-    todayDayOfWeek: ['日', '月', '火', '水', '木', '金', '土'][today.getDay()]
+    todayDayOfWeek: dayNames[today.getDay()]
   };
 }
 
-/**
- * ★スマート削除ロジック: UUIDの配列を受け取り、一括で削除します
- */
-function batchDeleteMyLog(data) {
-  var uuids = data.uuids;
-  if (!uuids || uuids.length === 0) return { success: false, message: "削除対象がありません" };
-
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var ssMoney = getMoneySS();
-  var timeZone = "Asia/Tokyo";
-  var thisYear = parseInt(Utilities.formatDate(new Date(), timeZone, "yyyy"));
-
-  var sheetConfigs = [
-    { ss: ss, baseName: SHEET_NAMES.LOG },
-    { ss: ssMoney, baseName: MONEY_CONFIG.SHEET_LOG }
-  ];
-  var years = [thisYear, thisYear - 1, thisYear + 1];
-
-  var totalDeleted = 0;
-
-  sheetConfigs.forEach(function (config) {
-    years.forEach(function (year) {
-      var sheetName = config.baseName + year;
-      var sheet = config.ss.getSheetByName(sheetName);
-      if (!sheet && year === thisYear) sheet = config.ss.getSheetByName(config.baseName);
-
-      if (sheet) {
-        var rows = sheet.getDataRange().getValues();
-        var rowsToDelete = [];
-
-        for (var i = 1; i < rows.length; i++) {
-          var rowUuid = String(rows[i][0]);
-          if (uuids.indexOf(rowUuid) !== -1) {
-            rowsToDelete.push(i + 1);
-          }
-        }
-
-        if (rowsToDelete.length > 0) {
-          rowsToDelete.sort(function (a, b) { return b - a; });
-          rowsToDelete.forEach(function (rowIdx) {
-            sheet.deleteRow(rowIdx);
-            totalDeleted++;
-          });
-        }
-      }
-    });
-  });
-
-  if (totalDeleted > 0) {
-    return { success: true, message: totalDeleted + "件のログを削除しました。" };
-  } else {
-    return { success: false, message: "削除対象が見つかりませんでした(既に削除済みの可能性があります)。" };
-  }
-}
+// NOTE: batchDeleteMyLog has been replaced by deleteOperationAndRollback located in Feature_Delete.js

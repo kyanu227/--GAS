@@ -24,7 +24,8 @@
                 </div>
                 <div id="db-inventory-card" class="db-inventory-card">
                     <div class="text-center py-4">
-                        <div class="spinner-border spinner-border-sm" style="color: var(--db-accent);" role="status"></div>
+                        <div class="spinner-border spinner-border-sm" style="color: var(--db-accent);" role="status">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -36,7 +37,8 @@
                 </div>
                 <div id="db-activity-container">
                     <div class="text-center py-4">
-                        <div class="spinner-border spinner-border-sm" style="color: var(--db-accent);" role="status"></div>
+                        <div class="spinner-border spinner-border-sm" style="color: var(--db-accent);" role="status">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -50,39 +52,69 @@
                 <div id="db-detail-panel" class="db-detail-panel" style="display:none;">
                     <!-- edit controls -->
                     <div id="dashboard-edit-controls" class="db-edit-bar" style="display:none;">
-                        <div id="dashboard-action-buttons" style="display:none;" class="fade-in-right d-flex gap-2 align-items-center">
-                            <button class="btn btn-danger btn-sm rounded-pill fw-bold px-3 shadow-sm"
-                                onclick="executeDashboardDelete()">
-                                <i class="bi bi-trash-fill me-1"></i> 削除
+                        <div id="dashboard-action-buttons" style="display:none;" class="fade-in-right db-action-group">
+                            <button class="db-delete-btn" onclick="executeDashboardDelete()">
+                                <i class="bi bi-trash3"></i> 削除する
                             </button>
-                            <button class="db-icon-btn" onclick="toggleDashboardEditMode()">
-                                <i class="bi bi-x fs-5"></i>
+                            <button class="db-cancel-btn" onclick="toggleDashboardEditMode()">
+                                <i class="bi bi-x-lg"></i> やめる
                             </button>
                         </div>
-                        <button id="btn-dashboard-edit-mode"
-                            class="db-edit-btn"
-                            onclick="toggleDashboardEditMode()">
-                            編集
+                        <button id="btn-dashboard-edit-mode" class="db-edit-btn" onclick="toggleDashboardEditMode()">
+                            <i class="bi bi-pencil-square"></i> 編集
                         </button>
                     </div>
+                    <!-- date chips -->
+                    <div id="db-date-chips" class="db-date-chips"></div>
                     <!-- filter chips -->
                     <div class="db-filter-bar">
                         <button class="db-chip active" data-filter="ALL"
                             onclick="setDashboardOpFilter('ALL')">すべて</button>
-                        <button class="db-chip" data-filter="貸出"
-                            onclick="setDashboardOpFilter('貸出')">貸出</button>
-                        <button class="db-chip" data-filter="返却"
-                            onclick="setDashboardOpFilter('返却')">返却</button>
-                        <button class="db-chip" data-filter="充填"
-                            onclick="setDashboardOpFilter('充填')">充填</button>
-                        <button class="db-chip" data-filter="破損報告"
-                            onclick="setDashboardOpFilter('破損報告')">破損</button>
+                        <button class="db-chip" data-filter="貸出" onclick="setDashboardOpFilter('貸出')">貸出</button>
+                        <button class="db-chip" data-filter="返却" onclick="setDashboardOpFilter('返却')">返却</button>
+                        <button class="db-chip" data-filter="充填" onclick="setDashboardOpFilter('充填')">充填</button>
+                        <button class="db-chip" data-filter="破損報告" onclick="setDashboardOpFilter('破損報告')">破損</button>
                     </div>
                     <!-- log list -->
                     <div id="list-db-today" class="db-log-list"></div>
                 </div>
             </div>
 
+        </div>
+    </div>
+</div>
+
+<!-- ========== EDIT MODAL ========== -->
+<div id="db-edit-modal"
+    style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:99999; display:none; justify-content:center; align-items:center;">
+    <div
+        style="background:#fff; border-radius:16px; padding:20px; width:90%; max-width:380px; box-shadow:0 8px 30px rgba(0,0,0,0.2);">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0"><i class="bi bi-pencil-square text-primary me-1"></i> ログ編集</h6>
+            <button class="btn btn-sm btn-outline-secondary border-0" onclick="closeEditModal()"><i
+                    class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="mb-3">
+            <label class="form-label small fw-bold text-secondary">タンクID</label>
+            <div class="d-flex gap-2">
+                <select id="edit-prefix" class="form-select form-select-sm" style="width:80px;"></select>
+                <span class="align-self-center fw-bold">-</span>
+                <input type="tel" id="edit-number" class="form-control form-control-sm" placeholder="番号" maxlength="3"
+                    style="width:80px;">
+            </div>
+            <div class="text-muted small mt-1" id="edit-id-current"></div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label small fw-bold text-secondary">貸出先</label>
+            <select id="edit-dest" class="form-select form-select-sm">
+                <option value="">変更なし</option>
+            </select>
+            <div class="text-muted small mt-1" id="edit-dest-current"></div>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary fw-bold flex-fill" id="edit-save-btn"
+                onclick="saveEditLogEntry()">保存</button>
+            <button class="btn btn-outline-secondary fw-bold" onclick="closeEditModal()">キャンセル</button>
         </div>
     </div>
 </div>
@@ -494,10 +526,67 @@
         padding: 5px 14px;
         cursor: pointer;
         transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
     }
 
     .db-edit-btn:active {
         transform: scale(0.95);
+    }
+
+    .db-delete-btn {
+        font-family: 'Noto Sans JP', sans-serif;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #dc2626;
+        background: rgba(220, 38, 38, 0.08);
+        border: 1px solid rgba(220, 38, 38, 0.15);
+        border-radius: 20px;
+        padding: 5px 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .db-delete-btn:hover {
+        background: rgba(220, 38, 38, 0.14);
+    }
+
+    .db-delete-btn:active {
+        transform: scale(0.95);
+    }
+
+    .db-cancel-btn {
+        font-family: 'Noto Sans JP', sans-serif;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--db-text-sub);
+        background: rgba(0, 0, 0, 0.04);
+        border: 1px solid var(--db-border);
+        border-radius: 20px;
+        padding: 5px 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .db-cancel-btn:hover {
+        background: rgba(0, 0, 0, 0.08);
+    }
+
+    .db-cancel-btn:active {
+        transform: scale(0.95);
+    }
+
+    .db-action-group {
+        display: flex;
+        gap: 8px;
+        align-items: center;
     }
 
     .db-icon-btn {
@@ -505,12 +594,23 @@
         height: 30px;
         border-radius: 50%;
         border: none;
-        background: rgba(0,0,0,0.05);
+        background: rgba(0, 0, 0, 0.05);
         color: var(--db-text-sub);
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
+    }
+
+    .db-date-chips {
+        display: flex;
+        gap: 6px;
+        padding: 10px 12px 6px;
+        overflow-x: auto;
+    }
+
+    .db-date-chips::-webkit-scrollbar {
+        display: none;
     }
 
     .db-filter-bar {
@@ -537,6 +637,7 @@
         white-space: nowrap;
         cursor: pointer;
         transition: all 0.2s;
+        flex-shrink: 0;
     }
 
     .db-chip.active {
@@ -654,9 +755,26 @@
         align-items: center;
     }
 
-    .mode-edit .check-wrapper {
+    .mode-edit .check-wrapper,
+    .mode-edit .log-edit-icon {
         width: 32px;
         margin-right: 4px;
+    }
+
+    .log-edit-icon {
+        display: none;
+        font-size: 0.9rem;
+        color: var(--db-accent);
+        cursor: pointer;
+        padding: 4px;
+        margin-left: auto;
+        flex-shrink: 0;
+    }
+
+    .mode-edit .log-edit-icon {
+        display: block;
+        width: auto;
+        margin-right: 0;
     }
 
     .custom-check {
@@ -678,25 +796,59 @@
     }
 
     @keyframes fadeInRight {
-        from { opacity: 0; transform: translateX(10px); }
-        to   { opacity: 1; transform: translateX(0); }
+        from {
+            opacity: 0;
+            transform: translateX(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
     }
 
     /* color helpers */
-    .bg-db-lend { background: var(--db-lend); }
-    .bg-db-return { background: var(--db-return); }
-    .bg-db-fill { background: var(--db-fill); }
-    .bg-db-damage { background: var(--db-damage); }
-    .bg-db-inhouse { background: var(--db-inhouse); }
-    .text-db-lend { color: var(--db-lend); }
-    .text-db-return { color: var(--db-return); }
-    .text-db-fill { color: var(--db-fill); }
-    .text-db-damage { color: var(--db-damage); }
+    .bg-db-lend {
+        background: var(--db-lend);
+    }
+
+    .bg-db-return {
+        background: var(--db-return);
+    }
+
+    .bg-db-fill {
+        background: var(--db-fill);
+    }
+
+    .bg-db-damage {
+        background: var(--db-damage);
+    }
+
+    .bg-db-inhouse {
+        background: var(--db-inhouse);
+    }
+
+    .text-db-lend {
+        color: var(--db-lend);
+    }
+
+    .text-db-return {
+        color: var(--db-return);
+    }
+
+    .text-db-fill {
+        color: var(--db-fill);
+    }
+
+    .text-db-damage {
+        color: var(--db-damage);
+    }
 </style>
 
 <script>
-    var dbCache = { todayLogs: [], dashData: null };
+    var dbCache = { todayLogs: [], logsByDate: {}, dateList: [], dashData: null };
     var dbCurrentFilter = 'ALL';
+    var dbSelectedDate = null;
     var dbIsEditMode = false;
     var dbDetailOpen = false;
 
@@ -711,6 +863,9 @@
         if (!data) return;
         dbCache.dashData = data;
         dbCache.todayLogs = data.todayLogs || [];
+        dbCache.logsByDate = data.logsByDate || {};
+        dbCache.dateList = data.dateList || [];
+        dbSelectedDate = (dbCache.dateList.length > 0) ? dbCache.dateList[0].dateStr : null;
 
         // Date header
         document.getElementById('db-date-text').textContent = data.todayDate || '';
@@ -718,6 +873,7 @@
 
         renderInventory(data.statusSummary, data.statusDetails);
         renderActivity(data);
+        renderDateChips();
 
         // Show edit controls if admin
         try {
@@ -727,7 +883,31 @@
                 var ec = document.getElementById('dashboard-edit-controls');
                 if (ec) ec.style.display = 'flex';
             }
-        } catch (e) {}
+        } catch (e) { }
+    }
+
+    /* ---- DATE CHIPS ---- */
+    function renderDateChips() {
+        var container = document.getElementById('db-date-chips');
+        if (!container || !dbCache.dateList.length) return;
+        var html = '';
+        dbCache.dateList.forEach(function (item) {
+            var isActive = item.dateStr === dbSelectedDate;
+            html += '<button type="button" class="db-chip' + (isActive ? ' active' : '') + '" data-date="' + item.dateStr + '"'
+                + ' onclick="selectLogDate(\'' + item.dateStr + '\')">' + item.label + '</button>';
+        });
+        container.innerHTML = html;
+    }
+
+    function selectLogDate(dateStr) {
+        dbSelectedDate = dateStr;
+        // Update date chip active state
+        document.querySelectorAll('#db-date-chips .db-chip').forEach(function (b) {
+            b.classList.toggle('active', b.getAttribute('data-date') === dateStr);
+        });
+        // Exit edit mode when switching dates
+        if (dbIsEditMode) toggleDashboardEditMode();
+        refreshDashboardLists();
     }
 
     /* ---- INVENTORY ---- */
@@ -858,10 +1038,12 @@
 
         if (dbDetailOpen) {
             panel.style.display = 'block';
+            document.getElementById('dashboard-edit-controls').style.display = 'flex';
             chevron.classList.add('open');
             refreshDashboardLists();
         } else {
             panel.style.display = 'none';
+            document.getElementById('dashboard-edit-controls').style.display = 'none';
             chevron.classList.remove('open');
             if (dbIsEditMode) toggleDashboardEditMode();
         }
@@ -875,52 +1057,87 @@
     }
 
     function refreshDashboardLists() {
-        var logs = dbCache.todayLogs || [];
+        renderDetailLog();
+    }
+
+    function renderDetailLog() {
+        var c = document.getElementById('list-db-today');
+        var logs = (dbSelectedDate && dbCache.logsByDate[dbSelectedDate]) ? dbCache.logsByDate[dbSelectedDate] : (dbCache.todayLogs || []);
         if (dbCurrentFilter !== 'ALL') {
             logs = logs.filter(function (l) { return l.action.indexOf(dbCurrentFilter) !== -1; });
         }
-        renderDashboardLogList('list-db-today', logs);
-    }
 
-    function renderDashboardLogList(elementId, logs) {
-        var container = document.getElementById(elementId);
-        if (!logs.length) {
-            container.innerHTML = '<div class="db-log-empty">データなし</div>';
+        if (logs.length === 0) {
+            c.innerHTML = '<div class="db-log-empty">対象のログはありません</div>';
             return;
         }
 
         var html = '';
-        logs.forEach(function (item) {
-            var colorClass = 'background:#6b7280;';
-            if (item.action.indexOf('貸出') !== -1) colorClass = 'background:var(--db-lend);';
-            else if (item.action.indexOf('返却') !== -1) colorClass = 'background:var(--db-return);';
-            else if (item.action.indexOf('充填') !== -1) colorClass = 'background:var(--db-fill);';
-            else if (item.action.indexOf('破損') !== -1) colorClass = 'background:var(--db-damage);';
+        logs.forEach(function (log) {
+            var icon = 'bi-check-circle', colorClass = '';
+            var actionLower = log.action.toLowerCase();
+            if (actionLower.indexOf('貸出') !== -1) { icon = 'bi-box-arrow-up'; colorClass = 'bg-db-lend'; }
+            else if (actionLower.indexOf('返却') !== -1) { icon = 'bi-box-arrow-in-down'; colorClass = 'bg-db-return'; }
+            else if (actionLower.indexOf('充填') !== -1) { icon = 'bi-fuel-pump-fill'; colorClass = 'bg-db-fill'; }
+            else if (actionLower.indexOf('破損') !== -1) { icon = 'bi-x-octagon-fill'; colorClass = 'bg-db-damage'; }
+            else if (actionLower.indexOf('自社') !== -1) { icon = 'bi-building'; colorClass = 'bg-db-inhouse'; }
+            else { icon = 'bi-info-circle-fill'; colorClass = 'bg-secondary'; }
 
-            var locText = item.loc || '';
-            if (item.action.indexOf('返却') !== -1 && item.note) locText = item.note;
+            var locDisplay = log.loc || log.prevLoc || '';
+            if (log.action.indexOf('貸出') !== -1) locDisplay = log.loc + ' へ';
+            else if (log.action.indexOf('返却') !== -1) {
+                if (log.note && log.note.indexOf('より返却') !== -1) locDisplay = log.note;
+                else locDisplay = (log.prevLoc || log.loc) + ' より';
+            }
 
-            html += '<label class="db-log-item">'
-                + '<div class="check-wrapper">'
-                + '<input type="checkbox" class="custom-check dashboard-delete-check" value="' + item.uuid + '">'
-                + '</div>'
-                + '<div class="db-log-time">' + item.time + '</div>'
+            var members = [log.staff];
+            if (log.coworkers) {
+                members = members.concat(log.coworkers.split(',').map(function (s) { return s.trim(); }).filter(function (s) { return s; }));
+            }
+
+            var staffHtml = '';
+            members.forEach(function (member) {
+                staffHtml += '<div class="db-log-staff"><i class="bi bi-person-fill me-1"></i>' + member + '</div>';
+            });
+
+            var checkHtml = '<div class="check-wrapper">' +
+                '<input type="checkbox" class="custom-check log-delete-check" value="' + log.uuid + '">' +
+                '</div>';
+
+            html += '<div class="db-log-item" onclick="toggleCheckbox(this, \'' + log.uuid + '\')">'
+                + checkHtml
+                + '<div class="db-log-time">' + log.time + '</div>'
                 + '<div class="db-log-body">'
                 + '<div class="db-log-top">'
-                + '<span class="db-log-action-badge" style="' + colorClass + '">' + item.action + '</span>'
-                + '<span class="db-log-tank">' + item.tankId + '</span>'
+                + '<div class="db-log-action-badge ' + colorClass + '"><i class="bi ' + icon + ' me-1"></i>' + log.action + '</div>'
+                + '<div class="db-log-tank">' + log.tankId + '</div>'
                 + '</div>'
                 + '<div class="db-log-bottom">'
-                + '<span class="db-log-loc">' + (locText || '-') + '</span>'
-                + '<span class="db-log-staff">' + (item.staff || '') + '</span>'
+                + (locDisplay ? '<div class="db-log-loc"><i class="bi bi-geo-alt-fill me-1"></i>' + locDisplay + '</div>' : '')
+                + '<div class="d-flex flex-wrap gap-1">' + staffHtml + '</div>'
                 + '</div>'
                 + '</div>'
-                + '</label>';
+                + '<div class="log-edit-icon" onclick="event.stopPropagation(); openEditModal(\'' + log.uuid + '\', \'' + (log.tankId || '').replace(/'/g, '') + '\', \'' + (log.loc || '').replace(/'/g, '') + '\')">'
+                + '<i class="bi bi-pencil"></i>'
+                + '</div>'
+                + '</div>';
         });
-        container.innerHTML = html;
+
+        c.innerHTML = html;
     }
 
     /* ---- EDIT MODE ---- */
+    function toggleCheckbox(element, uuid) {
+        if (!dbIsEditMode) return;
+        var e = window.event;
+        if (e && e.target && e.target.tagName.toLowerCase() === 'input') return;
+
+        var checkbox = element.querySelector('.log-delete-check[value="' + uuid + '"]');
+        if (checkbox) {
+            checkbox.checked = !checkbox.checked;
+        }
+    }
+
     function toggleDashboardEditMode() {
         dbIsEditMode = !dbIsEditMode;
         var actions = document.getElementById('dashboard-action-buttons');
@@ -935,14 +1152,14 @@
             actions.style.display = 'none';
             btn.style.display = 'inline-block';
             panel.classList.remove('mode-edit');
-            document.querySelectorAll('.dashboard-delete-check').forEach(function (c) { c.checked = false; });
+            document.querySelectorAll('.log-delete-check').forEach(function (c) { c.checked = false; });
         }
     }
 
     function executeDashboardDelete() {
-        var checks = document.querySelectorAll('.dashboard-delete-check:checked');
+        var checks = document.querySelectorAll('.log-delete-check:checked');
         if (checks.length === 0) return;
-        if (!confirm('選択した ' + checks.length + ' 件の履歴を削除しますか？\n(在庫ステータスは戻りません)')) return;
+        if (!confirm('削除した ' + checks.length + ' 件の操作は元に戻せません。本当に削除しますか？\n※削除操作は管理用の日報として全て通知されます。')) return;
 
         var uuids = Array.from(checks).map(function (c) { return c.value; });
         var pass = (typeof window.GLOBAL_PASSCODE !== 'undefined') ? window.GLOBAL_PASSCODE : "";
@@ -954,17 +1171,109 @@
 
         google.script.run
             .withSuccessHandler(function (res) {
-                alert(res.message);
+                if (res.success) {
+                    alert(res.message);
+                } else {
+                    alert("削除エラー: " + res.message);
+                }
                 btn.innerHTML = originalText;
                 btn.disabled = false;
                 toggleDashboardEditMode();
                 loadDashboardData();
             })
             .withFailureHandler(function (e) {
-                alert("削除エラー: " + e.message);
+                alert("通信エラー: " + e.message);
                 btn.innerHTML = originalText;
                 btn.disabled = false;
+                toggleDashboardEditMode();
             })
-            .batchDeleteMyLog({ uuids: uuids, userPasscode: pass });
+            .deleteOperationAndRollback({ uuids: uuids, userPasscode: pass });
+    }
+
+    /* ---- EDIT LOG ENTRY ---- */
+    var _editUuid = '';
+    var _editOrigId = '';
+    var _editOrigLoc = '';
+
+    function openEditModal(uuid, tankId, loc) {
+        _editUuid = uuid;
+        _editOrigId = tankId;
+        _editOrigLoc = loc;
+
+        // Populate prefix dropdown
+        var prefixSel = document.getElementById('edit-prefix');
+        prefixSel.innerHTML = '';
+        var prefixes = (typeof opPrefixes !== 'undefined' && opPrefixes.length > 0) ? opPrefixes : ['A', 'B', 'C', 'D', 'E'];
+        prefixes.forEach(function (p) { prefixSel.appendChild(new Option(p, p)); });
+
+        // Parse current ID
+        var m = tankId.match(/^([A-Za-z]+)[\-]?(.*)$/);
+        if (m) {
+            prefixSel.value = m[1].toUpperCase();
+            document.getElementById('edit-number').value = m[2].replace('OK', 'OK');
+        }
+        document.getElementById('edit-id-current').textContent = '現在: ' + tankId;
+
+        // Populate destination dropdown
+        var destSel = document.getElementById('edit-dest');
+        destSel.innerHTML = '<option value="">変更なし</option>';
+        var mainDestSel = document.getElementById('op-dest-select');
+        if (mainDestSel) {
+            for (var i = 0; i < mainDestSel.options.length; i++) {
+                if (mainDestSel.options[i].value) {
+                    destSel.appendChild(new Option(mainDestSel.options[i].text, mainDestSel.options[i].value));
+                }
+            }
+        }
+        document.getElementById('edit-dest-current').textContent = loc ? '現在: ' + loc : '';
+
+        document.getElementById('db-edit-modal').style.display = 'flex';
+    }
+
+    function closeEditModal() {
+        document.getElementById('db-edit-modal').style.display = 'none';
+        _editUuid = '';
+    }
+
+    function saveEditLogEntry() {
+        if (!_editUuid) return;
+        var prefix = document.getElementById('edit-prefix').value;
+        var num = document.getElementById('edit-number').value.trim();
+        var newId = (prefix && num) ? prefix + '-' + num : '';
+        var newDest = document.getElementById('edit-dest').value;
+
+        if (!newId && !newDest) { alert('変更内容がありません'); return; }
+
+        // IDが変わっていない場合はnullを送る
+        var formattedOrig = _editOrigId.replace(/[\s\-]/g, '').toUpperCase();
+        var formattedNew = newId.replace(/[\s\-]/g, '').toUpperCase();
+        if (formattedNew === formattedOrig) newId = '';
+        if (newDest === _editOrigLoc) newDest = '';
+        if (!newId && !newDest) { alert('変更内容がありません'); return; }
+
+        var msg = '以下の変更を実行しますか？\n';
+        if (newId) msg += '・ID: ' + _editOrigId + ' → ' + prefix + '-' + num + '\n';
+        if (newDest) msg += '・場所: ' + _editOrigLoc + ' → ' + newDest + '\n';
+        if (!confirm(msg)) return;
+
+        var btn = document.getElementById('edit-save-btn');
+        btn.disabled = true; btn.textContent = '保存中...';
+
+        google.script.run
+            .withSuccessHandler(function (res) {
+                btn.disabled = false; btn.textContent = '保存';
+                if (res.success) {
+                    closeEditModal();
+                    alert(res.message);
+                    loadDashboardData();
+                } else {
+                    alert('エラー: ' + res.message);
+                }
+            })
+            .withFailureHandler(function (e) {
+                btn.disabled = false; btn.textContent = '保存';
+                alert('通信エラー: ' + e.message);
+            })
+            .editLogEntry({ uuid: _editUuid, newTankId: newId || null, newDest: newDest || null });
     }
 </script>

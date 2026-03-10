@@ -139,7 +139,7 @@ function getCurrentLogSheet(ss) {
   var sheet = ss.getSheetByName(targetName);
   if (!sheet) {
     sheet = ss.insertSheet(targetName);
-    sheet.appendRow(["UUID", "日時", "時刻", "タンクID", "操作", "場所", "備考", "担当者", "直前貸出先", "種別"]);
+    sheet.appendRow(["UUID", "日時", "時刻", "タンクID", "操作", "場所", "備考", "担当者", "直前貸出先", "種別", "共同作業者"]);
   }
   return sheet;
 }
@@ -148,7 +148,7 @@ function getCurrentLogSheet(ss) {
  * ステータスシートへの書き込みと履歴ログ追記を行う共通関数
  * 列定義: A:ID, B:Status, C:Loc, D:Staff, E:Limit, F:Note, G:Log, H:Update, I:Type
  */
-function writeToSheet(items, newStatus, newLoc, action, preLoadedData, optStaffName, optDirectPrevLoc) {
+function writeToSheet(items, newStatus, newLoc, action, preLoadedData, optStaffName, optDirectPrevLoc, coworkersStr) {
   if (!preLoadedData || !preLoadedData.data || !preLoadedData.idMap) {
     throw new Error("システムエラー: データが正しく引き継がれませんでした。");
   }
@@ -219,7 +219,8 @@ function writeToSheet(items, newStatus, newLoc, action, preLoadedData, optStaffN
         noteText,
         staff,
         recordPrevLoc,
-        tankType  // 種別も記録              
+        tankType,  // 種別も記録              
+        coworkersStr || ""
       ]);
     } else {
       failedItems.push({ id: rawId, reason: "ID未登録・不一致" });

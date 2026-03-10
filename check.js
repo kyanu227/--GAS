@@ -1,694 +1,238 @@
-    var opQueue = [];
-    var opMode = '';
-    var isSelfUseMode = false;
-    var opPrefixes = [];
-    var bulkReturnTanks = [];
-    var repairOptionsCache = [];
+// ■■■ check.js : デバッグ・テスト関数 ■■■
+// GASエディタから関数を選んで ▶ で実行してください
 
-    // Initialization is now managed by initAppView in index.html
-    function triggerInitialDataLoad(action) {
-      initOperations(action);
-      loadAllMasterData();
+// ============================================
+// 自社管理関連テスト
+// ============================================
+
+/**
+ * 自社利用中タンクの取得テスト
+ */
+function test_getInHouseTanks() {
+  var result = getInHouseTanks();
+  console.log("=== 自社利用中タンク ===");
+  console.log("件数: " + result.length);
+  result.forEach(function (t) { console.log("  " + t.id); });
+}
+
+/**
+ * 自動確定ドライラン（実際には書き込まない）
+ * → 自動確定の対象となるタンクを確認するだけ
+ */
+function test_autoConfirmDryRun() {
+  var tanks = getInHouseTanks();
+  console.log("=== 自動確定ドライラン ===");
+  console.log("対象件数: " + tanks.length);
+  if (tanks.length === 0) {
+    console.log("自社利用中のタンクは0件です。自動確定の対象はありません。");
+    return;
+  }
+  tanks.forEach(function (t) { console.log("  対象: " + t.id + " → 通常返却として確定される予定"); });
+  console.log("※ これはドライランです。実際の書き込みは行われていません。");
+}
+
+/**
+ * 事後報告テスト（ドライラン）
+ * processCompanyRetroReportの動作を安全に検証
+ */
+function test_retroReportDryRun() {
+  console.log("=== 事後報告ドライラン ===");
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetName = (typeof SHEET_NAMES !== 'undefined' && SHEET_NAMES.STATUS) ? SHEET_NAMES.STATUS : 'タンクステータス';
+  var sheet = ss.getSheetByName(sheetName);
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  var fetchCols = (lastCol >= 9) ? 9 : 7;
+  var masterData = sheet.getRange(1, 1, lastRow, fetchCols).getValues();
+  var idMap = {};
+  for (var i = 1; i < masterData.length; i++) {
+    var nId = normalizeId(masterData[i][0]);
+    if (nId) idMap[nId] = i;
+  }
+
+  // 最初の3件のIDを使ってシミュレーション
+  var sampleIds = [];
+  for (var j = 1; j < masterData.length && sampleIds.length < 3; j++) {
+    if (masterData[j][0]) sampleIds.push(masterData[j][0]);
+  }
+
+  console.log("サンプルID: " + sampleIds.join(", "));
+  sampleIds.forEach(function (id) {
+    var nId = normalizeId(id);
+    var idx = idMap[nId];
+    if (idx !== undefined) {
+      var status = masterData[idx][1];
+      var action = (status === '自社利用中') ? 'スキップ（既に自社利用中）' : '自社利用(事後)として登録';
+      console.log("  " + id + " [現在: " + status + "] → " + action);
     }
+  });
+  console.log("※ ドライランです。実際の書き込みは行われていません。");
+}
 
-    function loadAllMasterData() {
-      google.script.run.withSuccessHandler(function (data) {
-        var sel = document.getElementById('op-dest-select');
-        if (sel) {
-          sel.innerHTML = '';
-          var def = document.createElement('option');
-          def.text = "👇 貸出先を選択"; def.value = ""; def.selected = true; def.disabled = true;
-          sel.appendChild(def);
-          if (data.destList && data.destList.length > 0) {
-            data.destList.forEach(function (d) { sel.appendChild(new Option(d, d)); });
-          } else { sel.appendChild(new Option("※リストなし", "")); }
-        }
+// ============================================
+// トリガー関連テスト
+// ============================================
 
-        if (data.repairOptions && data.repairOptions.length > 0) {
-          repairOptionsCache = data.repairOptions;
-          if (opMode === '修理済み') renderRepairCheckboxes();
-        } else {
-          var roContainer = document.getElementById('repair-options-container');
-          if (roContainer) roContainer.innerHTML = '<div class="text-muted p-2 small">※修理項目なし</div>';
-        }
+/**
+ * 現在のトリガー状態を確認
+ */
+function test_triggerStatus() {
+  var status = getAutoConfirmTriggerStatus();
+  console.log("=== トリガー状態 ===");
+  console.log("自動確定トリガー: " + (status.enabled ? "ON" : "OFF"));
+  if (status.error) console.log("エラー: " + status.error);
 
-        if (data.prefixes && data.prefixes.length > 0) {
-          opPrefixes = data.prefixes;
-          var color = getModeColor();
-          renderDialMode(color);
-        }
-      }).getOperationsInitData();
+  // 全トリガー一覧
+  var allTriggers = ScriptApp.getProjectTriggers();
+  console.log("全トリガー数: " + allTriggers.length);
+  allTriggers.forEach(function (t) {
+    console.log("  関数: " + t.getHandlerFunction() + " / タイプ: " + t.getEventType());
+  });
+}
+
+// ============================================
+// バリデーション関連テスト
+// ============================================
+
+/**
+ * OP_RULES定義の整合性チェック
+ */
+function test_opRulesConsistency() {
+  console.log("=== OP_RULES整合性チェック ===");
+  var requiredActions = ['貸出', '自社利用', '返却', '一括返却', '自社事後報告', '充填', '破損報告', '修理済み'];
+  var ok = true;
+  requiredActions.forEach(function (a) {
+    if (!OP_RULES[a]) {
+      console.log("❌ " + a + ": ルール未定義");
+      ok = false;
+    } else {
+      console.log("✅ " + a + ": allowedPrev=" + JSON.stringify(OP_RULES[a].allowedPrev) + ", nextStatus=" + OP_RULES[a].nextStatus);
     }
+  });
+  if (ok) console.log("全てのルールが正しく定義されています。");
+}
 
-    function getModeColor() {
-      if (opMode === '貸出') return '#0d6efd';
-      if (opMode === '返却') return '#198754';
-      if (opMode === '充填') return '#fd7e14';
-      if (opMode === '自社一括') return '#0dcaf0';
-      return '#6c757d';
+/**
+ * submitOperationsのswitchルーティング確認
+ * → 各actionが正しい処理関数にルーティングされるか確認
+ */
+function test_routingCheck() {
+  console.log("=== ルーティングチェック ===");
+  var routeMap = {
+    '貸出': 'processLend',
+    '自社利用': 'processCompanyUse',
+    '自社一括返却': 'processCompanyBulkReturn',
+    '一括返却': 'processBulkReturn',
+    '自社事後報告': 'processCompanyRetroReport',
+    '返却': 'processReturn',
+    '充填': 'processFill',
+    '破損報告': 'processDamageReport',
+    '修理済み': 'processRepair'
+  };
+
+  var ok = true;
+  Object.keys(routeMap).forEach(function (action) {
+    var funcName = routeMap[action];
+    if (typeof this[funcName] === 'function') {
+      console.log("✅ " + action + " → " + funcName + "() が存在します");
+    } else {
+      console.log("❌ " + action + " → " + funcName + "() が見つかりません！");
+      ok = false;
     }
-
-    function initOperations(mode) {
-      opMode = mode;
-      opQueue = [];
-      renderOpQueue();
-      var panels = document.getElementsByClassName('op-setting-panel');
-      for (var i = 0; i < panels.length; i++) panels[i].style.display = 'none';
-      isSelfUseMode = false;
-      updateSelfUseUI();
-
-      var color = getModeColor();
-      var btnText = '送信';
-
-      if (mode === '貸出') {
-        document.getElementById('op-settings-lend').style.display = 'block';
-        btnText = '貸出実行';
-      } else if (mode === '返却') {
-        document.getElementById('op-settings-return').style.display = 'block';
-        btnText = '返却実行';
-      } else if (mode === '充填') {
-        document.getElementById('op-settings-fill').style.display = 'block';
-        btnText = '充填完了';
-      } else if (mode === '自社一括') {
-        document.getElementById('op-settings-bulk-return').style.display = 'block';
-        btnText = '一括返却';
-        loadBulkReturnList();
-      }
-
-      var dialBtn = document.getElementById('dial-submit-btn');
-      var hasItems = false;
-
-      if (mode === '自社一括') {
-        hasItems = (bulkReturnTanks.length > 0);
-      } else {
-        hasItems = (opQueue && opQueue.length > 0);
-      }
-
-      if (dialBtn) {
-        dialBtn.style.display = hasItems ? 'block' : 'none';
-        dialBtn.style.backgroundColor = 'rgba(255,255,255,0.95)';
-        dialBtn.style.color = color;
-        dialBtn.style.border = '2px solid ' + color;
-        var dialLabel = document.getElementById('dial-submit-label');
-        if (dialLabel) dialLabel.innerText = btnText;
-      }
-
-      document.querySelectorAll('.nav-item').forEach(el => {
-        el.classList.remove('active');
-        if (el.dataset.mode === mode) el.classList.add('active');
-      });
-
-      if (mode === '自社一括') {
-        var dm = document.getElementById('op-dial-mode');
-        if (dm) dm.style.display = 'none';
-        document.body.classList.remove('dial-lock');
-      } else {
-        activateDialMode(color);
-      }
-    }
-
-    function activateDialMode(color) {
-      var scrollPos = window.pageYOffset || document.documentElement.scrollTop;
-      document.getElementById('op-dial-mode').style.display = 'flex';
-      document.body.classList.add('dial-lock');
-      document.body.style.top = '-' + scrollPos + 'px';
-      document.body.dataset.scrollPos = scrollPos;
-      if (!window._dialTouchBlocker) {
-        window._dialTouchBlocker = function (e) {
-          if (!document.body.classList.contains('dial-lock')) return;
-          var target = e.target;
-          while (target && target !== document.body) {
-            if (target.id === 'rotary-queue-display') return;
-            target = target.parentElement;
-          }
-          if (e.cancelable) e.preventDefault();
-        };
-        document.addEventListener('touchmove', window._dialTouchBlocker, { passive: false });
-      }
-      // Move settings card to bottom
-      var settingsCard = document.getElementById('op-settings-card');
-      var container = document.getElementById('op-container');
-      if (settingsCard && container) container.appendChild(settingsCard);
-      registerDialTouch();
-      renderDialMode(color);
-    }
-
-    function refreshMasterData() {
-      if (!confirm("最新のリストを取得しますか？")) return;
-      var btn = document.getElementById('btn-refresh');
-      var orgHtml = btn.innerHTML;
-      btn.disabled = true;
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 更新中';
-      google.script.run.withSuccessHandler(function (res) {
-        loadAllMasterData(); btn.disabled = false; btn.innerHTML = orgHtml;
-      }).withFailureHandler(function (e) {
-        alert("更新エラー: " + e.message); btn.disabled = false; btn.innerHTML = orgHtml;
-      }).clearMasterCaches();
-    }
-
-    function toggleSelfUse() { isSelfUseMode = !isSelfUseMode; updateSelfUseUI(); renderOpQueue(); }
-    function updateSelfUseUI() {
-      var sel = document.getElementById('op-dest-select');
-      var btn = document.getElementById('btn-self-use');
-      var badge = document.getElementById('self-use-badge');
-      if (sel && btn && badge) {
-        if (isSelfUseMode) {
-          sel.disabled = true; btn.className = 'btn btn-info text-dark fw-bold'; badge.style.display = 'block';
-          var dialLabel = document.getElementById('dial-submit-label');
-          if (dialLabel) dialLabel.innerText = '利用開始';
-        } else {
-          sel.disabled = false; btn.className = 'btn btn-outline-secondary'; badge.style.display = 'none';
-          var dialLabel = document.getElementById('dial-submit-label');
-          if (dialLabel) dialLabel.innerText = '貸出実行';
-        }
-      }
-    }
-    function toggleReturnCheck(type) {
-      var unused = document.getElementById('op-check-unused');
-      var defect = document.getElementById('op-check-defect');
-      if (type === 'unused' && unused.checked) defect.checked = false;
-      else if (type === 'defect' && defect.checked) unused.checked = false;
-    }
-
-    function loadBulkReturnList() {
-      var container = document.getElementById('bulk-return-list');
-      if (!container) return;
-      container.innerHTML = '<div class="text-center text-muted p-3"><span class="spinner-border spinner-border-sm"></span> 取得中...</div>';
-
-      google.script.run.withSuccessHandler(function (list) {
-        bulkReturnTanks = list.map(item => ({ id: item.id, statusTag: 'normal', note: '' }));
-        renderBulkReturnList();
-      }).withFailureHandler(function (e) {
-        container.innerHTML = '<div class="alert alert-danger py-2 small">取得エラー: ' + e.message + '</div>';
-      }).getInHouseTanks();
-    }
-
-    function renderBulkReturnList() {
-      var container = document.getElementById('bulk-return-list');
-      if (!container) return;
-      container.innerHTML = '';
-
-      if (bulkReturnTanks.length === 0) {
-        container.innerHTML = '<div class="text-center text-muted p-3 mt-4"><i class="bi bi-check-circle display-1 text-success d-block mb-3"></i><h5>返却するタンクはありません</h5><p class="small">現在自社利用中のタンクは0件です。</p></div>';
-        var dialBtn = document.getElementById('dial-submit-btn');
-        if (dialBtn) dialBtn.style.display = 'none';
-        return;
-      }
-
-      bulkReturnTanks.forEach(function (item, idx) {
-        var unusedCls = (item.statusTag === 'unused') ? 'active-unused' : '';
-        var defectCls = (item.statusTag === 'defect') ? 'active-defect' : '';
-
-        var html = `
-          <div class="bulk-card">
-            <div class="bulk-id">${item.id}</div>
-            <div>
-              <button class="bulk-tag-btn ${unusedCls}" onclick="toggleBulkTag(${idx}, 'unused')">未使用</button>
-              <button class="bulk-tag-btn ${defectCls}" onclick="toggleBulkTag(${idx}, 'defect')">未充填</button>
-            </div>
-          </div>
-        `;
-        container.insertAdjacentHTML('beforeend', html);
-      });
-
-      var dialBtn = document.getElementById('dial-submit-btn');
-      if (dialBtn && opMode === '自社一括') {
-        dialBtn.style.display = 'block';
-        document.getElementById('dial-submit-label').innerText = bulkReturnTanks.length + "件 全て返却";
-      }
-    }
-
-    function toggleBulkTag(idx, tag) {
-      if (bulkReturnTanks[idx].statusTag === tag) {
-        bulkReturnTanks[idx].statusTag = 'normal';
-      } else {
-        bulkReturnTanks[idx].statusTag = tag;
-      }
-      renderBulkReturnList();
-    }
-
-    function renderRepairCheckboxes() {
-      var container = document.getElementById('repair-options-container');
-      if (!container) return;
-      container.innerHTML = '';
-      repairOptionsCache.forEach(function (opt, idx) {
-        var html = `<label class="repair-list-item" id="rep-item-${idx}">
-     <input class="form-check-input repair-check-input" type="checkbox" value="${opt.price}" id="rep-opt-${idx}" data-name="${opt.name}" onchange="toggleRepairItem(${idx})">
-     <span class="repair-name">${opt.name}</span><span class="repair-price">${opt.price} 円</span></label>`;
-        container.insertAdjacentHTML('beforeend', html);
-      });
-      calcRepairTotal();
-    }
-    function toggleRepairItem(idx) {
-      var chk = document.getElementById('rep-opt-' + idx);
-      var item = document.getElementById('rep-item-' + idx);
-      if (chk && item) {
-        if (chk.checked) item.classList.add('checked'); else item.classList.remove('checked');
-        calcRepairTotal();
-      }
-    }
-    function calcRepairTotal() {
-      var total = 0;
-      var checks = document.querySelectorAll('#repair-options-container input[type="checkbox"]:checked');
-      checks.forEach(function (c) { total += parseInt(c.value) || 0; });
-      var disp = document.getElementById('repair-total-display');
-      if (disp) disp.innerText = total.toLocaleString();
-    }
-
-    function triggerSuccessFeedback(prefix) {
-      var rList = document.getElementById('rotary-queue-list');
-      if (rList) {
-        rList.classList.remove('flash-success');
-        void rList.offsetWidth;
-        rList.classList.add('flash-success');
-      }
-    }
-
-    function addOpQueue(id) {
-      if (!opQueue.some(item => item.id === id)) { opQueue.push({ id: id, note: '' }); renderOpQueue(); }
-    }
-    function updateItemNote(index, text) { opQueue[index].note = text; }
-    function appendQuickNote(index, text) {
-      var current = opQueue[index].note;
-      if (current) text = current + ", " + text;
-      opQueue[index].note = text;
-      document.getElementById('note-input-' + index).value = text;
-    }
-
-    function renderOpQueue() {
-      var list = document.getElementById('rotary-queue-list');
-      if (!list) return;
-      list.innerHTML = '';
-      var countEl = document.getElementById('rotary-queue-count');
-      if (countEl) countEl.innerText = opQueue.length;
-      var color = getModeColor();
-      var dialBtn = document.getElementById('dial-submit-btn');
-
-      if (opQueue.length > 0) {
-        if (dialBtn) dialBtn.style.display = 'block';
-        opQueue.slice().reverse().forEach((item, revIndex) => {
-          var index = opQueue.length - 1 - revIndex;
-          list.innerHTML += `<div class="queue-card p-2 mb-1 shadow-sm" style="border-left-color: ${color};">
-           <div class="d-flex justify-content-between align-items-center">
-             <span class="fw-bold fs-5 font-monospace">${item.id}</span>
-             <button class="btn btn-sm text-danger" onclick="removeOpQueue(${index})"><i class="bi bi-trash3-fill"></i></button>
-           </div>
-          </div>`;
-        });
-      } else {
-        list.innerHTML = '<div class="text-muted small text-center mt-3">まだキューに追加されていません</div>';
-        if (opMode !== '自社一括') {
-          if (dialBtn) dialBtn.style.display = 'none';
-        }
-      }
-    }
-
-    function removeOpQueue(index) { opQueue.splice(index, 1); renderOpQueue(); }
-    function clearOpQueue() { opQueue = []; renderOpQueue(); }
-
-    function submitOp() {
-      if (opMode === '自社一括') {
-        submitBulkReturn();
-        return;
-      }
-
-      if (opMode === '貸出' && !isSelfUseMode) {
-        var dest = document.getElementById('op-dest-select').value;
-        if (!dest || dest === "") { alert("⚠️ 貸出先が選択されていません。"); return; }
-      }
-      var confirmMsg = opQueue.length + '件 送信しますか？';
-      if (opMode === '貸出' && isSelfUseMode) confirmMsg += '\n（自社利用として記録されます）';
-      else if (opMode === '貸出') confirmMsg += '\n貸出先: ' + document.getElementById('op-dest-select').value;
-
-      if (!confirm(confirmMsg)) return;
-
-      var dialBtn = document.getElementById('dial-submit-btn');
-      var dialLabel = document.getElementById('dial-submit-label');
-      var orgText = dialLabel ? dialLabel.innerText : '送信';
-      if (dialBtn) dialBtn.disabled = true;
-      if (dialLabel) dialLabel.innerText = "送信中...";
-
-      var finalDest = document.getElementById('op-dest-select') ? document.getElementById('op-dest-select').value : "";
-      var finalAction = opMode;
-      if (opMode === '貸出' && isSelfUseMode) { finalDest = "自社利用"; finalAction = "自社利用"; }
-
-      var payload = {
-        action: finalAction,
-        items: opQueue,
-        destination: finalDest,
-        isUnused: document.getElementById('op-check-unused') ? document.getElementById('op-check-unused').checked : false,
-        isDefect: document.getElementById('op-check-defect') ? document.getElementById('op-check-defect').checked : false,
-        repairCost: 0,
-        repairDetail: "",
-        userPasscode: (typeof GLOBAL_PASSCODE !== 'undefined') ? GLOBAL_PASSCODE : ""
-      };
-
-      google.script.run.withSuccessHandler(res => {
-        if (dialBtn) dialBtn.disabled = false;
-        if (dialLabel) dialLabel.innerText = orgText;
-        clearOpQueue();
-        if (isSelfUseMode) toggleSelfUse();
-        if (opMode === '貸出') document.getElementById('op-dest-select').value = "";
-        if (document.getElementById('op-check-unused')) document.getElementById('op-check-unused').checked = false;
-        if (document.getElementById('op-check-defect')) document.getElementById('op-check-defect').checked = false;
-
-        var msg = "【送信結果】\n総数: " + (res.totalCount || 0) + " 本\n----------------\n";
-        if (res.successIds && res.successIds.length > 0) msg += "✅ 成功 (" + res.successIds.length + "本):\n" + res.successIds.join(", ") + "\n\n";
-        else msg += "✅ 成功: なし\n\n";
-        if (res.failedItems && res.failedItems.length > 0) {
-          msg += "❌ 失敗 (" + res.failedItems.length + "本):\n";
-          res.failedItems.forEach(item => msg += "・" + item.id + " : " + item.reason + "\n");
-        }
-        alert(msg);
-
-      }).withFailureHandler(function (e) {
-        if (dialBtn) dialBtn.disabled = false;
-        if (dialLabel) dialLabel.innerText = orgText;
-        alert("システムエラー: " + e);
-      }).submitOperations(payload);
-    }
-
-    function submitBulkReturn() {
-      if (bulkReturnTanks.length === 0) return;
-      if (!confirm(bulkReturnTanks.length + "件の自社タンクを一括送信しますか？\n※未使用・未充填のタグを付けたものはその状態で返却されます。")) return;
-
-      var dialBtn = document.getElementById('dial-submit-btn');
-      var dialLabel = document.getElementById('dial-submit-label');
-      var orgText = dialLabel ? dialLabel.innerText : '送信';
-      if (dialBtn) dialBtn.disabled = true;
-      if (dialLabel) dialLabel.innerText = "送信中...";
-
-      var payload = {
-        action: '自社一括返却',
-        items: bulkReturnTanks,
-        userPasscode: (typeof GLOBAL_PASSCODE !== 'undefined') ? GLOBAL_PASSCODE : ""
-      };
-
-      google.script.run.withSuccessHandler(res => {
-        if (dialBtn) dialBtn.disabled = false;
-        if (dialLabel) dialLabel.innerText = orgText;
-        if (res.success) {
-          bulkReturnTanks = [];
-          renderBulkReturnList();
-          alert(res.message);
-        } else {
-          var msg = "エラー: " + res.message + "\n";
-          if (res.failedItems) res.failedItems.forEach(i => msg += i.id + " : " + i.reason + "\n");
-          alert(msg);
-        }
-      }).withFailureHandler(function (e) {
-        if (dialBtn) dialBtn.disabled = false;
-        if (dialLabel) dialLabel.innerText = orgText;
-        alert("システムエラー: " + e);
-      }).submitOperations(payload);
-    }
-
-    // ■■■ ロータリーモード用JS ■■■
-    var currentScrollY = 0;
-    var ITEM_HEIGHT = 46;
-    var activePrefix = '';
-    var isOkMode = false;
-    var dialItemsCount = 0;
-    var isDraggingDial = false;
-    var lastDragY = 0;
-    var dialTouchRegistered = false;
-    var swipeAccumulator = 0;
-    var SWIPE_THRESHOLD = 35;
-    var currentActiveIndex = 0;
-
-    function renderDialMode(color) {
-      var wheel = document.getElementById('dial-wheel');
-      if (!wheel) return;
-      wheel.innerHTML = '';
-      dialItemsCount = opPrefixes.length;
-      if (dialItemsCount === 0) return;
-
-      var okBtn = document.getElementById('dial-ok-btn');
-      var modeColor = getModeColor();
-      if (okBtn) okBtn.style.backgroundColor = modeColor;
-
-      opPrefixes.forEach((p, i) => {
-        var el = document.createElement('div');
-        el.className = 'rotary-item shadow-sm';
-        el.id = 'dial-item-' + i;
-        el.innerText = p;
-        el.dataset.prefix = p;
-        el.dataset.index = i;
-
-        el.onclick = function () {
-          currentActiveIndex = i;
-          snapToItem(i);
-          var inp = document.getElementById('rotary-hidden-input');
-          if (inp) { inp.focus(); }
-        };
-        wheel.appendChild(el);
-      });
-      currentScrollY = 0;
-      currentActiveIndex = 0;
-      isDraggingDial = false;
-      updateDialPositions();
-    }
-
-    function updateDialPositions() {
-      var wheel = document.getElementById('dial-wheel');
-      var container = document.getElementById('rotary-wheel-container');
-      if (!wheel || !container) return;
-      var items = wheel.getElementsByClassName('rotary-item');
-      if (items.length === 0) return;
-
-      var containerHeight = container.offsetHeight;
-      if (containerHeight <= 0) return;
-
-      var activeSlotY = containerHeight - 55;
-      var remainingHeight = activeSlotY - 8;
-      var slotHeight = Math.max(26, remainingHeight / Math.max(1, dialItemsCount - 1));
-
-      var modeColor = getModeColor();
-
-      for (var i = 0; i < items.length; i++) {
-        var el = items[i];
-        var idx = parseInt(el.dataset.index);
-
-        if (idx === currentActiveIndex) {
-          el.style.top = activeSlotY + 'px';
-          el.style.opacity = '1';
-          el.classList.add('active');
-          el.style.backgroundColor = modeColor;
-          el.style.color = '#fff';
-          el.style.backgroundImage = 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 100%)';
-          el.style.textShadow = '0 2px 4px rgba(0,0,0,0.3)';
-          el.style.boxShadow = '0 8px 24px ' + modeColor + '88, 0 0 0 3px rgba(255,255,255,0.7)';
-          el.style.transform = 'scale(1.5)';
-          el.style.zIndex = '110';
-
-          var targetLabel = document.getElementById('dial-ok-label');
-          if (activePrefix !== el.dataset.prefix) {
-            activePrefix = el.dataset.prefix;
-            if (targetLabel) {
-              targetLabel.innerText = el.dataset.prefix + '-OK';
-              var okBtn = document.getElementById('dial-ok-btn');
-              if (okBtn) {
-                okBtn.classList.remove('pop-anim');
-                void okBtn.offsetWidth;
-                okBtn.classList.add('pop-anim');
-              }
-            }
-          }
-        } else {
-          var stepsBack = (currentActiveIndex - idx + dialItemsCount) % dialItemsCount;
-          var slotY = activeSlotY - stepsBack * slotHeight;
-
-          el.style.top = slotY + 'px';
-          el.classList.remove('active');
-          el.style.backgroundColor = '';
-          el.style.backgroundImage = '';
-          el.style.textShadow = '';
-          el.style.color = '#444';
-          el.style.boxShadow = '';
-          el.style.transform = 'scale(0.85)';
-          el.style.zIndex = '100';
-
-          if (slotY < 15) {
-            el.style.opacity = Math.max(0, (slotY + 20) / 35).toString();
-          } else {
-            el.style.opacity = '0.8';
-          }
-        }
-      }
-    }
-
-    var dialVelocity = 0;
-    var dialMomentumRaf = null;
-    var lastTouchTime = 0;
-    var touchHistory = [];
-
-    function registerDialTouch() {
-      if (dialTouchRegistered) return;
-      var touchArea = document.getElementById('op-container');
-      if (!touchArea) return;
-
-      touchArea.addEventListener('touchstart', function (e) {
-        // Only prevent default if they are explicitly touching the rotary container area or specifically dragging it.
-        // We do NOT prevent default here so clicks on buttons inside #op-container still work.
-        isDraggingDial = true;
-        var touch = e.touches[0];
-        lastDragY = touch.clientY;
-        dialVelocity = 0;
-        touchHistory = [];
-        if (dialMomentumRaf) { cancelAnimationFrame(dialMomentumRaf); dialMomentumRaf = null; }
-        touchHistory.push({ y: touch.clientY, t: Date.now() });
-      }, { passive: true });
-
-      touchArea.addEventListener('touchmove', function (e) {
-        if (!isDraggingDial) return;
-
-        // Let's only scroll the dial strictly if the user is dragging in an area not already scrolling natively
-        // However, dial lock is already ensuring `#op-container` doesn't natively scroll
-        if (e.cancelable && document.body.classList.contains('dial-lock')) {
-          e.preventDefault();
-        }
-
-        var touch = e.touches[0];
-        var diffY = touch.clientY - lastDragY;
-        lastDragY = touch.clientY;
-
-        // Smooth live tracking: move items with finger
-        var totalScrollRange = dialItemsCount * ITEM_HEIGHT;
-        currentScrollY -= diffY * (ITEM_HEIGHT / SWIPE_THRESHOLD);
-        if (currentScrollY < 0) currentScrollY += totalScrollRange;
-        currentScrollY = currentScrollY % totalScrollRange;
-        currentActiveIndex = Math.round(currentScrollY / ITEM_HEIGHT) % dialItemsCount;
-        updateDialPositions();
-
-        // Track recent touches for velocity calculation
-        var now = Date.now();
-        touchHistory.push({ y: touch.clientY, t: now });
-        // Keep only last 100ms of history
-        while (touchHistory.length > 1 && now - touchHistory[0].t > 100) {
-          touchHistory.shift();
-        }
-      }, { passive: false });
-
-      touchArea.addEventListener('touchend', function (e) {
-        isDraggingDial = false;
-
-        // Calculate velocity from touch history
-        if (touchHistory.length >= 2) {
-          var first = touchHistory[0];
-          var last = touchHistory[touchHistory.length - 1];
-          var dt = last.t - first.t;
-          if (dt > 0 && dt < 300) {
-            dialVelocity = -(last.y - first.y) / dt * 16 * (ITEM_HEIGHT / SWIPE_THRESHOLD);
-          } else {
-            dialVelocity = 0;
-          }
-        } else {
-          dialVelocity = 0;
-        }
-
-        // Start momentum deceleration
-        if (Math.abs(dialVelocity) > 0.5) {
-          startMomentumScroll();
-        } else {
-          // Snap to nearest item
-          snapToNearest();
-        }
-      }, { passive: true });
-
-      dialTouchRegistered = true;
-    }
-
-    function startMomentumScroll() {
-      var friction = 0.82;
-      function tick() {
-        dialVelocity *= friction;
-        if (Math.abs(dialVelocity) < 0.3) {
-          dialMomentumRaf = null;
-          snapToNearest();
-          return;
-        }
-        var totalScrollRange = dialItemsCount * ITEM_HEIGHT;
-        currentScrollY += dialVelocity;
-        if (currentScrollY < 0) currentScrollY += totalScrollRange;
-        currentScrollY = currentScrollY % totalScrollRange;
-        currentActiveIndex = Math.round(currentScrollY / ITEM_HEIGHT) % dialItemsCount;
-        updateDialPositions();
-        dialMomentumRaf = requestAnimationFrame(tick);
-      }
-      dialMomentumRaf = requestAnimationFrame(tick);
-    }
-
-    function snapToNearest() {
-      var nearestIdx = Math.round(currentScrollY / ITEM_HEIGHT) % dialItemsCount;
-      if (nearestIdx < 0) nearestIdx += dialItemsCount;
-      currentActiveIndex = nearestIdx;
-      snapToItem(nearestIdx);
-    }
-
-    function snapToItem(idx) {
-      var totalScrollRange = dialItemsCount * ITEM_HEIGHT;
-      var targetScrollY = idx * ITEM_HEIGHT;
-
-      var diff = targetScrollY - currentScrollY;
-
-      if (diff > totalScrollRange / 2) diff -= totalScrollRange;
-      if (diff < -totalScrollRange / 2) diff += totalScrollRange;
-
-      animateDialRotation(currentScrollY + diff);
-    }
-
-    function animateDialRotation(targetScroll) {
-      if (dialMomentumRaf) { cancelAnimationFrame(dialMomentumRaf); dialMomentumRaf = null; }
-      var startScroll = currentScrollY;
-      var diff = targetScroll - startScroll;
-      if (Math.abs(diff) < 0.5) {
-        currentScrollY = targetScroll;
-        var totalScrollRange = dialItemsCount * ITEM_HEIGHT;
-        if (currentScrollY < 0) currentScrollY += totalScrollRange;
-        currentScrollY = currentScrollY % totalScrollRange;
-        updateDialPositions();
-        return;
-      }
-      var startTime = performance.now();
-      var duration = 200;
-      function tick(now) {
-        var elapsed = now - startTime;
-        var t = Math.min(1, elapsed / duration);
-        var ease = 1 - Math.pow(1 - t, 3); // easeOutCubic
-        currentScrollY = startScroll + diff * ease;
-
-        var totalScrollRange = dialItemsCount * ITEM_HEIGHT;
-        if (currentScrollY < 0) currentScrollY += totalScrollRange;
-        currentScrollY = currentScrollY % totalScrollRange;
-
-        updateDialPositions();
-        if (t < 1) {
-          dialMomentumRaf = requestAnimationFrame(tick);
-        } else {
-          currentScrollY = targetScroll;
-          if (currentScrollY < 0) currentScrollY += totalScrollRange;
-          currentScrollY = currentScrollY % totalScrollRange;
-          updateDialPositions();
-          dialMomentumRaf = null;
-        }
-      }
-      dialMomentumRaf = requestAnimationFrame(tick);
-    }
-
-    function submitActiveOk() {
-      if (activePrefix) {
-        addOpQueue(activePrefix + '-OK');
-        triggerSuccessFeedback(activePrefix);
-      }
-    }
-
-    function checkRotaryInput(el) {
-      var val = el.value.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
-      val = val.replace(/[^0-9]/g, '');
-      el.value = val;
-      if (val.length >= 2) {
-        addOpQueue(activePrefix + '-' + val);
-        el.value = '';
-        triggerSuccessFeedback(activePrefix);
-      }
-    }
+  });
+  if (ok) console.log("全てのルーティング先関数が存在します。");
+}
+
+// ============================================
+// データ整合性テスト
+// ============================================
+
+/**
+ * タンクステータスシートの基本データチェック
+ */
+function test_statusSheetIntegrity() {
+  console.log("=== ステータスシートチェック ===");
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetName = (typeof SHEET_NAMES !== 'undefined' && SHEET_NAMES.STATUS) ? SHEET_NAMES.STATUS : 'タンクステータス';
+  var sheet = ss.getSheetByName(sheetName);
+
+  if (!sheet) {
+    console.log("❌ シート '" + sheetName + "' が見つかりません");
+    return;
+  }
+
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  console.log("行数: " + lastRow + ", 列数: " + lastCol);
+
+  if (lastRow <= 1) {
+    console.log("⚠️ データ行がありません（ヘッダーのみ）");
+    return;
+  }
+
+  var data = sheet.getRange(2, 1, lastRow - 1, Math.min(lastCol, 3)).getValues();
+  var statusCounts = {};
+  var emptyIds = 0;
+
+  data.forEach(function (row) {
+    if (!row[0]) { emptyIds++; return; }
+    var status = String(row[1] || '(空)');
+    statusCounts[status] = (statusCounts[status] || 0) + 1;
+  });
+
+  console.log("総タンク数: " + data.length);
+  if (emptyIds > 0) console.log("⚠️ ID空行: " + emptyIds + "件");
+
+  console.log("--- ステータス分布 ---");
+  Object.keys(statusCounts).sort().forEach(function (s) {
+    console.log("  " + s + ": " + statusCounts[s] + "件");
+  });
+}
+
+/**
+ * normalizeId関数のテスト
+ */
+function test_normalizeId() {
+  console.log("=== normalizeIdテスト ===");
+  var testCases = [
+    { input: 'A-01', expected: 'A01' },
+    { input: 'a-01', expected: 'A01' },
+    { input: 'Ａ０１', expected: 'A01' },
+    { input: 'A 01', expected: 'A01' },
+    { input: 'A_01', expected: 'A01' },
+    { input: 'A01', expected: 'A01' }
+  ];
+
+  testCases.forEach(function (tc) {
+    var result = normalizeId(tc.input);
+    var pass = (result === tc.expected);
+    console.log((pass ? "✅" : "❌") + " normalizeId('" + tc.input + "') = '" + result + "'" + (pass ? "" : " (期待値: '" + tc.expected + "')"));
+  });
+}
+
+// ============================================
+// 全テスト一括実行
+// ============================================
+
+/**
+ * 安全なテストを全て実行（データ変更なし）
+ */
+function runAllTests() {
+  console.log("■■■ 全テスト実行開始 ■■■\n");
+  test_normalizeId();
+  console.log("");
+  test_opRulesConsistency();
+  console.log("");
+  test_routingCheck();
+  console.log("");
+  test_statusSheetIntegrity();
+  console.log("");
+  test_getInHouseTanks();
+  console.log("");
+  test_triggerStatus();
+  console.log("");
+  test_autoConfirmDryRun();
+  console.log("");
+  test_retroReportDryRun();
+  console.log("\n■■■ 全テスト完了 ■■■");
+}
