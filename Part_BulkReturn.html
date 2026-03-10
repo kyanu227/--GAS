@@ -327,8 +327,8 @@
                 brData = result;
                 // 各タンクにstatusTagを初期化
                 brData.destinations.forEach(function (dest) {
-                    brData.tanks[dest] = brData.tanks[dest].map(function (t) {
-                        return { id: t.id, status: t.status, statusTag: 'normal' };
+                    brData.tanks[dest] = brData.tanks[dest].map(function (tk) {
+                        return { id: tk.id, status: tk.status, statusTag: 'normal' };
                     });
                 });
                 brRenderChips();
@@ -543,8 +543,8 @@
 
         if (!fromGlobal) {
             // グローバルスライダー同期
-            var allUnused = brFilteredTanks.length > 0 && brFilteredTanks.every(function (t) { return t.statusTag === 'unused'; });
-            var allDefect = brFilteredTanks.length > 0 && brFilteredTanks.every(function (t) { return t.statusTag === 'defect'; });
+            var allUnused = brFilteredTanks.length > 0 && brFilteredTanks.every(function (tk) { return tk.statusTag === 'unused'; });
+            var allDefect = brFilteredTanks.length > 0 && brFilteredTanks.every(function (tk) { return tk.statusTag === 'defect'; });
             var gv = 1;
             if (allUnused) gv = 2;
             if (allDefect) gv = 0;
@@ -592,8 +592,8 @@
     function brSubmit() {
         if (brFilteredTanks.length === 0 || brSelectedDest === '全て') return;
 
-        var unusedCount = brFilteredTanks.filter(function (t) { return t.statusTag === 'unused'; }).length;
-        var defectCount = brFilteredTanks.filter(function (t) { return t.statusTag === 'defect'; }).length;
+        var unusedCount = brFilteredTanks.filter(function (tk) { return tk.statusTag === 'unused'; }).length;
+        var defectCount = brFilteredTanks.filter(function (tk) { return tk.statusTag === 'defect'; }).length;
         var normalCount = brFilteredTanks.length - unusedCount - defectCount;
 
         var msg = '【' + brSelectedDest + '】 ' + brFilteredTanks.length + '件を返却します。\n';
@@ -624,7 +624,7 @@
                     var successSet = {};
                     (res.successIds || []).forEach(function (sid) { successSet[sid] = true; });
                     if (brData.tanks[brSelectedDest]) {
-                        brData.tanks[brSelectedDest] = brData.tanks[brSelectedDest].filter(function (t) { return !successSet[t.id]; });
+                        brData.tanks[brSelectedDest] = brData.tanks[brSelectedDest].filter(function (tk) { return !successSet[tk.id]; });
                         if (brData.tanks[brSelectedDest].length === 0) {
                             delete brData.tanks[brSelectedDest];
                             brData.destinations = brData.destinations.filter(function (d) { return d !== brSelectedDest; });

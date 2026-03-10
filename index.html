@@ -604,7 +604,7 @@
     function switchMode(mode) {
       offcanvas.hide();
       document.body.classList.remove('dial-lock');
-      document.getElementById('header-title').innerText = mode;
+      document.getElementById('header-title').innerText = t(mode);
 
       // Show bulk return button in header only on operations views
       var bulkRetBtn = document.getElementById('header-bulk-return-btn');

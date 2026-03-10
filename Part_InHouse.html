@@ -605,7 +605,7 @@
     google.script.run
       .withSuccessHandler(function (list) {
         // サーバーからstatusTag付きで取得
-        ihInUseTanks = list.map(function (t) { return { id: t.id, statusTag: t.statusTag || 'normal' }; });
+        ihInUseTanks = list.map(function (tk) { return { id: tk.id, statusTag: tk.statusTag || 'normal' }; });
         document.getElementById('ih-inuse-badge').innerText = ihInUseTanks.length;
         ihRenderInUse();
       })
@@ -654,8 +654,8 @@
 
   function ihConfirmReturn() {
     if (ihInUseTanks.length === 0) return;
-    var unused = ihInUseTanks.filter(function (t) { return t.statusTag === 'unused'; }).length;
-    var defect = ihInUseTanks.filter(function (t) { return t.statusTag === 'defect'; }).length;
+    var unused = ihInUseTanks.filter(function (tk) { return tk.statusTag === 'unused'; }).length;
+    var defect = ihInUseTanks.filter(function (tk) { return tk.statusTag === 'defect'; }).length;
     var normal = ihInUseTanks.length - unused - defect;
     var msg = ihInUseTanks.length + t('件を返却確定しますか？') + '\n' + t('※未使用・未充填のタグを付けたものはその状態で返却されます。');
     if (normal > 0) msg += '\n' + t('・通常: ') + normal + t('件');

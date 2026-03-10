@@ -274,14 +274,14 @@
           <input type="checkbox" id="op-check-unused" class="check-card-input" onchange="toggleReturnCheck('unused')">
           <label for="op-check-unused" class="check-card-label">
             <i class="bi bi-fuel-pump-fill fs-4 mb-0"></i>
-            <span class="fw-bold small">未使用</span>
+            <span class="fw-bold small" data-t="未使用">未使用</span>
           </label>
         </div>
         <div class="check-defect flex-fill">
           <input type="checkbox" id="op-check-defect" class="check-card-input" onchange="toggleReturnCheck('defect')">
           <label for="op-check-defect" class="check-card-label">
             <i class="bi bi-exclamation-triangle-fill fs-4 mb-0"></i>
-            <span class="fw-bold small">未充填</span>
+            <span class="fw-bold small" data-t="未充填">未充填</span>
           </label>
         </div>
       </div>
@@ -293,7 +293,8 @@
     </div>
     <div id="op-settings-bulk-return" class="op-setting-panel" style="display:none;">
       <div class="d-flex justify-content-between align-items-end mb-2">
-        <h6 class="fw-bold text-secondary mb-0"><i class="bi bi-building-down"></i> 自社使用中タンク</h6>
+        <h6 class="fw-bold text-secondary mb-0"><i class="bi bi-building-down"></i> <span
+            data-t="自社使用中タンク">自社使用中タンク</span></h6>
         <button class="btn btn-sm btn-outline-secondary py-0" style="font-size:0.8rem;"
           onclick="loadBulkReturnList()"><i class="bi bi-arrow-clockwise"></i> 再取得</button>
       </div>
@@ -312,19 +313,19 @@
           class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2 position-sticky top-0 bg-light"
           style="z-index:10; padding-top:4px;">
           <span class="fw-bold text-dark small">
-            <i class="bi bi-list-check"></i> 送信リスト
+            <i class="bi bi-list-check"></i> <span data-t="送信リスト">送信リスト</span>
             <span id="rotary-queue-count" class="badge bg-primary ms-1"
               style="font-size: 0.85rem; padding: 0.35em 0.65em;">0</span>
           </span>
-          <button class="btn btn-sm btn-outline-secondary py-0" style="font-size:0.75rem;"
-            onclick="clearOpQueue()">全消去</button>
+          <button class="btn btn-sm btn-outline-secondary py-0" style="font-size:0.75rem;" onclick="clearOpQueue()"
+            data-t="全消去">全消去</button>
         </div>
         <div id="rotary-queue-list" class="d-grid gap-2">
-          <div class="text-muted small text-center mt-3">まだキューに追加されていません</div>
+          <div class="text-muted small text-center mt-3" data-t="まだキューに追加されていません">まだキューに追加されていません</div>
         </div>
       </div>
       <button id="dial-submit-btn" class="btn fw-bold fs-5 shadow" style="display:none;" onclick="submitOp()">
-        <i class="bi bi-send-fill"></i> <span id="dial-submit-label">送信</span>
+        <i class="bi bi-send-fill"></i> <span id="dial-submit-label" data-t="送信">送信</span>
       </button>
     </div>
     <div id="dial-ok-wrapper" style="position: absolute; right: 5px; top: 8px; width: 95px; z-index: 130;">
@@ -381,7 +382,7 @@
           if (sel) {
             sel.innerHTML = '';
             var def = document.createElement('option');
-            def.text = "👇 貸出先を選択"; def.value = ""; def.selected = true; def.disabled = true;
+            def.text = t('👇 貸出先を選択'); def.value = ""; def.selected = true; def.disabled = true;
             sel.appendChild(def);
             if (data.destList && data.destList.length > 0) {
               data.destList.forEach(function (d) { sel.appendChild(new Option(d, d)); });
@@ -485,16 +486,16 @@
 
         if (mode === '貸出') {
           document.getElementById('op-settings-lend').style.display = 'block';
-          btnText = '貸出実行';
+          btnText = t('貸出実行');
         } else if (mode === '返却') {
           document.getElementById('op-settings-return').style.display = 'block';
-          btnText = '返却実行';
+          btnText = t('返却実行');
         } else if (mode === '充填') {
           document.getElementById('op-settings-fill').style.display = 'block';
-          btnText = '充填完了';
+          btnText = t('充填完了');
         } else if (mode === '自社一括') {
           document.getElementById('op-settings-bulk-return').style.display = 'block';
-          btnText = '一括返却';
+          btnText = t('一括返却');
           loadBulkReturnList();
         }
 
@@ -723,11 +724,11 @@
 
             var allowedPrev = OP_RULES[targetMode];
             if (!isSpecial && allowedPrev && allowedPrev.length > 0 && allowedPrev.indexOf(currentStatus) === -1) {
-              triggerErrorFeedback(`不適合なステータス: 現在 [${currentStatus}]`);
+              triggerErrorFeedback(t('不適合なステータス: 現在') + ` [${currentStatus}]`);
               return false; // ブロック
             }
           } else {
-            triggerErrorFeedback('未登録のタンクIDです');
+            triggerErrorFeedback(t('未登録のタンクIDです'));
             return false;
           }
         }
