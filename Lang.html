@@ -1,0 +1,234 @@
+<!-- Lang.html : 多言語サポート (i18n) -->
+<script>
+    // =====================================================
+    //  翻訳辞書: 英語キー → 各言語テキスト
+    //  日本語はHTMLにハードコードされているため、
+    //  英語のみ定義。t()はen以外ではキーをそのまま返す。
+    // =====================================================
+    var CURRENT_LANG = 'ja'; // サーバーから受け取った値で初期化
+
+    var LANG_EN = {
+        // --- ログイン ---
+        'ログイン': 'Login',
+        '担当者パスコード（6桁）を入力してください': 'Enter your 6-digit passcode',
+        '認証する': 'Sign In',
+        'パスコードが正しくありません': 'Invalid passcode',
+        '認証情報を確認中...': 'Verifying credentials...',
+        'アクセス権限がありません': 'Access Denied',
+        'このページを表示する権限（管理者権限など）が不足しています。': 'You do not have permission to view this page.',
+        '通常画面へ戻る': 'Go back',
+        '処理中...': 'Processing...',
+
+        // --- ナビ・メニュー ---
+        'メニュー': 'Menu',
+        '基本操作': 'Operations',
+        'メンテナンス・報告': 'Maintenance',
+        '確認': 'Info',
+        '貸出': 'Lend',
+        '返却': 'Return',
+        '充填': 'Fill',
+        'ダッシュボード': 'Dashboard',
+        '破損報告': 'Damage Report',
+        '修理済み': 'Repaired',
+        '耐圧検査完了': 'Inspection Done',
+        '資材発注': 'Ordering',
+        'マイページ': 'My Page',
+        '一括返却': 'Bulk Return',
+        '自社管理': 'In-House',
+        '設定': 'Settings',
+
+        // --- ヘッダー ---
+        'さん': '',
+        'リスト更新': 'Refresh',
+
+        // --- 操作画面 共通 ---
+        '貸出先': 'Destination',
+        '👇 貸出先を選択': '👇 Select destination',
+        '自社': 'In-House',
+        '未使用': 'Unused',
+        '未充填': 'Defect',
+        '送信リスト': 'Queue',
+        'まだキューに追加されていません': 'No items in queue',
+        '全消去': 'Clear all',
+        '送信': 'Submit',
+        '貸出実行': 'Lend',
+        '返却実行': 'Return',
+        '充填完了': 'Fill Done',
+        '送信中...': 'Sending...',
+        '担当者名(任意)': 'Handler (optional)',
+        '備考(任意)': 'Note (optional)',
+        '破損内容': 'Damage detail',
+
+        // --- alert/confirm ---
+        '件 送信しますか？': ' items. Submit?',
+        '貸出先: ': 'Dest: ',
+        '⚠️ 貸出先が選択されていません。': '⚠️ Please select a destination.',
+        '【送信結果】': '【Result】',
+        '総数: ': 'Total: ',
+        '本': ' tanks',
+        '✅ 成功': '✅ Success',
+        '❌ 失敗': '❌ Failed',
+        '成功: なし': 'Success: None',
+        'システムエラー: ': 'System Error: ',
+        '最新のリストを取得しますか？': 'Refresh the list?',
+        '更新エラー: ': 'Refresh Error: ',
+        '更新中': 'Refreshing',
+        '不適合なステータス: 現在': 'Status mismatch: Currently',
+        '未登録のタンクIDです': 'Unregistered tank ID',
+
+        // --- 自社管理画面 ---
+        '使用報告': 'Usage Report',
+        '利用中タンク': 'Tanks In Use',
+        '通常': 'Normal',
+        'ダイヤルでIDを入力': 'Enter ID with dial',
+        '件 登録': ' Register',
+        '件を自社利用中として登録しますか？': ' tanks as in-house use?',
+        '自社使用中タンク': 'In-House Tanks',
+        '返却するタンクはありません': 'No tanks to return',
+        '現在自社利用中のタンクは0件です。': 'No tanks currently in use.',
+        '全て返却': 'Return All',
+        '一括送信しますか？': 'Submit all?',
+        '※未使用・未充填のタグを付けたものはその状態で返却されます。': 'Tagged items will be returned with their status.',
+        '重複: ': 'Duplicate: ',
+        '未登録ID': 'Unknown ID',
+        'ステータス不一致: 現在「': 'Status mismatch: "',
+        '取得中...': 'Loading...',
+        '取得エラー': 'Load Error',
+        '既に自社利用中です': 'Already in use',
+        '自動確定': 'Auto-Confirm',
+        '自動確定ON': 'Auto ON',
+        '自動確定OFF': 'Auto OFF',
+        '毎日': 'Daily at',
+        '時ごろに自動返却されます': ' auto-return',
+
+        // --- ダッシュボード ---
+        '今日の作業': "Today's Work",
+        '今週の作業': "This Week's Work",
+        '全体ステータス': 'Overall Status',
+        '充填済み': 'Filled',
+        '空': 'Empty',
+        '貸出中': 'Lent Out',
+        '自社利用中': 'In-House',
+        '破損': 'Damaged',
+        '保管中': 'Stored',
+        '件': ' items',
+        '操作': 'Action',
+        'タンクID': 'Tank ID',
+        '場所': 'Location',
+        '時刻': 'Time',
+        '日時': 'Date',
+        '担当者': 'Handler',
+
+        // --- マイページ ---
+        '今日のスコア': "Today's Score",
+        '今週のスコア': "This Week's Score",
+        'ランク': 'Rank',
+        'レギュラー': 'Regular',
+        'シルバー': 'Silver',
+        'ゴールド': 'Gold',
+        'プラチナ': 'Platinum',
+        'pt': 'pt',
+
+        // --- 破損報告 ---
+        '報告リスト': 'Report Queue',
+        '報告送信': 'Submit Report',
+        'バルブ固・歪み': 'Valve stuck/bent',
+        'エア漏れ': 'Air leak',
+        'Oリング': 'O-ring',
+        '件の破損を報告しますか？': ' damage reports?',
+
+        // --- メンテナンス ---
+        '実行する': 'Execute',
+        '選択中': 'Selected',
+        '件を送信しますか？': ' items?',
+        '修理済みとして処理': 'Mark as repaired',
+        '耐圧検査完了で処理': 'Mark inspection done',
+
+        // --- 一括返却 ---
+        '全ての貸出中タンクを表示しています。返却するには貸出先を選択してください。': 'Showing all tanks. Select a destination to return.',
+        '全て': 'All',
+        '読み込み中...': 'Loading...',
+
+        // --- 資材発注 ---
+        '発注・購入管理': 'Order Management',
+        '資材発注': 'Supply Order',
+        'タンク購入': 'Tank Purchase',
+        'タンク履歴': 'Tank History',
+        '発注する': 'Place Order',
+        '点': ' items',
+        '新規タンク登録': 'New Tank Registration',
+        '購入予定リスト': 'Purchase Cart',
+        '購入を確定する': 'Confirm Purchase',
+        '変更を保存': 'Save Changes',
+        'キャンセル': 'Cancel',
+
+        // --- 設定 ---
+        '言語': 'Language',
+        '日本語': 'Japanese',
+        '英語': 'English',
+        '保存して反映': 'Save & Apply',
+        '保存中...': 'Saving...',
+
+        // --- ログアウト ---
+        'ログアウトしてパスコードの記憶を削除しますか？': 'Logout and clear saved passcode?',
+
+        // --- 共同作業者 ---
+        '👤 共同作業者を選択...': '👤 Select coworker...',
+        '追加できるスタッフがいません。': 'No available coworkers.',
+        '認証情報が見つかりません。再ログインしてください。': 'Auth not found. Please re-login.'
+    };
+
+    /**
+     * 翻訳関数: 日本語キーを現在の言語に翻訳
+     * @param {string} key - 日本語テキスト（そのままキーとして使う）
+     * @param {Object} [vars] - 置換変数 {n: 3} → '{n}' を '3' に
+     * @returns {string}
+     */
+    function t(key, vars) {
+        var text = key;
+        if (CURRENT_LANG === 'en' && LANG_EN[key]) {
+            text = LANG_EN[key];
+        }
+        if (vars) {
+            for (var k in vars) {
+                if (vars.hasOwnProperty(k)) {
+                    text = text.replace('{' + k + '}', vars[k]);
+                }
+            }
+        }
+        return text;
+    }
+
+    /**
+     * DOM要素のテキストを一括翻訳
+     * data-t 属性を持つ要素のtextContentを翻訳する
+     * data-t-placeholder を持つ要素のplaceholderを翻訳する
+     */
+    function applyTranslations() {
+        if (CURRENT_LANG === 'ja') return; // 日本語はHTMLのまま
+
+        // data-t 属性: テキスト翻訳
+        document.querySelectorAll('[data-t]').forEach(function (el) {
+            var key = el.getAttribute('data-t');
+            if (key && LANG_EN[key]) {
+                el.textContent = LANG_EN[key];
+            }
+        });
+
+        // data-t-placeholder 属性: placeholder翻訳
+        document.querySelectorAll('[data-t-placeholder]').forEach(function (el) {
+            var key = el.getAttribute('data-t-placeholder');
+            if (key && LANG_EN[key]) {
+                el.placeholder = LANG_EN[key];
+            }
+        });
+
+        // data-t-title 属性: title翻訳
+        document.querySelectorAll('[data-t-title]').forEach(function (el) {
+            var key = el.getAttribute('data-t-title');
+            if (key && LANG_EN[key]) {
+                el.title = LANG_EN[key];
+            }
+        });
+    }
+</script>

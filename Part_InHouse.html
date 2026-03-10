@@ -504,18 +504,18 @@
   // ==================== 報告キュー ====================
   function ihAddToQueue(id) {
     if (ihQueue.some(function (q) { return q.id === id; })) {
-      ihShowToast('重複: ' + id); return false;
+      ihShowToast(t('重複: ') + id); return false;
     }
     if (window.tankMapCache) {
       var nId = id.replace(/[０-９Ａ-Ｚａ-ｚ]/g, function (s) { return String.fromCharCode(s.charCodeAt(0) - 0xFEE0); }).replace(/[-−\s_ー]/g, '').toUpperCase();
       var tankInfo = window.tankMapCache[nId];
-      if (!tankInfo) { ihShowToast('未登録ID'); return false; }
+      if (!tankInfo) { ihShowToast(t('未登録ID')); return false; }
       var status = tankInfo.status;
       // ステータス不一致チェック（貸出と同じバリデーション）
       var allowedStatuses = ['充填済み', '保管中'];
       var specialStatuses = ['', '新規登録', '不明', 'メンテナンス完了'];
       if (specialStatuses.indexOf(status) === -1 && allowedStatuses.indexOf(status) === -1) {
-        ihShowToast('ステータス不一致: 現在「' + status + '」');
+        ihShowToast(t('ステータス不一致: 現在「') + status + '」');
         return false;
       }
       ihQueue.push({ id: id, status: status });
@@ -560,7 +560,7 @@
 
   function ihSubmitReport() {
     if (ihQueue.length === 0) return;
-    if (!confirm(ihQueue.length + '件を自社利用中として登録しますか？')) return;
+    if (!confirm(ihQueue.length + t('件を自社利用中として登録しますか？'))) return;
     var btn = document.getElementById('ih-submit-btn');
     btn.disabled = true;
     document.getElementById('ih-submit-label').innerText = '送信中...';
@@ -580,7 +580,7 @@
       .withFailureHandler(function (e) {
         btn.disabled = false;
         document.getElementById('ih-submit-label').innerText = ihQueue.length + '件 登録';
-        alert('エラー: ' + e.message);
+        alert(t('エラー: ') + e.message);
       })
       .submitOperations({ action: '自社事後報告', items: ihQueue, userPasscode: (typeof GLOBAL_PASSCODE !== 'undefined') ? GLOBAL_PASSCODE : '' });
   }
@@ -657,10 +657,10 @@
     var unused = ihInUseTanks.filter(function (t) { return t.statusTag === 'unused'; }).length;
     var defect = ihInUseTanks.filter(function (t) { return t.statusTag === 'defect'; }).length;
     var normal = ihInUseTanks.length - unused - defect;
-    var msg = ihInUseTanks.length + '件を返却確定します。\n';
-    if (normal > 0) msg += '・通常: ' + normal + '件\n';
-    if (unused > 0) msg += '・未使用: ' + unused + '件\n';
-    if (defect > 0) msg += '・未充填: ' + defect + '件\n';
+    var msg = ihInUseTanks.length + t('件を返却確定しますか？') + '\n' + t('※未使用・未充填のタグを付けたものはその状態で返却されます。');
+    if (normal > 0) msg += '\n' + t('・通常: ') + normal + t('件');
+    if (unused > 0) msg += '\n' + t('・未使用: ') + unused + t('件');
+    if (defect > 0) msg += '\n' + t('・未充填: ') + defect + t('件');
     if (!confirm(msg)) return;
 
     var btn = document.getElementById('ih-confirm-btn');
@@ -682,7 +682,7 @@
       .withFailureHandler(function (e) {
         btn.disabled = false;
         document.getElementById('ih-confirm-label').innerText = ihInUseTanks.length + '件 返却確定';
-        alert('エラー: ' + e.message);
+        alert(t('エラー: ') + e.message);
       })
       .submitOperations({ action: '自社一括返却', items: ihInUseTanks, userPasscode: (typeof GLOBAL_PASSCODE !== 'undefined') ? GLOBAL_PASSCODE : '' });
   }

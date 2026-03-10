@@ -120,8 +120,8 @@ function getUserInfo(email, passcode) {
 
         // パスコード一致、またはメールアドレス一致でアカウント特定
         if (isPassMatch || isEmailMatch) {
-          var dbViewMode = (row.length > 6) ? String(row[6] || '') : '';
-          return { name: dbName, role: dbRole, rank: dbRank || "レギュラー", email: dbEmail, viewMode: dbViewMode };
+          var dbLang = (row.length > 6) ? String(row[6] || '') : '';
+          return { name: dbName, role: dbRole, rank: dbRank || "レギュラー", email: dbEmail, lang: dbLang };
         }
       }
     }
@@ -334,11 +334,11 @@ function isValidDate(d) {
 }
 
 /**
- * ビューモード保存 (担当者リスト G列)
+ * 言語設定保存 (担当者リスト G列)
  * @param {string} passcode - ユーザーのパスコード
- * @param {string} viewMode - "リスト" or "ダイヤル"
+ * @param {string} lang - "英語" or ""（空 = 日本語）
  */
-function saveViewMode(passcode, viewMode, optStaffName) {
+function saveUserLang(passcode, lang, optStaffName) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheetName = (typeof SHEET_NAMES !== 'undefined' && SHEET_NAMES.STAFF) ? SHEET_NAMES.STAFF : '担当者リスト';
   var sheet = ss.getSheetByName(sheetName);
@@ -359,8 +359,9 @@ function saveViewMode(passcode, viewMode, optStaffName) {
     var isPassMatch = (!optStaffName && passcode && dbPass && String(passcode).trim() === dbPass.trim());
 
     if (isNameMatch || isPassMatch) {
-      sheet.getRange(i + 2, 7).setValue(viewMode);
-      return { success: true, message: "ビューモードを「" + viewMode + "」に変更しました" };
+      sheet.getRange(i + 2, 7).setValue(lang);
+      var displayLang = (lang === '英語') ? 'English' : '日本語';
+      return { success: true, message: "言語を「" + displayLang + "」に変更しました" };
     }
   }
   return { success: false, message: "ユーザーが見つかりません" };

@@ -3,12 +3,9 @@
 function doGet(e) {
   var userEmail = getSafeUserEmail();
   var userInfo = getUserInfo(userEmail, '');
-  var urlViewMode = (e.parameter && e.parameter.viewMode) ? e.parameter.viewMode : '';
-  if (urlViewMode === 'dial') urlViewMode = 'ダイヤル';
-  if (urlViewMode === 'list') urlViewMode = 'リスト';
 
   // ▼ 現場用ページ (通常アクセスのみ)
-  return createNormalPage(userInfo, userEmail, '', urlViewMode);
+  return createNormalPage(userInfo, userEmail, '');
 }
 
 
@@ -16,7 +13,7 @@ function doGet(e) {
 /**
  * 現場用 HTML を生成して返す
  */
-function createNormalPage(userInfo, userEmail, targetPage, urlViewMode) {
+function createNormalPage(userInfo, userEmail, targetPage) {
   var template = HtmlService.createTemplateFromFile('index');
 
   var currentMode = getLoginMode();
@@ -34,10 +31,11 @@ function createNormalPage(userInfo, userEmail, targetPage, urlViewMode) {
   template.scriptUrl = ScriptApp.getService().getUrl();
   template.loginMode = currentMode;
 
-  // ビューモード設定: DB値優先、なければURLパラメータ、なければダイヤル（デフォルト）
-  var viewMode = userInfo.viewMode || urlViewMode || 'ダイヤル';
-  template.operationsView = (viewMode === 'リスト') ? 'Part_Operations' : 'Part_Operations_Dial';
-  template.viewMode = viewMode;
+  // 操作画面は常にダイヤル形式
+  template.operationsView = 'Part_Operations_Dial';
+
+  // 言語設定: G列が「英語」なら英語モード
+  template.userLang = (userInfo.lang === '英語') ? 'en' : 'ja';
 
   return template.evaluate()
     .setTitle(template.appTitle || "タンク管理")

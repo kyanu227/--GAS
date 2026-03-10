@@ -376,9 +376,17 @@
 
     /* --- Animations --- */
     @keyframes dmgPopPulse {
-        0%   { transform: scale(1); }
-        50%  { transform: scale(1.08); }
-        100% { transform: scale(1); }
+        0% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.08);
+        }
+
+        100% {
+            transform: scale(1);
+        }
     }
 
     .dmg-pop-anim {
@@ -386,9 +394,17 @@
     }
 
     @keyframes dmgFlashSuccess {
-        0%   { background-color: transparent; }
-        30%  { background-color: rgba(220, 53, 69, 0.06); }
-        100% { background-color: transparent; }
+        0% {
+            background-color: transparent;
+        }
+
+        30% {
+            background-color: rgba(220, 53, 69, 0.06);
+        }
+
+        100% {
+            background-color: transparent;
+        }
     }
 
     .dmg-flash-success {
@@ -448,7 +464,8 @@
         </div>
 
         <!-- Hidden numeric input -->
-        <input type="tel" id="dmg-hidden-input" class="dmg-hidden-input" maxlength="2" oninput="checkDmgRotaryInput(this)">
+        <input type="tel" id="dmg-hidden-input" class="dmg-hidden-input" maxlength="2"
+            oninput="checkDmgRotaryInput(this)">
 
         <!-- Touch area -->
         <div id="dmg-touch-area" class="dmg-rotary-touch"></div>
@@ -499,7 +516,7 @@
     }
 
     function refreshMasterDataSub() {
-        if (!confirm("最新のリストを取得しますか？")) return;
+        if (!confirm(t('最新のリストを取得しますか？'))) return;
         var btn = document.getElementById('dmg-btn-refresh');
         var orgHtml = btn.innerHTML;
         btn.disabled = true;
@@ -507,7 +524,7 @@
         google.script.run.withSuccessHandler(function (res) {
             loadAllMasterDataSub(); btn.disabled = false; btn.innerHTML = orgHtml;
         }).withFailureHandler(function (e) {
-            alert("更新エラー: " + e.message); btn.disabled = false; btn.innerHTML = orgHtml;
+            alert(t('更新エラー: ') + e.message); btn.disabled = false; btn.innerHTML = orgHtml;
         }).clearMasterCaches();
     }
 
@@ -875,7 +892,7 @@
     /* ===== SUBMIT ===== */
     function submitOpSub() {
         if (opSubQueue.length === 0) return;
-        if (!confirm(opSubQueue.length + '件 送信しますか？')) return;
+        if (!confirm(opSubQueue.length + t('件 送信しますか？'))) return;
 
         var btn = document.getElementById('dmg-submit-btn');
         var orgText = btn.innerHTML;
@@ -909,7 +926,7 @@
         }).withFailureHandler(function (e) {
             btn.disabled = false;
             btn.innerHTML = orgText;
-            alert("システムエラー: " + e);
+            alert(t('システムエラー: ') + e);
         }).submitOperations(payload);
     }
 </script>

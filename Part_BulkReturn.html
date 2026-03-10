@@ -276,7 +276,7 @@
             return !brCoworkerList.some(function (c) { return c.name === s.name; });
         });
         if (available.length === 0) {
-            alert('追加できるスタッフがいません。');
+            alert(t('追加できるスタッフがいません。'));
             return;
         }
         var sel = document.getElementById('br-coworker-select');
@@ -644,7 +644,7 @@
             .withFailureHandler(function (e) {
                 btn.disabled = false;
                 document.getElementById('br-submit-label').innerText = brFilteredTanks.length + '件 返却実行';
-                alert('システムエラー: ' + e.message);
+                alert(t('システムエラー: ') + e.message);
             })
             .submitOperations(payload);
     }

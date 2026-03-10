@@ -19,7 +19,8 @@
     var SERVER_USER_ROLE = "<?= userRole ?>";
     var SERVER_LOGIN_MODE = "<?= loginMode ?>";
     var SERVER_USER_EMAIL = "<?= (typeof userEmail !== 'undefined') ? userEmail : '' ?>";
-    var SERVER_VIEW_MODE = "<?= (typeof viewMode !== 'undefined') ? viewMode : 'リスト' ?>";
+    var SERVER_VIEW_MODE = "";
+    var SERVER_LANG = "<?= (typeof userLang !== 'undefined') ? userLang : 'ja' ?>";
 
     // ▼▼▼ 追加: ターゲットページの受け取り ▼▼▼
     var SERVER_TARGET_PAGE = "<?= (typeof targetPage !== 'undefined') ? targetPage : '' ?>";
@@ -35,6 +36,7 @@
       GLOBAL_STAFF_NAME = "ゲスト";
     }
   </script>
+  <?!= include('Lang'); ?>
   <?!= include('Global_CSS'); ?>
 
   <style>
@@ -131,7 +133,7 @@
 
   <div id="initial-loader">
     <div class="spinner-border text-primary" role="status" style="width: 4rem; height: 4rem;"></div>
-    <div class="mt-4 fw-bold text-secondary fs-5">認証情報を確認中...</div>
+    <div class="mt-4 fw-bold text-secondary fs-5" data-t="認証情報を確認中...">認証情報を確認中...</div>
   </div>
 
   <div id="permission-denied-view">
@@ -149,12 +151,13 @@
           <h5 class="modal-title fw-bold text-dark"><i class="bi bi-shield-lock-fill me-2"></i>ログイン</h5>
         </div>
         <div class="modal-body p-4 text-center">
-          <p class="text-muted small mb-3">担当者パスコード（6桁）を入力してください</p>
+          <p class="text-muted small mb-3" data-t="担当者パスコード（6桁）を入力してください">担当者パスコード（6桁）を入力してください</p>
           <input type="tel" id="login-passcode" class="form-control form-control-lg text-center fw-bold fs-2 mb-3"
             maxlength="6" placeholder="------" style="font-family:monospace;" inputmode="numeric" pattern="[0-9]*"
             autocomplete="one-time-code" autofocus oninput="checkPasscodeInput(this)">
           <div id="login-error" class="text-danger small fw-bold mb-2" style="display:none;"></div>
-          <button class="btn btn-primary w-100 fw-bold py-2" onclick="doLogin()">認証する</button>
+          <button class="btn btn-primary w-100 fw-bold py-2" onclick="doLogin()"><span
+              data-t="認証する">認証する</span></button>
         </div>
       </div>
     </div>
@@ -168,28 +171,28 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body p-4">
-          <label class="form-label fw-bold small text-secondary mb-2">操作画面の表示形式</label>
+          <label class="form-label fw-bold small text-secondary mb-2" data-t="言語">言語</label>
           <div class="d-grid gap-2">
-            <label class="d-flex align-items-center p-3 rounded border" id="setting-view-list"
-              style="cursor:pointer; transition: all 0.2s;" onclick="selectViewMode('リスト')">
-              <input type="radio" name="viewModeSetting" value="リスト" class="form-check-input me-3" id="vm-list">
+            <label class="d-flex align-items-center p-3 rounded border" id="setting-lang-ja"
+              style="cursor:pointer; transition: all 0.2s;" onclick="selectLang('ja')">
+              <input type="radio" name="langSetting" value="ja" class="form-check-input me-3" id="lang-ja">
               <div>
-                <div class="fw-bold"><i class="bi bi-card-list me-1"></i> リスト形式</div>
-                <div class="text-muted small">プレフィックスごとに入力欄が並ぶ標準レイアウト</div>
+                <div class="fw-bold">🇯🇵 日本語</div>
+                <div class="text-muted small">日本語で表示します</div>
               </div>
             </label>
-            <label class="d-flex align-items-center p-3 rounded border" id="setting-view-dial"
-              style="cursor:pointer; transition: all 0.2s;" onclick="selectViewMode('ダイヤル')">
-              <input type="radio" name="viewModeSetting" value="ダイヤル" class="form-check-input me-3" id="vm-dial">
+            <label class="d-flex align-items-center p-3 rounded border" id="setting-lang-en"
+              style="cursor:pointer; transition: all 0.2s;" onclick="selectLang('en')">
+              <input type="radio" name="langSetting" value="en" class="form-check-input me-3" id="lang-en">
               <div>
-                <div class="fw-bold"><i class="bi bi-vinyl me-1"></i> ダイヤル形式</div>
-                <div class="text-muted small">ロータリー式でプレフィックスを選ぶレイアウト</div>
+                <div class="fw-bold">🇺🇸 English</div>
+                <div class="text-muted small">Display in English</div>
               </div>
             </label>
           </div>
           <div id="settings-save-status" class="text-center mt-3 small" style="display:none;"></div>
           <button class="btn btn-primary w-100 fw-bold py-2 mt-3" onclick="saveSettings()">
-            <i class="bi bi-check-lg me-1"></i> 保存して反映
+            <i class="bi bi-check-lg me-1"></i> <span data-t="保存して反映">保存して反映</span>
           </button>
         </div>
       </div>
@@ -221,7 +224,7 @@
       <div class="ms-auto">
         <button id="header-bulk-return-btn" class="btn btn-sm btn-outline-success py-1 px-3"
           style="display:none; font-size:0.85rem; font-weight:bold;" onclick="switchMode('一括返却')">
-          <i class="bi bi-arrow-return-left"></i> 一括返却
+          <i class="bi bi-arrow-return-left"></i> <span data-t="一括返却">一括返却</span>
         </button>
       </div>
     </div>
@@ -252,7 +255,7 @@
         </div>
       </div>
 
-      <div class="p-3 bg-light border-bottom mb-2"><small class="text-muted"> 基本操作 </small></div>
+      <div class="p-3 bg-light border-bottom mb-2"><small class="text-muted" data-t="基本操作"> 基本操作 </small></div>
       <a class="menu-item" onclick="switchMode('貸出')"><i class="bi bi-box-arrow-up text-primary"></i> <span>
           <?= menuNames.LEND ?>
         </span></a>
@@ -263,7 +266,8 @@
           <?= menuNames.FILL ?>
         </span></a>
 
-      <div class="p-3 bg-light border-bottom mb-2 mt-2"><small class="text-muted"> メンテナンス・報告 </small></div>
+      <div class="p-3 bg-light border-bottom mb-2 mt-2"><small class="text-muted" data-t="メンテナンス・報告"> メンテナンス・報告 </small>
+      </div>
       <a class="menu-item" onclick="switchMode('ダッシュボード')"><i class="bi bi-speedometer2 text-primary"></i>
         <span>ダッシュボード</span></a>
       <a class="menu-item" onclick="switchMode('破損報告')"><i class="bi bi-tools text-danger"></i> <span>
@@ -281,7 +285,7 @@
         </span></a>
 
 
-      <div class="p-3 bg-light border-bottom mb-2 mt-2"><small class="text-muted"> 確認 </small></div>
+      <div class="p-3 bg-light border-bottom mb-2 mt-2"><small class="text-muted" data-t="確認"> 確認 </small></div>
 
       <a class="menu-item" onclick="switchMode('マイページ')"><i class="bi bi-person-vcard text-warning"></i> <span>
           <?= menuNames.MYPAGE ?>
@@ -319,13 +323,13 @@
 
   <div class="bottom-nav">
     <button class="nav-btn" id="nav-btn-lend" onclick="switchMode('貸出')">
-      <i class="bi bi-box-arrow-up"></i> 貸出
+      <i class="bi bi-box-arrow-up"></i> <span data-t="貸出">貸出</span>
     </button>
     <button class="nav-btn" id="nav-btn-return" onclick="switchMode('返却')">
-      <i class="bi bi-box-arrow-in-down"></i> 返却
+      <i class="bi bi-box-arrow-in-down"></i> <span data-t="返却">返却</span>
     </button>
     <button class="nav-btn" id="nav-btn-fill" onclick="switchMode('充填')">
-      <i class="bi bi-fuel-pump-fill"></i> 充填
+      <i class="bi bi-fuel-pump-fill"></i> <span data-t="充填">充填</span>
     </button>
   </div>
 
@@ -510,6 +514,10 @@
       if (menuEmailEl) menuEmailEl.innerText = emailText;
 
       switchMode(startMode || '貸出');
+
+      // 言語設定の初期化
+      CURRENT_LANG = SERVER_LANG || safelyGetLocal('app_user_lang') || 'ja';
+      applyTranslations();
     }
 
     function doLogin() {
@@ -536,9 +544,10 @@
               // ★追加: 認証成功時にパスコードをブラウザに永続保存する
               safelySetLocal('app_user_passcode', pass);
 
-              // ★ ビューモードをlocalStorageに保存（リダイレクトはしない）
-              var userViewMode = (res.user && res.user.viewMode === 'ダイヤル') ? 'ダイヤル' : 'リスト';
-              safelySetLocal('app_view_mode', userViewMode);
+              // ★ 言語設定を取得して適用
+              var userLang = (res.user && res.user.lang === '英語') ? 'en' : 'ja';
+              CURRENT_LANG = userLang;
+              safelySetLocal('app_user_lang', userLang);
 
               loginModal.hide();
               if (!isInitial) showMessage(GLOBAL_STAFF_NAME + "さん、ログインしました", true);
@@ -578,7 +587,7 @@
     function doLogout() {
       if (confirm("ログアウトしてパスコードの記憶を削除しますか？")) {
         safelyRemoveLocal('app_user_passcode');
-        safelyRemoveLocal('app_view_mode');
+        safelyRemoveLocal('app_user_lang');
         GLOBAL_PASSCODE = "";
         GLOBAL_STAFF_NAME = "ゲスト";
         GLOBAL_USER_ROLE = "";
@@ -683,58 +692,49 @@
       if (!settingsModal) {
         settingsModal = new bootstrap.Modal(document.getElementById('settingsModal'));
       }
-      var currentMode = SERVER_VIEW_MODE || 'リスト';
-      if (currentMode === 'ダイヤル') {
-        document.getElementById('vm-dial').checked = true;
+      var currentLang = CURRENT_LANG || 'ja';
+      if (currentLang === 'en') {
+        document.getElementById('lang-en').checked = true;
       } else {
-        document.getElementById('vm-list').checked = true;
+        document.getElementById('lang-ja').checked = true;
       }
-      updateViewModeHighlight();
+      updateLangHighlight();
       document.getElementById('settings-save-status').style.display = 'none';
       settingsModal.show();
     }
 
-    function selectViewMode(mode) {
-      if (mode === 'ダイヤル') {
-        document.getElementById('vm-dial').checked = true;
+    function selectLang(lang) {
+      if (lang === 'en') {
+        document.getElementById('lang-en').checked = true;
       } else {
-        document.getElementById('vm-list').checked = true;
+        document.getElementById('lang-ja').checked = true;
       }
-      updateViewModeHighlight();
+      updateLangHighlight();
     }
 
-    function updateViewModeHighlight() {
-      var listLabel = document.getElementById('setting-view-list');
-      var dialLabel = document.getElementById('setting-view-dial');
-      var isDialChecked = document.getElementById('vm-dial').checked;
-      listLabel.style.borderColor = isDialChecked ? '#dee2e6' : '#0d6efd';
-      listLabel.style.background = isDialChecked ? '#fff' : '#e8f0fe';
-      dialLabel.style.borderColor = isDialChecked ? '#0d6efd' : '#dee2e6';
-      dialLabel.style.background = isDialChecked ? '#e8f0fe' : '#fff';
-    }
-
-    function reloadWithViewMode(viewMode) {
-      if (!viewMode) return;
-      var url = "<?= scriptUrl ?>";
-      var asciiMode = (viewMode === 'ダイヤル') ? 'dial' : 'list';
-      if (asciiMode !== 'list') {
-        url += (url.indexOf('?') === -1 ? '?' : '&') + 'viewMode=' + asciiMode;
-      }
-      safelyNavigateTop(url);
+    function updateLangHighlight() {
+      var jaLabel = document.getElementById('setting-lang-ja');
+      var enLabel = document.getElementById('setting-lang-en');
+      var isEnChecked = document.getElementById('lang-en').checked;
+      jaLabel.style.borderColor = isEnChecked ? '#dee2e6' : '#0d6efd';
+      jaLabel.style.background = isEnChecked ? '#fff' : '#e8f0fe';
+      enLabel.style.borderColor = isEnChecked ? '#0d6efd' : '#dee2e6';
+      enLabel.style.background = isEnChecked ? '#e8f0fe' : '#fff';
     }
 
     function saveSettings() {
-      var selectedMode = document.getElementById('vm-dial').checked ? 'ダイヤル' : 'リスト';
+      var selectedLang = document.getElementById('lang-en').checked ? 'en' : 'ja';
+      var dbLang = (selectedLang === 'en') ? '英語' : '';
       var passcode = getCurrentUserPasscode();
       var hasGoogleName = (typeof window.GLOBAL_STAFF_NAME !== 'undefined' && window.GLOBAL_STAFF_NAME && window.GLOBAL_STAFF_NAME !== 'ゲスト');
 
       if (!passcode && !hasGoogleName) {
-        alert("認証情報が見つかりません。再ログインしてください。");
+        alert(t('認証情報が見つかりません。再ログインしてください。'));
         return;
       }
 
       var statusEl = document.getElementById('settings-save-status');
-      statusEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 保存中...';
+      statusEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span> ' + t('保存中...');
       statusEl.className = 'text-center mt-3 small text-muted';
       statusEl.style.display = 'block';
 
@@ -743,10 +743,13 @@
           if (res.success) {
             statusEl.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i> ' + res.message;
             statusEl.className = 'text-center mt-3 small text-success fw-bold';
-            safelySetLocal('app_view_mode', selectedMode);
+            CURRENT_LANG = selectedLang;
+            safelySetLocal('app_user_lang', selectedLang);
             setTimeout(function () {
               settingsModal.hide();
-              reloadWithViewMode(selectedMode);
+              // ページをリロードして言語を反映
+              var url = "<?= scriptUrl ?>";
+              safelyNavigateTop(url);
             }, 800);
           } else {
             statusEl.innerHTML = '<i class="bi bi-exclamation-circle text-danger"></i> ' + res.message;
@@ -754,10 +757,10 @@
           }
         })
         .withFailureHandler(function (e) {
-          statusEl.innerHTML = '<i class="bi bi-exclamation-circle text-danger"></i> エラー: ' + e.message;
+          statusEl.innerHTML = '<i class="bi bi-exclamation-circle text-danger"></i> Error: ' + e.message;
           statusEl.className = 'text-center mt-3 small text-danger';
         })
-        .saveViewMode(passcode, selectedMode, typeof window.GLOBAL_STAFF_NAME !== 'undefined' ? window.GLOBAL_STAFF_NAME : "");
+        .saveUserLang(passcode, dbLang, typeof window.GLOBAL_STAFF_NAME !== 'undefined' ? window.GLOBAL_STAFF_NAME : "");
     }
   </script>
 </body>
