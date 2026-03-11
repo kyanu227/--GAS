@@ -267,8 +267,7 @@
           </button>
         </div>
       </div>
-    </div>
-    <div id="op-settings-return" class="op-setting-panel" style="display:none;">
+      <div id="op-settings-return" class="op-setting-panel" style="display:none;">
       <div class="selection-panel">
         <div class="check-unused flex-fill">
           <input type="checkbox" id="op-check-unused" class="check-card-input" onchange="toggleReturnCheck('unused')">
@@ -302,7 +301,7 @@
         <div class="text-center text-muted p-3"><span class="spinner-border spinner-border-sm"></span> 取得中...</div>
       </div>
     </div>
-  </div>
+    </div> <!-- Close op-settings-card -->
 
   <!-- Dial mode (fills remaining space) -->
   <div id="op-dial-mode" class="flex-grow-1"
@@ -341,8 +340,7 @@
       <div id="dial-wheel"></div>
     </div>
   </div>
-  </div>
-
+  </div> <!-- Close op-container -->
 
   <script>
     var opQueue = [];
@@ -536,7 +534,10 @@
 
     function activateDialMode(color) {
       var scrollPos = window.pageYOffset || document.documentElement.scrollTop;
-      document.getElementById('op-dial-mode').style.display = 'flex';
+      var dialMode = document.getElementById('op-dial-mode');
+      dialMode.style.display = 'flex';
+      dialMode.style.flex = '1 1 0%';
+      dialMode.style.minHeight = '300px';
       document.body.classList.add('dial-lock');
       document.body.style.top = '-' + scrollPos + 'px';
       document.body.dataset.scrollPos = scrollPos;
